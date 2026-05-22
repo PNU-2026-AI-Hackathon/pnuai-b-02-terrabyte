@@ -1,53 +1,32 @@
-# Template for Hackathon
-이 레파지토리는 참여자들이 해커톤 결과물을 위한 레파지토리 생성시에 참고할 내용들을 담고 있습니다.
-1. 레파지토리 생성
-2. 레파지토리 구성
-3. README.md 가이드라인
-4. README.md 작성팁
-<br/>
-
-
-## 1. 레파지토리 생성
-- https://classroom.github.com/a/VDJSvmVC
-- 위 Github Classroom 링크에 접속해 본인 조의 github 레파지토리를 생성하세요.
-<img width="1125" height="790" alt="image" src="https://github.com/user-attachments/assets/7377b191-d36a-43bd-ba16-9742be532ecf" />
-
-
-- 레파지토리 생성 시 팀 이름은 `{트랙}-{팀번호}-{팀명}` 형식으로 생성하세요.
-- 트랙 란에는 융합트랙은 'A', 지정과제 트랙은 'B', 창업트랙은 'C'를 기입합니다.
-- 예를 들어, 융합트랙 3조의 팀명은 `A-03-ExampleTeamName` 입니다.
-- 이 경우 `PNUAI-A-03-ExampleTeamName`이라는 이름으로 레포지토리가 생성됩니다.
-<br/>
-
-
-
-## 2. 레파지토리 구성
-- 레파지토리 내에 `README.md` 파일 생성하고 아래의 가이드라인과 작성팁을 참고하여 파일을 작성하세요.
-- 레파지토리 내에 `docs` 폴더를 생성하고 폴더 내에는 과제 수행 하면서 작성한 각종 보고서, 발표자료를 올려둡니다.
-- 그 밖에 레파지토리의 폴더 구성은 과제 결과물에 따라 자유롭게 구성하되 가급적 코드의 목적이나 기능에 따라 폴더를 나누어 구성하세요.  
-<br/>
-
-
-## 3. README.md 가이드라인
-- README 파일 작성시에 아래의 5가지 항목의 내용은 필수적으로 포함해야 합니다.
-- 아래의 7가지 항목이외에 프로젝트의 이해를 돕기위한 내용을 추가해도 됩니다.
-- `SAMPLE_README.md`가 단순한 형태의 예제이니 참고하세요.
-```markdown
 ### 1. 프로젝트 소개
 #### 1.1. 개발배경 및 필요성
-> 프로젝트를 실행하게 된 배경 및 필요성을 작성하세요.
+기후 위기와 식량 안보 문제로 스마트팜이 주목받고 있으며, 도심의 유휴공간(옥상, 지하 공간, 공실 등)을 새로운 농업 생산 공간으로 전환하려는 시도가 증가하고 있습니다. 하지만 기존 스마트팜 기술은 이미 구축된 농장의 자동 제어에만 초점이 맞춰져 있어, 해당 유휴공간이 작물 재배에 적합한지 객관적으로 판단하기 어렵다는 문제가 있습니다. 공간 특성을 고려하지 않은 무리한 설비 투자는 초기 비용 증가와 에너지 비효율을 초래하므로, 설치 이전 단계에서 공간의 환경 적합성을 데이터 기반으로 진단하는 서비스가 필수적입니다.
 
 #### 1.2. 개발 목표 및 주요 내용
-> 프로젝트의 목표 및 주요 내용을 작성하세요.
+본 프로젝트의 목표는 도심 유휴공간의 스마트팜 전환 가능성을 진단하고, 설치 이후에는 재배 환경을 지속적으로 모니터링하는 통합 솔루션을 개발하는 것입니다. 단일 하드웨어 키트(ESP32 기반 7종 센서)를 통해 공간 적합도를 분석하고 비용 효율적인 설계를 제안하며, 사용자에게 점수와 시각화 인터페이스를 제공하여 비전문가도 쉽게 스마트팜 재배 리스크를 최소화할 수 있도록 지원합니다.
 
 #### 1.3. 세부내용
-> 위 내용을 작성하세요.
+ - 공간 적합도 진단: 온도, 습도, 조도, CO2, 미세먼지, 소음 등 주요 환경 요소를 종합 분석하여 공간 적합도 산출.
+
+ - 개선 항목 분석 및 구축 비용 산출: 부족한 환경 요소(예: 조도 부족)를 파악하고 인공조명 설치 등 필요한 보완 방향과 예상 비용을 수립.
+
+ - 실시간 재배 환경 관리: 스마트팜 구축 후 토양 수분, 온도 등을 지속 모니터링하고 임계치 초과 시 Push 알림 제공.
+
+ - 직관적 대시보드: 복잡한 센서 수치가 아닌 점수, 그래프, 색상 기반의 시각화 보고서 제공.
 
 #### 1.4. 기존 서비스 대비 차별성
-> 위 내용을 작성하세요.
+ - 설치 '이전' 단계의 진단 집중: 구축 이후 모니터링에 집중한 기존 솔루션과 달리, 후보 공간의 재배 적합성을 미리 판단하여 과잉 투자를 방지.
+
+ - 이분법적 진단을 넘은 직관적 리포트: 단순 센서 수치 나열이 아닌, 작물별 권장 생육 범위와의 편차를 점수화 및 시각화하여 우선순위 안내.
+
+ - AI 기반 정교한 공간 진단 알고리즘: 환경 요소가 복합적으로 생육에 미치는 영향을 AI 모델로 분석하여 적합 작물 추천 및 진단.
+
+ - 하나의 통합 키트 제공 (공간 분석 + 토양 분석): 진단 단계의 데이터와 재배 기간의 모니터링 데이터를 연계하여 하나의 플랫폼에서 관리.
 
 #### 1.5. 사회적가치 도입 계획
-> 위 내용을 작성하세요.
+ - 도시 재생 및 유휴공간 부가가치 창출: 도심 내 버려진 공간의 농업적 활용 가능성을 데이터로 입증.
+
+ - 진입 장벽 완화: 직관적 인터페이스 제공으로 비전문가(초보 농업인, 실버 세대 등)의 스마트팜 운영을 돕고 새로운 로컬푸드 생태계 형성에 기여.
 
 
 ### 2. 상세설계
@@ -55,10 +34,16 @@
 > 시스템 구성도(infra, front, back등의 node 간의 관계)의 사진을 삽입하세요.
 
 #### 2.1. 사용 기술
-> 스택 별(backend, frontend, designer등) 사용한 기술 및 버전을 작성하세요.
-> 
-> ex) React.Js - React14, Node.js - v20.0.2
-> (필수)활용한 생성형 AI, AI 코딩 도구에 대해서도 기술하세요.
+
+| 분야 | 기술 스택 | 버전 | 활용 목적 및 상세 |
+|:---:|:---|:---:|:---|
+| **Frontend** | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white) ![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white) | v5.x<br/>v14.x | 사용자용 웹 대시보드 및 UI 컴포넌트 개발 |
+| **Backend** | ![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=spring-boot&logoColor=white) | v17<br/>v3.x | 센서 데이터 수신, 공간 적합도 분석, 비용 산출 로직 구현 |
+| **Hardware<br/>& IoT** | ![C](https://img.shields.io/badge/C-00599C?style=for-the-badge&logo=c&logoColor=white) ![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white) ![ESP32](https://img.shields.io/badge/ESP32-E7352C?style=for-the-badge&logo=espressif&logoColor=white)<br/>![MQTT](https://img.shields.io/badge/MQTT-660066?style=for-the-badge&logo=mqtt&logoColor=white) | - | HW 센서 제어 로직 및 펌웨어 구현<br/>7종 센서 통합 모듈 통신 보드<br/>저전력 실시간 데이터 전송 프로토콜 |
+| **Database** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white) ![InfluxDB](https://img.shields.io/badge/InfluxDB-22ADF6?style=for-the-badge&logo=influxdb&logoColor=white) | - | 사용자 정보, 공간 정보 및 진단 결과 관리<br/>시계열 기반 센서 데이터 로그 저장 |
+| **Infra** | ![AWS](https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazon-aws&logoColor=white) ![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black) | - | EC2 기반 서버 배포 및 운영<br/>이상 상태 감지 시 Real-time Push 알림 발송 |
+| **AI & AI<br/>Coding Tools** | ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-181717?style=for-the-badge&logo=github&logoColor=white) ![ChatGPT](https://img.shields.io/badge/ChatGPT-412991?style=for-the-badge&logo=openai&logoColor=white)<br/>![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=anthropic&logoColor=white) ![Gemini](https://img.shields.io/badge/Gemini-8E75B2?style=for-the-badge&logo=googlebard&logoColor=white) ![v0.dev](https://img.shields.io/badge/v0.dev-000000?style=for-the-badge&logo=vercel&logoColor=white) | - | 실시간 코드 리뷰, 예외 처리 및 보안 점검<br/>기술 문서, API 명세 작성 및 진단 알고리즘 설계 보조<br/>API 구현, DB 스키마 생성 및 초기 인프라 자동 생성<br/>가상 센서 데이터 시뮬레이션 및 시스템 동작 사전 검증<br/>자연어 기반 대시보드 화면 및 UI 컴포넌트 프로토타이핑 |
+| **IDE &<br/>협업** | ![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white) ![IntelliJ IDEA](https://img.shields.io/badge/IntelliJ_IDEA-000000?style=for-the-badge&logo=intellij-idea&logoColor=white) ![CLion](https://img.shields.io/badge/CLion-000000?style=for-the-badge&logo=clion&logoColor=white) | - | 버전 관리 및 팀 협업<br/>개발 환경 (백엔드, 프론트엔드, C/C++) |
 
 ### 3. 개발결과
 #### 3.1. 전체시스템 흐름도
@@ -102,136 +87,11 @@
 > 프로젝트 소개 동영상을 교육원 메일(swedu@pusan.ac.kr)로 제출 이후 센터에서 부여받은 youtube URL주소를 넣으세요.
 
 ### 6. 팀 소개
-> 팀원 소개 & 구성원 별 역할 분담 & 간단한 연락처를 작성하세요.
+| LEADER | MEMBER1 | MEMBER2 | MEMBER3 | MEMBER4 |
+|:---:|:---:|:---:|:---:|:---:|
+| [김동현](https://github.com/cnvxlns) | [김민서](https://github.com/oesmln) | [김효빈](https://github.com/iris11132-max) | [문성현](https://github.com/7hyunii) | [박태훈](https://github.com/Reighnex) |
+| okmac03@pusan.ac.kr | kmmlns@gmail.com | irisrla@naver.com | 7sonicx@gmail.com | pth4241@pusan.ac.kr |
+| HW 설계 | 백엔드 및 DevOps | 기획도메인 분석 | 풀스택 개발 | 공간진단알고리즘 설계 |
 
 ### 7. 해커톤 참여 후기
 > 팀원 별 해커톤 참여 후기를 작성하세요.
-```
-<br/>
-
-
-## 4. README.md 작성 팁
-- 마크다운 언어를 이용해 README.md 파일을 작성할 때 참고할 수 있는 마크다운 언어 문법을 공유합니다.
-- 다양한 예제와 보다 자세한 문법은 [이 문서](https://www.markdownguide.org/basic-syntax/)를 참고하세요.
-
-### 4.1. 헤더 Header
-```
-# This is a Header 1
-## This is a Header 2
-### This is a Header 3
-#### This is a Header 4
-##### This is a Header 5
-###### This is a Header 6
-####### This is a Header 7 은 지원되지 않습니다.
-```
-
-# This is a Header 1
-## This is a Header 2
-### This is a Header 3
-#### This is a Header 4
-##### This is a Header 5
-###### This is a Header 6
-####### This is a Header 7 은 지원되지 않습니다.
-<br />
-
-### 4.2. 인용문 BlockQuote
-```
-> This is a first blockqute.
->	> This is a second blockqute.
->	>	> This is a third blockqute.
-```
-> This is a first blockqute.
->	> This is a second blockqute.
->	>	> This is a third blockqute.
-<br />
-
-### 4.3. 목록 List
-* **Ordered List**
-```
-1. first
-2. second
-3. third  
-```
-1. first
-2. second
-3. third
-<br />
-
-* **Unordered List**
-```
-* 하나
-  * 둘
-
-+ 하나
-  + 둘
-
-- 하나
-  - 둘
-```
-* 하나
-  * 둘
-
-+ 하나
-  + 둘
-
-- 하나
-  - 둘
-<br />
-
-### 4.4. 코드 CodeBlock
-* 코드 블럭 이용 '``'
-```
-여러줄 주석 "```" 이용
-"```
-#include <stdio.h>
-int main(void){
-  printf("Hello world!");
-  return 0;
-}
-```"
-
-단어 주석 "`" 이용
-"`Hello world`"
-
-* 큰 따옴표(") 없이 사용하세요.
-``` 
-<br />
-
-### 4.5. 링크 Link
-```
-[Title](link)
-[부산대학교 AI융합교육원](https://swedu.pusan.ac.kr/swedu/index.do)
-
-<link>
-<https://swedu.pusan.ac.kr>
-``` 
-[부산대학교 AI융합교육원](https://swedu.pusan.ac.kr)
-
-<https://swedu.pusan.ac.kr>  
-<br />
-
-### 4.6. 강조 Highlighting
-```
-*single asterisks*
-_single underscores_
-**double asterisks**
-__double underscores__
-~~cancelline~~<img width="1994" height="253" alt="KakaoTalk_20260520_160616446_01" src="https://github.com/user-attachments/assets/9269b8bd-7539-4120-a97c-705f96fd5e71" />
-
-```
-*single asterisks* <br />
-_single underscores_ <br />
-**double asterisks** <br />
-__double underscores__ <br />
-~~cancelline~~  <br />
-<br />
-
-### 4.7. 이미지 Image
-```
-<img src="/path/to/img.jpg" width="600px" title="Title" alt="Alt text"></img>
-![Alt text](/path/to/img.jpg "Optional title")
-```
-<img src="https://github.com/user-attachments/assets/3c717ecf-6e22-487b-ae12-72d11e8af5ff" width="600px" title="부산대학교 AI융합교육원" alt="부산대학교 AI융합교육원"></img>
-<br/>
-![부산대학교 AI융합교육원](https://github.com/user-attachments/assets/3c717ecf-6e22-487b-ae12-72d11e8af5ff "부산대학교 AI융합교육원")
-<br/>
