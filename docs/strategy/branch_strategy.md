@@ -36,14 +36,23 @@ git remote -v
 ```
 
 ### 1. 최신화 (Sync)
-작업 시작 전, 내 로컬의 `develop`을 조직 저장소(Upstream)와 똑같이 맞춥니다.
+작업 시작 전, 내 로컬의 `develop`을 조직 저장소(Upstream)와 똑같이 맞춥니다. <br>
+우리 팀은 PR 병합 시 `Squash and merge`를 사용하므로, pull 방식 대신 `fetch` 후 `reset`으로 동기화합니다.
 ```bash
 # 로컬 develop 브랜치로 이동
 git checkout develop
 
-# 조직 저장소(upstream)의 내용을 당겨와서 동기화
-git pull upstream develop
+# 커밋하지 않은 변경사항이 없는지 확인
+git status
+
+# 조직 저장소(upstream)의 최신 내용을 가져오기
+git fetch upstream
+
+# 로컬 develop을 조직 저장소의 develop과 동일하게 맞추기
+git reset --hard upstream/develop
 ```
+
+`git status`에서 커밋하지 않은 변경사항이 있다면 먼저 커밋하거나 stash한 뒤 진행합니다.
 
 ### 2. 브랜치 생성 (Branch)
 develop에서 바로 작업하지 않고, 작업 전용 브랜치를 새로 만듭니다.
@@ -82,3 +91,5 @@ GitHub 웹사이트에서 내 포크 저장소의 브랜치를 조직 저장소�
     - base repository: 조직 저장소 / `base: develop` ⬅ (여기로 보냄)
     - head repository: 내 저장소 / `compare: PR보낼 내 저장소 브랜치`
 4. 내용 작성 후 Create Pull Request
+
+PR에서 충돌이 표시되면 `pr_strategy.md`의 충돌 해결 절차에 따라 작업 브랜치에 최신 `develop`을 병합합니다.

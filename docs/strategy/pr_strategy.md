@@ -45,6 +45,8 @@
 - 병합은 PR 작성자가 팀원들의 승인을 확인한 후 직접 진행합니다.
 - 병합 방식은 반드시 `Squash and merge`를 사용합니다.
 - 승인된 PR만 `develop`으로 병합합니다.
+- PR 병합 후에는 로컬 `develop`을 조직 저장소의 `develop`과 다시 동기화합니다.
+- 작업 중 다른 사람의 변경사항은 PR에서 충돌이 발생하거나 꼭 필요한 경우에만 작업 브랜치에 반영합니다.
 
 ## 📌 작업 흐름 예시
 
@@ -82,5 +84,46 @@ feat: 로그인 페이지 UI 구현
 ### 3. 리뷰 요청
 PR 작성자는 assignee에 본인을 지정하고, reviewer에는 본인을 제외한 모든 팀원을 지정합니다. <br>GitHub Copilot에도 리뷰를 요청하며, 수정 요청이 있으면 작업 브랜치에 추가 커밋을 푸시합니다.
 
-### 4. 병합
+### 4. 충돌 해결 (필요 시)
+PR에서 충돌이 표시되면, 작업 브랜치에 최신 `develop`을 병합합니다. <br>
+Git이 자동으로 합치지 못한 파일은 직접 수정해야 합니다.
+
+```bash
+git checkout feature/login-page
+git fetch upstream
+git merge upstream/develop
+```
+
+충돌이 발생한 파일에는 아래와 같은 표시가 생깁니다.
+
+```text
+<<<<<<< HEAD
+내 작업 내용
+=======
+develop에 들어온 변경 내용
+>>>>>>> upstream/develop
+```
+
+충돌 표시를 확인하고 필요한 내용만 남긴 뒤 저장합니다. 그 다음 아래 명령어로 반영합니다.
+
+```bash
+git add .
+git commit
+git push origin feature/login-page
+```
+
+### 5. 병합
 PR 작성자는 팀원들의 승인을 확인한 후 `Squash and merge` 방식으로 PR을 `develop`에 병합하고, 병합된 작업 브랜치는 삭제합니다.
+
+### 6. 병합 후 로컬 정리
+`Squash and merge`는 PR 커밋을 새로운 커밋 하나로 다시 만들기 때문에, 병합 후 로컬 `develop`을 조직 저장소 기준으로 맞춥니다.
+
+```bash
+git checkout develop
+git status
+git fetch upstream
+git reset --hard upstream/develop
+```
+
+`git status`에서 커밋하지 않은 변경사항이 있다면 먼저 커밋하거나 stash한 뒤 진행합니다. <br>
+다음 작업은 정리된 `develop`에서 새 작업 브랜치를 만들어 시작합니다.
