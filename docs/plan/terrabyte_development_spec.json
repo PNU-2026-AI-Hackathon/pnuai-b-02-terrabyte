@@ -1,0 +1,689 @@
+{
+  "documentPurpose": "Development specification extracted from the revision plan, excluding personal information.",
+  "project": {
+    "teamName": "TerraByte",
+    "trackType": "Designated Task Track",
+    "title": "Smart Farm Space Diagnosis and Cultivation Environment Monitoring Service",
+    "serviceType": "Web",
+    "summary": "A web-based integrated solution that diagnoses whether unused urban spaces are suitable for smart farm conversion and monitors cultivation environments after installation. A single hardware kit collects environmental and soil data, while software calculates suitability scores, recommends improvements, estimates setup costs, visualizes data, and sends alerts."
+  },
+  "scope": {
+    "included": [
+      "Project background and technical intent",
+      "User and functional requirements",
+      "Hardware components and sensor usage",
+      "Software architecture and technology stack",
+      "Data flow and storage",
+      "Suitability scoring logic",
+      "Cost prediction logic",
+      "AI tool usage for development",
+      "Testing and validation data requirements",
+      "Development schedule and analysis tasks",
+      "Competitive differentiators",
+      "Commercialization and social application plans",
+      "Embedded hardware circuit diagram observations"
+    ],
+    "excluded": [
+      "Participant names",
+      "Phone numbers",
+      "Email addresses",
+      "Birth dates",
+      "Student IDs",
+      "Personal academic status",
+      "Individual team-member capability descriptions",
+      "Consent and signature sections"
+    ]
+  },
+  "marketAndPolicyContext": {
+    "marketTrend": "Smart farms are positioned as a key technology for sustainable agriculture under climate crisis and food security concerns.",
+    "technologyTrend": "IoT, big data, and AI are used to precisely measure crop growth environments and optimize resource input.",
+    "spaceOpportunity": "Vertical farming and controlled-environment agriculture can convert rooftops, basements, vacant rooms, and other unused urban spaces into agricultural production spaces.",
+    "policyContext": "The source document references Korea's First Smart Agriculture Promotion Basic Plan for 2025 to 2029 as a national smart agriculture transition strategy."
+  },
+  "problemStatement": {
+    "context": "Smart farms are becoming important for sustainable agriculture, but existing solutions mainly focus on post-installation automation and monitoring.",
+    "painPoints": [
+      "Users cannot objectively determine whether an unused urban space is suitable for crop cultivation before investing in smart farm equipment.",
+      "Urban spaces such as rooftops, basements, and vacant rooms differ greatly in light, ventilation, temperature, humidity, air quality, and soil conditions.",
+      "Uniform equipment installation can cause excessive lighting, heating, cooling, or ventilation costs.",
+      "Raw sensor values are difficult for non-experts to interpret.",
+      "There is a need to connect pre-installation diagnosis with post-installation monitoring in one lifecycle platform."
+    ]
+  },
+  "targetUsers": [
+    "Owners of unused urban spaces",
+    "Small-scale smart farm operators",
+    "Individuals or small businesses considering urban farming",
+    "Local institutions interested in urban regeneration or local food production",
+    "Non-expert users who need intuitive diagnosis and monitoring"
+  ],
+  "userRequirements": [
+    {
+      "id": "UR-001",
+      "name": "Space suitability diagnosis",
+      "description": "Users need an objective diagnosis of whether candidate spaces such as rooftops, basements, or vacant rooms are suitable for crop cultivation based on combined environmental factors."
+    },
+    {
+      "id": "UR-002",
+      "name": "Improvement and setup cost prediction",
+      "description": "Users need to know which environmental factors must be improved and how much the required equipment or construction may cost before installation."
+    },
+    {
+      "id": "UR-003",
+      "name": "Optimized setup planning",
+      "description": "Users need equipment recommendations that match the weaknesses of each space, reducing unnecessary investment."
+    },
+    {
+      "id": "UR-004",
+      "name": "Intuitive decision support",
+      "description": "Users need score, graph, and color-based reports instead of raw sensor values."
+    },
+    {
+      "id": "UR-005",
+      "name": "Real-time cultivation monitoring",
+      "description": "Users need continuous monitoring after cultivation begins and alerts for risks such as rapid soil moisture decrease or abnormal temperature."
+    }
+  ],
+  "functionalRequirements": [
+    {
+      "id": "FR-HW-001",
+      "domain": "HW",
+      "name": "Environmental data collection",
+      "description": "Measure air temperature, humidity, CO2 or air quality, fine dust or pollution level, light intensity, noise, soil moisture, and soil temperature."
+    },
+    {
+      "id": "FR-HW-002",
+      "domain": "HW",
+      "name": "Data transmission",
+      "description": "Periodically transmit collected sensor data to the server over Wi-Fi, using MQTT as the lightweight IoT messaging protocol."
+    },
+    {
+      "id": "FR-SW-001",
+      "domain": "SW",
+      "name": "Space suitability diagnosis",
+      "description": "Compare collected sensor data with crop-specific optimal cultivation environment data and calculate a suitability score."
+    },
+    {
+      "id": "FR-SW-002",
+      "domain": "SW",
+      "name": "Improvement analysis",
+      "description": "Analyze insufficient environmental factors such as temperature, humidity, light, ventilation, and air quality, then provide improvement directions."
+    },
+    {
+      "id": "FR-SW-003",
+      "domain": "SW",
+      "name": "Expected setup cost calculation",
+      "description": "Estimate equipment and action costs based on the required improvements."
+    },
+    {
+      "id": "FR-SW-004",
+      "domain": "SW",
+      "name": "Dashboard",
+      "description": "Visualize real-time environmental data, suitability results, environmental deviations, historical trends, and improvement recommendations."
+    },
+    {
+      "id": "FR-SW-005",
+      "domain": "SW",
+      "name": "Notification service",
+      "description": "Send push notifications when thresholds are exceeded or abnormal states are detected."
+    },
+    {
+      "id": "FR-SW-006",
+      "domain": "SW",
+      "name": "History management",
+      "description": "Store space diagnosis history and cultivation-period environmental logs."
+    },
+    {
+      "id": "FR-SW-007",
+      "domain": "SW",
+      "name": "Crop recommendation",
+      "description": "Recommend crops that match the diagnosed space conditions and help users select crops with lower improvement cost and higher expected feasibility."
+    }
+  ],
+  "hardware": {
+    "board": {
+      "specifiedOptionsInSource": [
+        "Arduino UNO R4 WiFi",
+        "ESP32-based sensor kit"
+      ],
+      "requiredCapabilities": [
+        "Wi-Fi connectivity",
+        "Sensor input handling",
+        "Periodic data transmission",
+        "Compatibility with MQTT communication"
+      ],
+      "status": "Needs final board selection because the source document mentions both Arduino UNO R4 WiFi and ESP32-based kits."
+    },
+    "sourceDeclaredKitSpec": "The application-form section describes an ESP32-based integrated seven-sensor kit for temperature and humidity, light, soil moisture, CO2, noise, fine dust, and related environmental measurements.",
+    "communication": {
+      "network": "Wi-Fi",
+      "protocol": "MQTT",
+      "purpose": "Transmit small periodic sensor payloads from the hardware kit to the backend server for dashboard visualization, diagnosis, and alert processing."
+    },
+    "circuitDiagram": {
+      "presentInSource": true,
+      "observedComponents": [
+        "Arduino UNO-form-factor board",
+        "Breadboard",
+        "Sound sensor module",
+        "Waterproof temperature probe",
+        "MQ-135 gas or air quality sensor module",
+        "DHT22 temperature and humidity sensor",
+        "Photoresistor with resistor divider",
+        "SparkFun Soil Moisture Sensor",
+        "USB power connection"
+      ],
+      "pinMapStatus": "Exact pin mapping was not transcribed because the embedded circuit image has overlapping wires and not all pin labels are unambiguous."
+    },
+    "sensors": [
+      {
+        "dataType": "Soil moisture",
+        "sensorModel": "EF04027",
+        "usage": "Measure soil or growth medium moisture, detect water shortage, and detect rapid moisture decrease during cultivation."
+      },
+      {
+        "dataType": "Soil temperature",
+        "sensorModel": "DS18B20",
+        "usage": "Measure waterproof soil or growth medium temperature and monitor root-zone temperature."
+      },
+      {
+        "dataType": "Air temperature and humidity",
+        "sensorModel": "DHT22",
+        "usage": "Measure indoor temperature and humidity for pre-installation diagnosis and post-installation monitoring."
+      },
+      {
+        "dataType": "Light intensity",
+        "sensorModel": "GL5516",
+        "usage": "Measure light level to determine natural light or artificial lighting shortage."
+      },
+      {
+        "dataType": "Noise",
+        "sensorModel": "SEN-14262",
+        "usage": "Measure surrounding noise level as a supplementary indicator of urban space conditions."
+      },
+      {
+        "dataType": "Air quality",
+        "sensorModel": "MQ135",
+        "usage": "Measure harmful gas or volatile substance level as a supplementary indicator for ventilation and cultivation environment stability."
+      }
+    ],
+    "diagnosisPhaseMeasurements": [
+      "Air temperature",
+      "Relative humidity",
+      "Light intensity",
+      "CO2 or air quality",
+      "Fine dust or pollution level",
+      "Noise"
+    ],
+    "cultivationPhaseMeasurements": [
+      "Soil moisture",
+      "Soil temperature",
+      "Air temperature",
+      "Relative humidity",
+      "Light intensity",
+      "CO2 or air quality"
+    ]
+  },
+  "software": {
+    "architecture": "Web-based system for sensor data ingestion, storage, analysis, visualization, diagnosis, cost prediction, and notification.",
+    "firmware": {
+      "language": "C/C++",
+      "responsibilities": [
+        "Read sensor values from the hardware kit",
+        "Apply basic sensor parsing, unit conversion, and calibration logic",
+        "Prepare periodic sensor payloads",
+        "Transmit sensor payloads over Wi-Fi using MQTT"
+      ]
+    },
+    "backend": {
+      "language": "Java",
+      "framework": "Spring Boot",
+      "responsibilities": [
+        "Receive sensor data",
+        "Process MQTT or broker-delivered sensor payloads",
+        "Calculate space suitability scores",
+        "Analyze environmental deficiencies",
+        "Estimate setup costs",
+        "Manage diagnosis and monitoring history",
+        "Trigger abnormal-state notifications",
+        "Expose APIs for the web dashboard"
+      ]
+    },
+    "frontend": {
+      "language": "TypeScript",
+      "framework": "Next.js",
+      "responsibilities": [
+        "Display space diagnosis results",
+        "Display real-time sensor data",
+        "Visualize environmental trends",
+        "Show environmental deviations by factor",
+        "Show improvement recommendations",
+        "Provide intuitive score, graph, and color-based reports"
+      ]
+    },
+    "databases": {
+      "primaryOptions": [
+        "PostgreSQL",
+        "MySQL"
+      ],
+      "primaryData": [
+        "User records",
+        "Space records",
+        "Diagnosis results",
+        "Improvement items",
+        "Sensor logs during early implementation"
+      ],
+      "timeSeriesOption": "InfluxDB",
+      "timeSeriesUsage": "Optional expansion for efficient storage and querying of continuously accumulated sensor logs."
+    },
+    "infrastructure": {
+      "cloud": "AWS",
+      "deploymentTargets": [
+        "EC2 for Spring Boot server",
+        "EC2 or equivalent hosting for Next.js web service",
+        "RDS if managed relational database operation is needed"
+      ],
+      "notifications": "Firebase Real-time Push Notification or equivalent push notification service"
+    },
+    "developmentTools": [
+      "CLion",
+      "IntelliJ IDEA",
+      "VS Code",
+      "GitHub",
+      "MQTT Broker"
+    ],
+    "aiAssistedDevelopmentTools": [
+      "Codex",
+      "Claude",
+      "Gemini",
+      "GitHub Copilot",
+      "ChatGPT",
+      "v0.dev",
+      "Google Stitch"
+    ]
+  },
+  "dataModelCandidates": {
+    "entities": [
+      {
+        "name": "Space",
+        "description": "A candidate or installed cultivation space, including metadata needed for diagnosis and cost estimation such as space type and area."
+      },
+      {
+        "name": "SensorReading",
+        "description": "Timestamped sensor measurement from the hardware kit."
+      },
+      {
+        "name": "CropProfile",
+        "description": "Crop-specific optimal and unsuitable ranges by growth stage for temperature, humidity, light, CO2, and related factors."
+      },
+      {
+        "name": "DiagnosisResult",
+        "description": "Suitability score, factor-level scores, deviations, recommended crops, and improvement priorities for a space."
+      },
+      {
+        "name": "ImprovementItem",
+        "description": "Recommended equipment or action mapped from a deficient environmental factor."
+      },
+      {
+        "name": "CostEstimate",
+        "description": "Minimum, average, and recommended setup cost estimates based on selected improvement items and market price data."
+      },
+      {
+        "name": "MarketPriceItem",
+        "description": "Collected market price record for equipment such as LED bars, ventilators, air circulators, humidifiers, or insulation materials."
+      },
+      {
+        "name": "Alert",
+        "description": "Threshold or anomaly notification generated from real-time monitoring."
+      }
+    ]
+  },
+  "dataFlow": [
+    {
+      "step": 1,
+      "name": "Sensor measurement",
+      "description": "The hardware kit measures environmental and soil data in the candidate or installed smart farm space."
+    },
+    {
+      "step": 2,
+      "name": "Wireless transmission",
+      "description": "The device sends sensor data to the server periodically over Wi-Fi using MQTT."
+    },
+    {
+      "step": 3,
+      "name": "Backend ingestion",
+      "description": "The Spring Boot backend receives, validates, normalizes, and stores sensor data."
+    },
+    {
+      "step": 4,
+      "name": "Diagnosis",
+      "description": "The backend compares readings with crop profile data and calculates suitability scores and factor deviations."
+    },
+    {
+      "step": 5,
+      "name": "Improvement and cost analysis",
+      "description": "Low-scoring factors are mapped to improvement equipment and estimated setup costs."
+    },
+    {
+      "step": 6,
+      "name": "Visualization",
+      "description": "The Next.js dashboard displays scores, graphs, real-time readings, history, and recommendations."
+    },
+    {
+      "step": 7,
+      "name": "Alerting",
+      "description": "The system sends push notifications when abnormal conditions or threshold violations are detected."
+    }
+  ],
+  "suitabilityScoring": {
+    "referenceDataSources": [
+      "Rural Development Administration Nongsaro",
+      "Korean public data portal APIs",
+      "Crop cultivation guideline datasets"
+    ],
+    "initialTargetCrops": [
+      "Lettuce",
+      "Tomato",
+      "Strawberry"
+    ],
+    "growthStages": [
+      "Seedling stage",
+      "Vegetative growth stage",
+      "Flowering stage",
+      "Harvest stage"
+    ],
+    "inputVariables": [
+      "Temperature",
+      "Relative humidity",
+      "Light intensity or daily light integral",
+      "CO2 concentration",
+      "Fine dust or pollution level"
+    ],
+    "partialScoreMethod": {
+      "range": "0.0 to 1.0",
+      "optimalRangeScore": 1.0,
+      "unsuitableRangeScore": 0.0,
+      "transitionMethod": "Linear interpolation between optimal and unsuitable ranges"
+    },
+    "formula": "suitabilityScore = (wTemperature * temperatureScore + wHumidity * humidityScore + wLight * lightScore + wCO2 * co2Score) * pollutionCorrectionFactor",
+    "constraints": [
+      "Each partial score must be between 0.0 and 1.0.",
+      "The sum of all weights must be 1.0.",
+      "The pollution correction factor must be between 0.0 and 1.0.",
+      "Better air quality should produce a pollution correction factor closer to 1.0."
+    ],
+    "outputs": [
+      "Overall suitability score",
+      "Crop-specific suitability",
+      "Factor-level suitability scores",
+      "Environmental deviation report",
+      "Improvement priority list"
+    ],
+    "validation": [
+      "Compare public crop-growth reference data with actual sensor readings.",
+      "Verify that spaces close to the optimal crop environment produce high scores.",
+      "Verify that spaces with clear constraints such as insufficient light or poor ventilation produce low scores."
+    ]
+  },
+  "costPrediction": {
+    "basis": "Use suitability scoring results to identify deficient environmental factors, then map each deficiency to physical improvement equipment or actions.",
+    "deficiencyMapping": [
+      {
+        "deficientFactor": "Light",
+        "recommendedImprovement": "Plant growth LED bars",
+        "quantityBasis": "Space area and target light level"
+      },
+      {
+        "deficientFactor": "Ventilation, CO2, fine dust, or air quality",
+        "recommendedImprovement": "Small ventilator or air circulator",
+        "quantityBasis": "Space conditions and required air circulation improvement"
+      },
+      {
+        "deficientFactor": "Humidity",
+        "recommendedImprovement": "Household or industrial humidifier",
+        "quantityBasis": "Space scale and target humidity range"
+      },
+      {
+        "deficientFactor": "Temperature",
+        "recommendedImprovement": "Insulation material or heating-related improvement",
+        "quantityBasis": "Space scale and temperature maintenance requirement"
+      }
+    ],
+    "marketPriceDataSources": [
+      "Smart farm material shopping malls",
+      "Naver Shopping",
+      "Coupang"
+    ],
+    "marketPriceFields": [
+      "Product name",
+      "Equipment category",
+      "Sale price",
+      "Key specifications",
+      "Applicable area",
+      "Power consumption",
+      "Seller or marketplace"
+    ],
+    "priceDataProcessing": [
+      "Remove low-relevance products.",
+      "Deduplicate identical products.",
+      "Detect and adjust abnormally low or high prices.",
+      "Use average or median prices as reference unit prices.",
+      "Refresh price data periodically to reflect market changes."
+    ],
+    "outputs": [
+      "Minimum estimated cost",
+      "Average estimated cost",
+      "Recommended estimated cost",
+      "Cost breakdown by improvement category"
+    ],
+    "validation": [
+      "Compare predicted equipment costs with actual market price ranges.",
+      "Check that lighting, ventilation, humidity, and temperature improvement estimates are not unrealistically low or high."
+    ]
+  },
+  "dashboardRequirements": {
+    "views": [
+      "Space diagnosis overview",
+      "Real-time sensor monitoring",
+      "Crop-specific suitability result",
+      "Environmental deviation report",
+      "Improvement recommendation list",
+      "Setup cost estimate",
+      "Historical trend charts",
+      "Alert history"
+    ],
+    "visualizationMethods": [
+      "Scores",
+      "Line charts",
+      "Bar charts",
+      "Color-coded status indicators",
+      "Factor-level deviation graphs"
+    ]
+  },
+  "notificationRequirements": {
+    "triggers": [
+      "Threshold exceeded",
+      "Abnormal environmental state detected",
+      "Rapid soil moisture decrease",
+      "Temperature anomaly",
+      "Unstable ventilation or air quality"
+    ],
+    "delivery": [
+      "Push notification"
+    ]
+  },
+  "competitiveDifferentiators": [
+    {
+      "name": "Pre-installation diagnosis focus",
+      "description": "Unlike existing smart farm solutions that mainly optimize operation after installation, this service diagnoses whether a candidate urban space is suitable before equipment investment."
+    },
+    {
+      "name": "Quantitative suitability and deviation reporting",
+      "description": "The service combines multi-dimensional environmental data such as temperature, humidity, light, CO2, fine dust, and noise with crop-specific cultivation criteria to provide suitability scores and factor-level deviations."
+    },
+    {
+      "name": "Non-expert decision reports",
+      "description": "Instead of listing raw sensor values, the dashboard presents score, graph, and color-based reports with improvement priorities."
+    },
+    {
+      "name": "Crop-growth domain logic plus AI-assisted analysis",
+      "description": "The diagnosis engine is intended to go beyond simple threshold comparison by structuring crop-growth conditions, sensor data, and space environment information."
+    },
+    {
+      "name": "One integrated kit for diagnosis and monitoring",
+      "description": "The same hardware concept connects pre-installation space analysis with post-installation soil and cultivation environment monitoring."
+    },
+    {
+      "name": "Expanded target market",
+      "description": "The service targets urban space owners, individuals, small businesses, and local institutions, not only large professional farms."
+    }
+  ],
+  "aiUsagePlan": [
+    {
+      "area": "Coding and implementation",
+      "tools": [
+        "Codex",
+        "Claude",
+        "Gemini",
+        "GitHub Copilot"
+      ],
+      "usage": "Generate API endpoints, database schemas, sensor data processing code, and boilerplate."
+    },
+    {
+      "area": "Code review and debugging",
+      "tools": [
+        "GitHub Copilot",
+        "Claude"
+      ],
+      "usage": "Analyze errors, suggest refactoring, inspect exception handling, and reduce data loss in unstable network scenarios."
+    },
+    {
+      "area": "UI and UX design",
+      "tools": [
+        "v0.dev",
+        "Google Stitch"
+      ],
+      "usage": "Prototype dashboard layouts, UI components, and user flows."
+    },
+    {
+      "area": "Documentation and collaboration",
+      "tools": [
+        "ChatGPT"
+      ],
+      "usage": "Draft technical documents, API specifications, development guides, and code comments."
+    },
+    {
+      "area": "Diagnosis algorithm design",
+      "tools": [
+        "Codex",
+        "Claude",
+        "ChatGPT"
+      ],
+      "usage": "Structure crop-growth condition data and design crop-specific suitability analysis logic."
+    },
+    {
+      "area": "Pre-hardware validation",
+      "tools": [
+        "Gemini",
+        "ChatGPT"
+      ],
+      "usage": "Generate virtual sensor data for dashboard and alert-logic testing before final hardware integration."
+    }
+  ],
+  "testingAndValidation": {
+    "hardwareSoftwareIntegration": [
+      "Verify sensor readings are collected correctly.",
+      "Verify MQTT transmission from device to backend.",
+      "Verify backend ingestion and persistence.",
+      "Verify dashboard reflects incoming sensor values.",
+      "Verify alert generation under abnormal sensor values."
+    ],
+    "algorithmValidation": [
+      "Validate suitability scores against crop growth reference data.",
+      "Validate cost predictions against real market price data.",
+      "Use simulated sensor data before hardware completion.",
+      "Test edge cases such as missing readings, network instability, and outlier sensor values."
+    ]
+  },
+  "developmentSchedule": {
+    "sourceGranularity": "The source document contains a May to August week-level schedule table, but the text extraction exposes task names without reliable week-cell markings.",
+    "tasks": [
+      "Planning",
+      "Role assignment",
+      "Software development",
+      "Hardware development",
+      "Debugging and testing",
+      "Prototype preparation",
+      "Final report writing"
+    ],
+    "status": "Exact week-by-week task placement should be confirmed from the original HWP table before using this as a project calendar."
+  },
+  "applicationPlans": {
+    "serviceExpansion": [
+      "AI-based crop recommendation engine that matches diagnosed environmental data to crops with lower cost and higher expected yield.",
+      "Smart farm setup cost consulting with concrete hardware guidance and quantified initial investment risk.",
+      "Integrated analysis of pre-installation diagnosis data and post-installation monitoring data to evaluate environmental stability and feed future automation-control logic."
+    ],
+    "commercialization": [
+      "B2C and B2B integrated hardware kit sales.",
+      "Subscription-based SaaS interface for real-time management and detailed diagnosis reports.",
+      "Urban farming consulting package combining space diagnosis, equipment optimization, and cultivation monitoring.",
+      "Low-power ESP32-based kit expansion from small gardens to large unused basement spaces."
+    ],
+    "socialUseCases": [
+      "Provide data evidence for urban regeneration and unused-space value creation.",
+      "Lower the entry barrier for beginner farmers and older adults through intuitive visualization and real-time management guidance.",
+      "Support local food ecosystems by enabling fresh produce cultivation near consumption areas."
+    ]
+  },
+  "expansionPlans": [
+    "AI-based crop recommendation engine",
+    "Smart farm setup cost consulting",
+    "Integrated analysis of pre-installation diagnosis and post-installation monitoring data",
+    "Feedback loop for future automated equipment control",
+    "Hardware kit sales and SaaS-style subscription model",
+    "One-stop consulting package for space diagnosis, equipment optimization, and cultivation monitoring"
+  ],
+  "openIssues": [
+    {
+      "id": "OI-001",
+      "topic": "Main hardware board",
+      "description": "The source document mentions both Arduino UNO R4 WiFi and ESP32-based sensor kits. The final implementation should choose one board or explicitly define both variants."
+    },
+    {
+      "id": "OI-002",
+      "topic": "CO2 measurement",
+      "description": "The requirements include CO2 measurement, while the explicit sensor table lists MQ135 for air quality. A dedicated CO2 sensor model should be finalized if accurate CO2 concentration is required."
+    },
+    {
+      "id": "OI-003",
+      "topic": "Primary database",
+      "description": "The document mentions PostgreSQL in one section and PostgreSQL/MySQL in another. The final backend specification should choose the primary relational database."
+    },
+    {
+      "id": "OI-004",
+      "topic": "Time-series storage",
+      "description": "InfluxDB is described as a planned or optional expansion. The implementation should decide whether it is required for the initial prototype."
+    },
+    {
+      "id": "OI-005",
+      "topic": "Sensor count and missing explicit sensor models",
+      "description": "The source describes an ESP32-based seven-sensor kit including CO2 and fine dust, but the detailed sensor table lists six explicit sensor models. Dedicated CO2 and fine-dust sensor models should be finalized if those values are required as direct measurements."
+    },
+    {
+      "id": "OI-006",
+      "topic": "Soil moisture sensor model mismatch",
+      "description": "The text table lists EF04027 for soil moisture, while the embedded circuit diagram visually shows a SparkFun Soil Moisture Sensor. The final bill of materials should choose the exact model."
+    },
+    {
+      "id": "OI-007",
+      "topic": "Circuit diagram pin map",
+      "description": "The embedded hardware diagram was reviewed and its components were recorded, but exact pin-to-sensor mapping should be confirmed manually from the original diagram or hardware design file because the image has overlapping wires."
+    },
+    {
+      "id": "OI-008",
+      "topic": "Development schedule table",
+      "description": "The source includes a month/week schedule table, but extracted text did not preserve the marked week ranges. Exact scheduling should be confirmed from the original HWP if needed."
+    }
+  ]
+}
