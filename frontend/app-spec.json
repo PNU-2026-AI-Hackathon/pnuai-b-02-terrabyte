@@ -1,0 +1,205 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "app": {
+    "name": "Smart Grow Assistant",
+    "nameKo": "스마트 재배 도우미",
+    "tagline": "Measure your pot's environment and get the right growing conditions.",
+    "platform": "React Native (Expo)",
+    "language": "ko-KR",
+    "audience": "Home / indoor gardeners using an IoT soil-and-air sensor device",
+    "designDirection": {
+      "style": "glassmorphism",
+      "surface": "translucent white cards (rgba(255,255,255,0.5)) with 24px blur, 1px light border, soft green-tinted drop shadow",
+      "background": "layered green→teal gradient with blurred radial color blobs (green, teal, warm yellow)",
+      "cornerRadius": { "card": 24, "control": 14, "pill": 999 },
+      "font": "Pretendard / Noto Sans KR (clean gothic)",
+      "colors": {
+        "textPrimary": "#1c2b22",
+        "textSecondary": "#4a6355",
+        "textMuted": "#7d947f",
+        "brandGradient": ["#3fae6f", "#2b8f8a"],
+        "accentGreen": "#3fae6f",
+        "warnAmber": "#e0b23a",
+        "warnText": "#a4571f",
+        "okText": "#1f6b42"
+      }
+    }
+  },
+  "navigation": {
+    "type": "stack + top-tab hybrid",
+    "flow": ["P-01", "P-02", "P-03", "P-04", "P-05", "P-06"],
+    "notes": "P-01→P-04 are a linear onboarding stack. After P-04 the app enters a persistent shell that shows a top app bar with two tabs: Environment Score (P-05) and Dashboard (P-06). The app bar is only visible on P-05/P-06.",
+    "appBar": {
+      "visibleOn": ["P-05", "P-06"],
+      "left": "brand logo + name",
+      "center": ["tab: Environment Score", "tab: Dashboard"],
+      "right": ["device online indicator", "logout button (→ P-01)"]
+    }
+  },
+  "sharedState": {
+    "authTab": { "type": "enum", "values": ["login", "signup"], "default": "login" },
+    "selectedCrop": { "type": "int", "default": 0, "note": "index into crops[]" },
+    "deviceConnected": { "type": "boolean", "default": false },
+    "chartRange": { "type": "enum", "values": ["1h", "24h", "7d", "30d"], "default": "24h" }
+  },
+  "screens": [
+    {
+      "id": "P-01",
+      "title": "Login / Sign up",
+      "route": "Auth",
+      "purpose": "Account entry. Prototype accepts any input.",
+      "layout": "centered card over gradient background",
+      "components": [
+        { "type": "brandHeader", "logo": "◍", "title": "스마트 재배 도우미", "subtitle": "내 화분의 환경을 측정하고, 딱 맞는 재배 조건을 찾아 드려요" },
+        { "type": "segmentedTabs", "bind": "authTab", "options": ["로그인", "회원가입"] },
+        { "type": "textField", "label": "이메일", "keyboard": "email", "placeholder": "you@example.com" },
+        { "type": "passwordField", "label": "비밀번호", "placeholder": "8자 이상, 영문+숫자", "reveal": true },
+        { "type": "passwordField", "label": "비밀번호 확인", "placeholder": "비밀번호 재입력", "visibleWhen": "authTab === 'signup'" },
+        { "type": "textField", "label": "닉네임", "placeholder": "예: 초록집사", "visibleWhen": "authTab === 'signup'" },
+        { "type": "primaryButton", "label": "authTab === 'login' ? '로그인' : '가입하기'", "action": "navigate P-02" }
+      ]
+    },
+    {
+      "id": "P-02",
+      "title": "Device registration",
+      "route": "DeviceRegister",
+      "purpose": "Register the physical sensor via a 6-digit code printed on the device sticker.",
+      "layout": "centered card, step indicator (1 of 3) above",
+      "components": [
+        { "type": "stepIndicator", "current": 1, "steps": ["기기 등록", "작물 선택", "기기 설치"] },
+        { "type": "heading", "text": "기기를 등록해 주세요", "sub": "기기 밑면 스티커의 숫자 6자리를 입력하세요." },
+        { "type": "imagePlaceholder", "note": "code location illustration — device bottom sticker" },
+        { "type": "otpInput", "length": 6, "prefill": "483920", "note": "6 single-digit boxes" },
+        { "type": "primaryButton", "label": "등록하기", "action": "navigate P-03" }
+      ]
+    },
+    {
+      "id": "P-03",
+      "title": "Crop selection",
+      "route": "CropSelect",
+      "purpose": "Choose the crop; environment score is computed against this crop's optimal ranges.",
+      "components": [
+        { "type": "stepIndicator", "current": 2 },
+        { "type": "heading", "text": "어떤 작물을 키우시나요?", "sub": "선택한 작물 기준으로 환경 점수를 계산해요." },
+        { "type": "searchField", "placeholder": "작물 이름 검색 (예: 토마토)" },
+        { "type": "cropList", "bind": "selectedCrop", "source": "crops", "itemShows": ["emoji", "name", "desc", "checkmark when selected"] },
+        { "type": "primaryButton", "label": "'{selectedCropName}' 작물로 시작하기", "action": "navigate P-04" }
+      ]
+    },
+    {
+      "id": "P-04",
+      "title": "Device setup guide",
+      "route": "DeviceSetup",
+      "purpose": "Guide physical placement; simulate device connecting, then unlock the score screen.",
+      "components": [
+        { "type": "stepIndicator", "current": 3 },
+        { "type": "heading", "text": "기기를 설치해 주세요", "sub": "아래 순서대로 설치하면 측정이 자동으로 시작돼요." },
+        { "type": "numberedSteps", "items": ["기기를 화분/재배 위치 바로 옆에 놓아 주세요", "전원을 연결하고 센서를 흙에 꽂아 주세요", "잠시 후 자동으로 측정이 시작돼요"] },
+        { "type": "connectionStatus", "states": {
+          "connecting": { "label": "기기 신호를 기다리는 중…", "style": "amber, pulsing dot" },
+          "connected": { "label": "연결 완료! 첫 측정 데이터를 받았어요", "style": "green" }
+        }, "note": "On screen enter, deviceConnected=false; after connectSeconds (~2.5s) set true." },
+        { "type": "primaryButton", "label": "환경 점수 보러 가기", "enabledWhen": "deviceConnected", "action": "navigate P-05" }
+      ]
+    },
+    {
+      "id": "P-05",
+      "title": "Environment score & recommendations",
+      "route": "Score",
+      "purpose": "Show the overall environment score for the selected crop, the per-factor breakdown, and recommendations to improve it.",
+      "sections": [
+        {
+          "key": "A",
+          "name": "Overall score",
+          "content": {
+            "gauge": { "value": 68, "max": 100, "grade": "보통", "gradeColor": "amber" },
+            "meta": "'{crop}' 기준, 지금 위치의 환경 점수 · 측정 07-14 10:30",
+            "action": "refresh"
+          }
+        },
+        {
+          "key": "B",
+          "name": "Factor breakdown",
+          "content": {
+            "factors": "see data.factors",
+            "rowShows": ["label", "current value", "optimal range", "status badge (적정/부족/초과)", "range bar with optimal band + current marker", "gap message when out of range"]
+          }
+        },
+        {
+          "key": "C",
+          "name": "Alternative crop recommendation",
+          "content": { "note": "Crops that fit the current environment better", "cards": "see data.altCrops", "cardShows": ["emoji", "name", "expected score"], "action": "select → change selectedCrop" }
+        },
+        {
+          "key": "D",
+          "name": "Equipment purchase recommendation",
+          "content": { "items": "see data.equipment", "itemShows": ["emoji", "name", "source tag (규칙 기반 / ML 추천)", "reason", "expected gain (+N점) when present", "buy button"] }
+        },
+        {
+          "key": "E",
+          "name": "Soil recommendation",
+          "content": { "single": true, "title": "배수 좋은 상토 + 펄라이트 2:1 배합", "body": "토양수분이 최적 범위에 있어요. 현재 배합을 유지하면 과습 없이 뿌리가 건강하게 자랄 수 있어요.", "disclaimer": "추천 로직·API 스펙 확정 전 예시 데이터입니다" }
+        },
+        { "key": "cta", "type": "primaryButton", "label": "대시보드에서 실시간 데이터 보기 →", "action": "navigate P-06" }
+      ]
+    },
+    {
+      "id": "P-06",
+      "title": "Dashboard",
+      "route": "Dashboard",
+      "purpose": "Real-time and historical sensor readings.",
+      "sections": [
+        { "key": "summaryBar", "content": ["crop name", "score pill (→ P-05)", "device online + last received"] },
+        { "key": "latestCards", "content": "see data.latest — 4 metric cards (value + status sub)" },
+        { "key": "timeSeries", "content": {
+          "rangeTabs": { "bind": "chartRange", "options": ["1시간", "24시간", "7일", "30일"] },
+          "charts": "one line chart per metric (온도/습도/조도/토양수분)",
+          "note": "Prototype uses synthetic wave data; wire to time-series API keyed by chartRange."
+        } }
+      ]
+    }
+  ],
+  "data": {
+    "crops": [
+      { "name": "방울토마토", "emoji": "🍅", "desc": "초보자에게 인기 있는 실내 작물" },
+      { "name": "상추", "emoji": "🥬", "desc": "빠르게 자라고 관리가 쉬워요" },
+      { "name": "바질", "emoji": "🌿", "desc": "햇빛을 좋아하는 허브" },
+      { "name": "깻잎", "emoji": "🍃", "desc": "반그늘에서도 잘 자라요" },
+      { "name": "고추", "emoji": "🌶️", "desc": "따뜻한 환경이 필요해요" }
+    ],
+    "factors": [
+      { "label": "온도", "unit": "℃", "current": 24.5, "optimalMin": 20, "optimalMax": 26, "axisMin": 10, "axisMax": 35, "status": "OK" },
+      { "label": "습도", "unit": "%", "current": 45, "optimalMin": 60, "optimalMax": 75, "axisMin": 0, "axisMax": 100, "status": "LOW", "gap": 15 },
+      { "label": "조도", "unit": "lux", "current": 8000, "optimalMin": 15000, "optimalMax": 20000, "axisMin": 0, "axisMax": 25000, "status": "LOW", "gap": 7000 },
+      { "label": "토양수분", "unit": "%", "current": 38, "optimalMin": 30, "optimalMax": 45, "axisMin": 0, "axisMax": 100, "status": "OK" }
+    ],
+    "score": { "value": 68, "grade": "보통", "measuredAt": "2026-07-14T10:30:00+09:00" },
+    "altCrops": [
+      { "name": "상추", "emoji": "🥬", "expectedScore": 85, "setsCropIndex": 1 },
+      { "name": "깻잎", "emoji": "🍃", "expectedScore": 79, "setsCropIndex": 3 },
+      { "name": "바질", "emoji": "🌿", "expectedScore": 74, "setsCropIndex": 2 }
+    ],
+    "equipment": [
+      { "name": "식물 생장등 (LED)", "emoji": "💡", "reason": "조도 부족", "source": "규칙 기반", "expectedGain": "+15점" },
+      { "name": "스마트 관수 시스템", "emoji": "💧", "reason": "물 주기 편의성 개선", "source": "ML 추천" }
+    ],
+    "soil": { "title": "배수 좋은 상토 + 펄라이트 2:1 배합", "reason": "토양수분이 최적 범위에 있어요." },
+    "latest": [
+      { "label": "온도", "emoji": "🌡️", "value": "24.5℃", "sub": "최적 범위 (20~26℃)" },
+      { "label": "습도", "emoji": "💧", "value": "45%", "sub": "최적 대비 15% 부족" },
+      { "label": "조도", "emoji": "☀️", "value": "8,000 lux", "sub": "최적 대비 7,000 lux 부족" },
+      { "label": "토양수분", "emoji": "🪴", "value": "38%", "sub": "최적 범위 (30~45%)" }
+    ]
+  },
+  "scoreLogic": {
+    "note": "Placeholder — final formula TBD. Prototype hardcodes 68.",
+    "suggested": "For each factor, score 100 when current ∈ [optimalMin, optimalMax], decaying linearly toward 0 at axis bounds. Overall = weighted average across factors. Grades: <60 나쁨, 60–79 보통, 80+ 좋음."
+  },
+  "openQuestions": [
+    "Score formula and per-factor weights",
+    "Recommendation engine spec (rule-based vs ML) and product catalog / commerce link for 구매하기",
+    "Time-series API contract and sampling per range",
+    "Auth backend and validation rules",
+    "Multi-device / multi-pot support"
+  ]
+}
