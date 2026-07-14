@@ -1,0 +1,62 @@
+# === Node / Frontend (Expo, Next.js) ===
+node_modules/
+.expo/
+dist/
+web-build/
+.next/
+out/
+*.tsbuildinfo
+expo-env.d.ts
+.metro-health-check*
+
+# === Java / Spring Boot (backend) ===
+backend/build/
+backend/target/
+backend/.gradle/
+backend/out/
+*.class
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+
+# === Embedded / Firmware (edge) ===
+edge/.pio/
+edge/build/
+*.hex
+*.bin
+*.elf
+
+# === Environment / Secrets ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+application-local.yml
+application-local.properties
+
+# === Logs ===
+logs/
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# === IDE / Editor ===
+.idea/
+*.iml
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === AI agent working dirs ===
+.agent-runs/
