@@ -1,0 +1,453 @@
+{
+  "schema_version": "2.0.0",
+  "document_type": "backend_implementation_handoff",
+  "created_at": "2026-07-16",
+  "updated_at": "2026-07-16",
+  "status": "ready_for_implementation",
+  "authored_by": "Codex",
+
+  "decision_change": {
+    "previous_contract": "근거가 충분한 축만 상태와 거리를 제공하고 생육환경 점수를 만들지 않는다.",
+    "new_contract": "사용자 결정에 따라 완전히 보정된 세 축 입력을 전제로 8개 작물의 0-100 생육환경 적합도 점수를 계산한다.",
+    "reason": "사용자가 검증 근거가 부족한 축에는 일반 대분류 기본값을 사용하는 것을 허용했고, 이번 변경에서는 센서값이 완전히 보정되어 있다고 명시했다.",
+    "scope": "작물 생육용 대기온도, 상대습도, 식물광 PPFD 세 축만 점수에 포함한다. 미세먼지·소음·병해 조건은 종합점수에 포함하지 않는다."
+  },
+
+  "read_this_first": {
+    "headline": "crop_environment_observation에 완전 보정된 세 값을 넣으면 DB 뷰가 축별 점수와 종합점수를 결정적으로 계산한다.",
+    "source_of_truth": "점수 경계·가중치·근거 등급의 단일 진실 공급원은 crop_score_profile이다.",
+    "important_boundary": "점수 API와 DB에는 lux를 직접 넣지 않는다. 완전 보정 가정은 lux가 이미 PPFD로 변환된 뒤 canonical 입력에 들어온다는 뜻이다.",
+    "verification": "python backend/db/smoke_test.py"
+  },
+
+  "perfect_input_assumption": {
+    "contract_id": "perfect_calibrated_v1",
+    "guarantees": [
+      "대기온도는 작물 관부 높이의 섭씨온도다.",
+      "상대습도는 같은 시각·같은 미기후 지점의 0-100% 값이다.",
+      "식물광은 관부 수평면의 400-700 nm PPFD이며 단위는 umol_m-2_s-1이다.",
+      "센서 교정, lux-to-PPFD 변환, 이상치 제거, 단위변환과 품질검사는 입력 전에 끝났다.",
+      "세 축은 같은 context_id와 captured_at_utc의 환경을 나타낸다."
+    ],
+    "not_part_of_scoring_path": [
+      "센서 정확도 추정",
+      "교정 오차 전파",
+      "결측 보간",
+      "raw lux의 광원별 변환",
+      "서로 다른 시각의 센서값 결합"
+    ],
+    "failure_policy": "세 축 중 하나라도 없거나 canonical 제약을 위반하면 관측 행과 점수를 만들지 않는다. 결측을 0점으로 바꾸지 않는다."
+  },
+
+  "score_semantics": {
+    "name_ko": "현재 생육환경 적합도",
+    "range": [0, 100],
+    "meaning": "선택한 작물 프로필의 온도·상대습도·PPFD 목표 구간에 현재 환경이 얼마나 가까운지를 나타내는 제품 휴리스틱",
+    "does_not_mean": [
+      "작물 생존 확률",
+      "예상 수확량 또는 품질",
+      "병해 발생 확률",
+      "사람 건강 또는 법적 안전도",
+      "품종·생육단계가 다른 모든 재배의 보편 최적도"
+    ],
+    "snapshot_rule": "현재 PPFD를 사용하는 순간 점수다. 하루 전체 광량 적합도를 의미하지 않는다.",
+    "future_daily_extension": "일간 점수가 필요하면 동일한 버전 규칙으로 DLI 전용 프로필과 일간 관측 테이블을 별도 추가한다."
+  },
+
+  "canonical_input_contract": {
+    "database_table": "crop_environment_observation",
+    "required_fields": {
+      "context_id": "crop_context.context_id",
+      "captured_at_utc": "ISO-8601 UTC timestamp",
+      "air_temperature_c": "REAL, -50..80",
+      "relative_humidity_pct": "REAL, 0..100",
+      "ppfd_umol_m2_s": "REAL, 0..5000",
+      "input_contract": "literal perfect_calibrated_v1"
+    },
+    "database_guards": [
+      "context_id는 존재해야 한다.",
+      "captured_at_utc는 crop_context의 [valid_from_utc, valid_to_utc) 구간 안이어야 한다.",
+      "같은 context_id와 captured_at_utc 조합은 한 번만 저장한다.",
+      "세 물리값은 모두 NOT NULL이다.",
+      "crop_context의 crop과 score_profile_id는 복합 외래키로 일치해야 한다."
+    ],
+    "prohibited_fields": [
+      "illuminance_lx",
+      "quality_estimate",
+      "missing_axis_default",
+      "client_supplied_score",
+      "client_supplied_grade"
+    ]
+  },
+
+  "profile_contract": {
+    "database_table": "crop_score_profile",
+    "activation_table": "crop_score_profile_activation",
+    "immutability": "프로필 UPDATE와 DELETE는 트리거로 거부한다. 경계나 가중치 변경은 새 profile_id와 profile_version을 INSERT한 뒤 활성 매핑을 바꾼다.",
+    "historical_reproducibility": "crop_context는 profile_id를 직접 참조하므로 활성 버전이 바뀌어도 과거 컨텍스트의 점수는 바뀌지 않는다.",
+    "boundary_order": [
+      "zero_low",
+      "optimal_low",
+      "optimal_high",
+      "zero_high"
+    ],
+    "weights_percent": {
+      "air_temperature": 40,
+      "relative_humidity": 25,
+      "plant_light": 35
+    },
+    "evidence_grades": {
+      "A": "해당 작물의 직접 비교시험 또는 작물별 수치 근거",
+      "B": "공식 재배지침·종설·같은 작물군의 일반 수치",
+      "C": "사용자가 허용한 대분류 기본값"
+    },
+    "profiles": [
+      {
+        "profile_id": "basil-general-v1",
+        "crop_code": "basil",
+        "crop_name_ko": "바질",
+        "group": "warm_herb",
+        "temperature_c": [15, 24, 30, 36],
+        "relative_humidity_pct": [30, 50, 70, 90],
+        "ppfd_umol_m2_s": [0, 260, 500, 750],
+        "reference_photoperiod_h": 16,
+        "evidence_grade": {"temperature": "A", "humidity": "C", "plant_light": "A"}
+      },
+      {
+        "profile_id": "peppermint-general-v1",
+        "crop_code": "peppermint",
+        "crop_name_ko": "페퍼민트",
+        "group": "moderate_light_herb",
+        "temperature_c": [10, 18, 24, 30],
+        "relative_humidity_pct": [30, 50, 70, 90],
+        "ppfd_umol_m2_s": [0, 150, 200, 300],
+        "reference_photoperiod_h": 14,
+        "evidence_grade": {"temperature": "C", "humidity": "C", "plant_light": "A"}
+      },
+      {
+        "profile_id": "cherry-tomato-general-v1",
+        "crop_code": "cherry_tomato",
+        "crop_name_ko": "방울토마토",
+        "group": "warm_fruiting",
+        "temperature_c": [12, 18.5, 26.5, 32],
+        "relative_humidity_pct": [30, 50, 70, 90],
+        "ppfd_umol_m2_s": [0, 347, 521, 800],
+        "reference_photoperiod_h": 16,
+        "evidence_grade": {"temperature": "B", "humidity": "B", "plant_light": "B"}
+      },
+      {
+        "profile_id": "welsh-onion-general-v1",
+        "crop_code": "welsh_onion",
+        "crop_name_ko": "대파",
+        "group": "cool_leafy_herb",
+        "temperature_c": [10, 20, 24, 30],
+        "relative_humidity_pct": [30, 50, 70, 90],
+        "ppfd_umol_m2_s": [0, 208, 347, 600],
+        "reference_photoperiod_h": 16,
+        "evidence_grade": {"temperature": "C", "humidity": "C", "plant_light": "C"}
+      },
+      {
+        "profile_id": "arugula-general-v1",
+        "crop_code": "arugula",
+        "crop_name_ko": "아루굴라",
+        "group": "cool_leafy_herb",
+        "temperature_c": [10, 20, 24, 30],
+        "relative_humidity_pct": [30, 50, 70, 90],
+        "ppfd_umol_m2_s": [0, 208, 347, 600],
+        "reference_photoperiod_h": 16,
+        "evidence_grade": {"temperature": "C", "humidity": "C", "plant_light": "C"}
+      },
+      {
+        "profile_id": "wasabi-general-v1",
+        "crop_code": "wasabi",
+        "crop_name_ko": "와사비",
+        "group": "cool_shade",
+        "temperature_c": [10, 16, 18, 26],
+        "relative_humidity_pct": [40, 60, 75, 95],
+        "ppfd_umol_m2_s": [0, 120, 140, 250],
+        "reference_photoperiod_h": 12,
+        "evidence_grade": {"temperature": "B", "humidity": "C", "plant_light": "A"}
+      },
+      {
+        "profile_id": "lettuce-general-v1",
+        "crop_code": "lettuce",
+        "crop_name_ko": "상추",
+        "group": "cool_leafy_herb",
+        "temperature_c": [10, 20, 24, 30],
+        "relative_humidity_pct": [30, 50, 70, 90],
+        "ppfd_umol_m2_s": [0, 208, 295, 500],
+        "reference_photoperiod_h": 16,
+        "evidence_grade": {"temperature": "B", "humidity": "B", "plant_light": "A"}
+      },
+      {
+        "profile_id": "coriander-general-v1",
+        "crop_code": "coriander",
+        "crop_name_ko": "고수",
+        "group": "cool_leafy_herb",
+        "temperature_c": [10, 20, 24, 30],
+        "relative_humidity_pct": [30, 50, 70, 90],
+        "ppfd_umol_m2_s": [0, 200, 347, 550],
+        "reference_photoperiod_h": 16,
+        "evidence_grade": {"temperature": "C", "humidity": "C", "plant_light": "A"}
+      }
+    ]
+  },
+
+  "axis_score_algorithm": {
+    "database_view": "crop_environment_axis_score",
+    "function": "trapezoid",
+    "pseudocode": [
+      "if x <= zero_low or x >= zero_high: score = 0",
+      "else if x < optimal_low: score = 100 * (x-zero_low)/(optimal_low-zero_low)",
+      "else if x <= optimal_high: score = 100",
+      "else: score = 100 * (zero_high-x)/(zero_high-optimal_high)",
+      "round score to one decimal place"
+    ],
+    "outputs": [
+      "temperature_score",
+      "humidity_score",
+      "plant_light_score"
+    ],
+    "determinism": "프로필 버전과 canonical 입력이 같으면 DB와 모든 API 구현은 같은 점수를 반환해야 한다."
+  },
+
+  "overall_score_algorithm": {
+    "database_view": "crop_environment_score",
+    "method": "weighted_harmonic_mean",
+    "zero_rule": "세 축 중 하나가 0점이면 overall_score도 0점이다.",
+    "formula": "100 / (40/temperature_score + 25/humidity_score + 35/plant_light_score)",
+    "rounding": "최종값을 소수점 첫째 자리로 반올림",
+    "grade_bands": [
+      {"min_inclusive": 90, "max_inclusive": 100, "grade": "excellent"},
+      {"min_inclusive": 75, "max_exclusive": 90, "grade": "good"},
+      {"min_inclusive": 50, "max_exclusive": 75, "grade": "fair"},
+      {"min_inclusive": 0, "max_exclusive": 50, "grade": "poor"}
+    ],
+    "why_harmonic": "낮은 축이 산술평균보다 강하게 반영되고, 빛 0점을 좋은 온습도로 상쇄할 수 없다."
+  },
+
+  "database_contract": {
+    "objects": [
+      {"name": "crop_score_profile", "kind": "table", "purpose": "버전형 점수 경계·가중치·근거 등급"},
+      {"name": "crop_score_profile_activation", "kind": "table", "purpose": "작물별 신규 컨텍스트 기본 프로필"},
+      {"name": "crop_context.score_profile_id", "kind": "foreign_key", "purpose": "컨텍스트와 정확한 프로필 버전 고정"},
+      {"name": "crop_environment_observation", "kind": "table", "purpose": "완전 보정 세 축 canonical 입력"},
+      {"name": "crop_environment_axis_score", "kind": "view", "purpose": "사다리꼴 축별 점수"},
+      {"name": "crop_environment_score", "kind": "view", "purpose": "가중 조화평균 종합점수와 등급"},
+      {"name": "latest_crop_environment_score", "kind": "view", "purpose": "컨텍스트별 최신 점수"},
+      {"name": "legacy_lux_ingestion_status", "kind": "view", "purpose": "기존 BH1750 교정 파이프라인 진단; 점수 가용성 판정에 사용 금지"}
+    ],
+    "write_flow": [
+      "crop_code의 활성 profile_id를 조회한다.",
+      "crop_context를 만들면서 score_profile_id를 고정한다.",
+      "수집 계층이 세 값을 canonical 단위로 보정하고 검증한다.",
+      "한 트랜잭션에서 crop_environment_observation 한 행을 INSERT한다.",
+      "environment_observation_id로 crop_environment_score를 조회해 응답한다."
+    ],
+    "unchanged_layers": [
+      "evidence_document 및 corpus_* 근거 테이블",
+      "raw sensor 관측 테이블",
+      "PM·소음 참조 및 관측 테이블",
+      "바질 병해 조건 테이블"
+    ]
+  },
+
+  "api_contract": {
+    "framework": "백엔드 프레임워크는 구현자 재량이며 JSON 필드명과 상태코드는 이 계약을 따른다.",
+    "endpoints": [
+      {
+        "method": "GET",
+        "path": "/api/crop-score-profiles",
+        "returns": "8개 활성 프로필의 경계, 가중치, photoperiod, 축별 evidenceGrade"
+      },
+      {
+        "method": "POST",
+        "path": "/api/crop-contexts/{contextId}/environment-observations",
+        "request_body": {
+          "capturedAtUtc": "2026-07-16T05:00:00Z",
+          "airTemperatureC": 27.0,
+          "relativeHumidityPct": 60.0,
+          "ppfdUmolM2S": 400.0,
+          "inputContract": "perfect_calibrated_v1"
+        },
+        "success_status": 201,
+        "returns": "저장된 관측 ID와 해당 시점의 전체 점수 응답"
+      },
+      {
+        "method": "GET",
+        "path": "/api/crop-contexts/{contextId}/score/latest",
+        "example_response": {
+          "contextId": "ctx-basil-01",
+          "zoneId": "zone-01",
+          "crop": "basil",
+          "profile": {"id": "basil-general-v1", "version": "1.0.0"},
+          "capturedAtUtc": "2026-07-16T05:00:00Z",
+          "reading": {
+            "airTemperatureC": 27.0,
+            "relativeHumidityPct": 60.0,
+            "ppfdUmolM2S": 400.0,
+            "referencePhotoperiodH": 16
+          },
+          "scores": {
+            "temperature": 100.0,
+            "humidity": 100.0,
+            "plantLight": 100.0,
+            "overall": 100.0,
+            "grade": "excellent"
+          },
+          "evidenceGrade": {
+            "temperature": "A",
+            "humidity": "C",
+            "plantLight": "A"
+          },
+          "disclaimerKo": "현재 세 환경축의 프로필 적합도이며 생존율·수확량·병해 확률이 아닙니다."
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/zones/{zoneId}/crop-scores",
+        "returns": "해당 zone의 활성 crop_context별 최신 점수 목록"
+      }
+    ],
+    "errors": [
+      {"status": 400, "code": "INVALID_CANONICAL_VALUE", "when": "단위·범위·inputContract 위반"},
+      {"status": 404, "code": "CROP_CONTEXT_NOT_FOUND", "when": "contextId가 없음"},
+      {"status": 404, "code": "SCORE_NOT_FOUND", "when": "유효한 완전 입력이 한 번도 없음"},
+      {"status": 409, "code": "DUPLICATE_OBSERVATION", "when": "같은 contextId와 capturedAtUtc가 이미 존재"},
+      {"status": 409, "code": "CONTEXT_OUT_OF_WINDOW", "when": "관측시각이 컨텍스트 유효기간 밖"},
+      {"status": 422, "code": "INCOMPLETE_AXES", "when": "온도·RH·PPFD 중 하나라도 누락"},
+      {"status": 422, "code": "PROFILE_CROP_MISMATCH", "when": "crop과 scoreProfileId가 일치하지 않음"}
+    ],
+    "forbidden_behavior": [
+      "클라이언트가 보낸 score나 grade를 저장 또는 반환",
+      "누락된 축을 0으로 채워 점수 생성",
+      "raw lux를 crop_score_profile.ppfd 경계와 직접 비교",
+      "PM·소음·병해 경고를 overall_score에 합산",
+      "evidence grade C를 A처럼 숨겨서 표시"
+    ]
+  },
+
+  "worked_examples": [
+    {
+      "name": "basil_all_optimal",
+      "input": {"temperatureC": 27, "humidityPct": 60, "ppfd": 400},
+      "axisScores": {"temperature": 100, "humidity": 100, "plantLight": 100},
+      "overallScore": 100,
+      "grade": "excellent"
+    },
+    {
+      "name": "basil_all_halfway_on_lower_ramps",
+      "input": {"temperatureC": 19.5, "humidityPct": 40, "ppfd": 130},
+      "axisScores": {"temperature": 50, "humidity": 50, "plantLight": 50},
+      "overallScore": 50,
+      "grade": "fair"
+    },
+    {
+      "name": "basil_one_axis_zero",
+      "input": {"temperatureC": 15, "humidityPct": 60, "ppfd": 400},
+      "axisScores": {"temperature": 0, "humidity": 100, "plantLight": 100},
+      "overallScore": 0,
+      "grade": "poor"
+    },
+    {
+      "name": "basil_harmonic_weighting",
+      "input": {"temperatureC": 27, "humidityPct": 40, "ppfd": 400},
+      "axisScores": {"temperature": 100, "humidity": 50, "plantLight": 100},
+      "overallScore": 80,
+      "grade": "good"
+    }
+  ],
+
+  "ui_contract": {
+    "primary_display": "overallScore / 100과 grade",
+    "required_secondary_display": [
+      "온도·습도·광 축별 점수",
+      "실측값과 프로필 100점 구간",
+      "profile id와 version",
+      "각 축 evidenceGrade",
+      "점수가 생존율·수확량·병해 확률이 아니라는 고지"
+    ],
+    "grade_labels_ko": {
+      "excellent": "매우 적합",
+      "good": "적합",
+      "fair": "보통",
+      "poor": "부적합"
+    },
+    "c_grade_label_ko": "대분류 추정값"
+  },
+
+  "implementation_order": [
+    {
+      "step": 1,
+      "task": "db/schema.sql을 빈 SQLite에 적용",
+      "done_when": "crop_score_profile 8행과 activation 8행이 존재"
+    },
+    {
+      "step": 2,
+      "task": "python db/smoke_test.py 실행",
+      "done_when": "14/14 통과"
+    },
+    {
+      "step": 3,
+      "task": "기존 crop_context 생성 코드를 score_profile_id 필수 계약으로 변경",
+      "done_when": "crop과 다른 프로필 연결 시 422 또는 DB FK 오류"
+    },
+    {
+      "step": 4,
+      "task": "완전 보정 canonical observation POST 구현",
+      "done_when": "INSERT 후 같은 observation_id의 DB 계산 점수를 반환"
+    },
+    {
+      "step": 5,
+      "task": "latest score 및 profile 조회 API 구현",
+      "done_when": "worked_examples 네 건이 API에서도 DB 스모크 테스트와 동일"
+    }
+  ],
+
+  "existing_database_migration": {
+    "note": "schema.sql은 신규 DB 생성용 최종 DDL이다. 이미 생성된 SQLite 파일은 별도 트랜잭션 마이그레이션이 필요하다.",
+    "order": [
+      "crop_score_profile과 crop_score_profile_activation 생성 및 8개 기본값 적재",
+      "crop_context_new를 score_profile_id 포함 구조로 생성",
+      "기존 crop_context 각 행의 crop_code로 활성 profile_id를 매핑해 복사",
+      "admitted_* 외래키 의존 테이블을 포함해 SQLite table-rebuild 절차 수행",
+      "crop_environment_observation과 세 점수 뷰 생성",
+      "기존 plant_light_axis_status 소비자를 legacy_lux_ingestion_status 또는 새 점수 API로 전환",
+      "foreign_key_check와 smoke test 실행 후 커밋"
+    ],
+    "rollback": "마이그레이션 전체를 단일 트랜잭션으로 실행하고 검증 실패 시 ROLLBACK한다."
+  },
+
+  "verification_contract": {
+    "command": "python backend/db/smoke_test.py",
+    "expected": "14 passed, 0 failed",
+    "covered_invariants": [
+      "스키마 및 세 점수 뷰 로드",
+      "8개 프로필과 활성 버전",
+      "프로필 불변성",
+      "crop-profile 일치",
+      "컨텍스트의 작물·프로필 결합 불변성",
+      "사다리꼴 점수",
+      "가중 조화평균",
+      "한 축 0점 전파",
+      "최신 관측 선택",
+      "canonical 범위와 inputContract",
+      "컨텍스트 유효기간",
+      "근거 문서 불변성",
+      "대표 PPFD 경계"
+    ]
+  },
+
+  "research_sources": [
+    "backend/docs/newcropinfo/verified_numeric_evidence.json",
+    "backend/docs/newcropinfo/README.md",
+    "Virginia Tech Calculating and Using Daily Light Integral",
+    "Cornell CEA Lettuce Handbook",
+    "Shamshiri et al. 2018 greenhouse tomato microclimate review",
+    "Walters and Currey 2019 basil temperature study",
+    "Beaman et al. 2009 basil irradiance study",
+    "Nagase 2025 Mentha light study",
+    "2025 Daruma wasabi LED intensity study",
+    "Wang et al. 2024 coriander light and photoperiod study"
+  ]
+}
