@@ -1,0 +1,152 @@
+{
+  "schema_version": "1.0.0",
+  "document_name": "pre_hardware_five_axis_collection_contract",
+  "status": "requirements_only_hardware_not_selected",
+  "created_at": "2026-07-15",
+  "principles": [
+    "원시 시계열은 점수보다 먼저 저장한다.",
+    "센서값에는 측정 위치·단위·센서 식별자·교정 이력·작물 맥락을 함께 저장한다.",
+    "샘플링 주기, 결측 보간, 점수 창, 경보 지속시간은 이번 문서에서 결정하지 않는다.",
+    "연구에서 사용한 시간기준과 다른 집계값을 비교하지 않는다.",
+    "lux, PPFD, DLI 및 순간 dB, LAeq를 서로 같은 값처럼 취급하지 않는다."
+  ],
+  "common_required_fields": [
+    "timestamp_utc",
+    "timezone",
+    "site_id",
+    "zone_id",
+    "sensor_id",
+    "sensor_model",
+    "serial_number",
+    "firmware_version",
+    "calibration_or_verification_date",
+    "measurement_height_m",
+    "indoor_or_outdoor",
+    "raw_value",
+    "unit",
+    "quality_flag"
+  ],
+  "crop_context_fields": [
+    "crop",
+    "scientific_name",
+    "cultivar",
+    "growth_stage",
+    "transplant_or_sowing_date",
+    "canopy_height_m",
+    "cultivation_system",
+    "lighting_source",
+    "lighting_schedule",
+    "treatment_or_control_id"
+  ],
+  "axes": {
+    "air_temperature": {
+      "required_quantities": [
+        {"field": "air_temperature", "unit": "degC"}
+      ],
+      "placement_requirements": [
+        "작물 관부 높이",
+        "직사 복사와 조명 복사열의 영향을 줄이는 차폐 조건",
+        "공조 토출구·벽면과의 관계 기록"
+      ],
+      "derived_windows_to_keep_possible": ["raw", "minimum", "maximum", "mean", "day_mean", "night_mean", "daily_mean"],
+      "unresolved_design_choices": ["샘플링 주기", "주·야간 정의", "구역당 센서 수", "허용 센서 오차"]
+    },
+    "relative_humidity": {
+      "required_quantities": [
+        {"field": "relative_humidity", "unit": "percent"},
+        {"field": "paired_air_temperature", "unit": "degC"}
+      ],
+      "placement_requirements": [
+        "대기온도와 같은 관부 미기후 지점",
+        "결로 여부와 센서 포화 상태 기록",
+        "바질 병해 연구 적용을 검토하려면 군락 내부 위치를 별도 식별"
+      ],
+      "optional_future_quantities": ["vapor_pressure_deficit", "leaf_wetness_duration"],
+      "unresolved_design_choices": ["VPD 파생 여부", "잎 젖음 센서 포함 여부", "지속시간 계산 규칙", "RH 센서 결로 복구 기준"]
+    },
+    "plant_light": {
+      "required_quantities": [
+        {"field": "ppfd", "unit": "umol_m-2_s-1"},
+        {"field": "dli", "unit": "mol_m-2_day-1"}
+      ],
+      "instrument_requirement": "식물 점수용 주 센서는 400-700 nm 양자센서 또는 동등한 PPFD 계측이어야 한다.",
+      "placement_requirements": [
+        "관부 높이의 수평면",
+        "재배면 내 위치 좌표와 센서 방향 기록",
+        "인공광은 광원 모델·스펙트럼·조명까지 거리 기록",
+        "도심 유휴공간은 창·차광 구조와 자연광 유입 방향 기록"
+      ],
+      "lux_policy": {
+        "status": "optional_non_scoring_channel",
+        "allowed_use": "사람의 시환경 또는 고정 광원 내 상대 변화 관찰",
+        "prohibited_use": "보편 작물 점수, 출처의 PPFD 경계와 직접 비교, 검증되지 않은 고정계수 변환",
+        "conversion_exception": "광원 스펙트럼이 고정되고 해당 광원·센서 조합의 변환계수를 현장 검증한 경우에만 별도 파생 필드로 보존"
+      },
+      "unresolved_design_choices": ["양자센서 수와 공간격자", "DLI 적분의 결측 처리", "PAR 외 스펙트럼 계측", "광원별 교정"]
+    },
+    "particulate_matter": {
+      "required_quantities": [
+        {"field": "pm2_5_mass_concentration", "unit": "ug_m-3"},
+        {"field": "pm10_mass_concentration", "unit": "ug_m-3"},
+        {"field": "paired_relative_humidity", "unit": "percent"},
+        {"field": "paired_air_temperature", "unit": "degC"}
+      ],
+      "quality_requirements": [
+        "미세먼지 간이측정기 성능인증 여부·등급·인증번호 저장",
+        "실내와 외기를 별도 sensor_id·zone_id로 구분",
+        "공식 측정망 값과 자체 간이센서 값을 같은 품질등급으로 표시하지 않음",
+        "가능하면 설치 전후 기준기 또는 인근 공공측정망과 병행 비교한 기간 기록",
+        "흡입구 높이·벽·환기구·조리·도로 등 국소 오염원과의 관계 기록"
+      ],
+      "derived_windows_to_keep_possible": ["raw", "hourly_mean", "rolling_2_hour", "24_hour_mean", "annual_mean_after_sufficient_coverage"],
+      "unresolved_design_choices": ["인증등급 요구수준", "샘플링 주기", "습도 보정식", "공식 API 연동", "데이터 완전성 요건"]
+    },
+    "noise": {
+      "required_quantities": [
+        {"field": "laeq", "unit": "dB_A", "required_metadata": "integration_period_seconds"},
+        {"field": "lafmax_or_lasmax", "unit": "dB_A", "required_metadata": "time_weighting"}
+      ],
+      "quality_requirements": [
+        "A가중치 여부 기록",
+        "등가소음도 적분시간 기록",
+        "소음계 등급·교정기·교정 전후 결과 기록",
+        "후보지의 법적 용도지역과 도로변 여부 기록",
+        "공조·펌프·차량·공사 등 소음원 상태를 이벤트로 기록"
+      ],
+      "period_metadata": {
+        "korean_environmental_standard_day": "06:00-22:00",
+        "korean_environmental_standard_night": "22:00-06:00"
+      },
+      "prohibited_representation": "적분시간 없는 단일 dB 값을 Leq 환경기준과 비교",
+      "unresolved_design_choices": ["계측기 등급", "LAeq 적분시간", "상시 계측 여부", "실내·부지경계 측정점", "소음원 분류"]
+    }
+  },
+  "source_basis": [
+    {
+      "topic": "plant_light_units",
+      "title": "Calculating and Using Daily Light Integral (DLI): An Introductory Guide",
+      "publisher": "Virginia Cooperative Extension, Virginia Tech",
+      "url": "https://www.pubs.ext.vt.edu/content/pubs_ext_vt_edu/en/SPES/spes-720/spes-720.html"
+    },
+    {
+      "topic": "horticultural_lighting_context",
+      "title": "IEC 63403-1:2024 Horticultural lighting",
+      "publisher": "International Electrotechnical Commission",
+      "url": "https://webstore.iec.ch/en/publication/67865"
+    },
+    {
+      "topic": "pm_sensor_certification",
+      "title": "간이측정기 및 미세먼지 간이측정기 성능인증 등에 관한 고시",
+      "publisher": "국가법령정보센터 / 국립환경과학원",
+      "effective_date": "2026-04-01",
+      "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2100000276066&chrClsCd=010202&urlMode=admRulLsInfoP"
+    },
+    {
+      "topic": "noise_metric_and_period",
+      "title": "환경정책기본법 시행령 별표 1 환경기준 - 소음",
+      "publisher": "국가법령정보센터",
+      "legal_revision": "2025-10-01",
+      "url": "https://www.law.go.kr/LSW/flDownload.do?bylClsCd=110201&flSeq=159250987"
+    }
+  ]
+}

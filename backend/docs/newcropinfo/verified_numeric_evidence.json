@@ -1,0 +1,595 @@
+{
+  "schema_version": "1.0.0",
+  "dataset_name": "urban_idle_space_smartfarm_verified_numeric_evidence",
+  "researched_at": "2026-07-15",
+  "scope": {
+    "crops": [
+      "basil",
+      "peppermint",
+      "cherry_tomato",
+      "welsh_onion",
+      "arugula",
+      "wasabi",
+      "lettuce",
+      "coriander"
+    ],
+    "axes": [
+      "air_temperature",
+      "relative_humidity",
+      "plant_light",
+      "particulate_matter",
+      "noise"
+    ],
+    "project_stage": "data_collection_before_hardware_selection"
+  },
+  "interpretation_rule": "이 파일은 수치의 근거와 주장 유형을 보존한다. 점수 함수, 정상·주의·위험 경계, 가중치는 아직 정의하지 않는다.",
+  "claim_roles": {
+    "comparative_best_tested_point": "비교시험에서 가장 좋은 결과가 나온 처리값. 범용 최적값이나 안전범위가 아니다.",
+    "comparative_suitable_band": "비교시험의 여러 지표 경향을 바탕으로 저자가 적합하다고 평가한 시험구간. 통계적으로 확정된 범용 최적범위가 아니다.",
+    "author_recommended_target": "해당 논문의 조건과 목적에 한정된 저자 권고값.",
+    "disease_risk_condition": "최적 생육값이 아니라 병 발생에 유리한 조건.",
+    "health_guideline": "작물이 아닌 사람의 건강 보호를 위한 지침값.",
+    "public_forecast_band": "대한민국 대기질 예보 분류값. 실내 허용기준이 아니다.",
+    "public_alert_trigger": "대한민국 대기질 주의보·경보 발령값.",
+    "environmental_standard": "법정 환경기준. 부지 분류와 지정된 시간평균을 알아야 적용할 수 있다."
+  },
+  "records": [
+    {
+      "id": "basil-air-temperature-vegetative-001",
+      "subject_scope": "crop",
+      "crop": "basil",
+      "scientific_name": "Ocimum basilicum",
+      "axis": "air_temperature",
+      "metric": "air_temperature_treatment",
+      "claim_role": "comparative_best_tested_point",
+      "value": {
+        "best_tested_target": 29,
+        "unit": "degC",
+        "tested_targets": [11, 17, 23, 29, 35]
+      },
+      "measurement_basis": "환경생장실의 목표 대기온도 처리",
+      "context": {
+        "cultivar": "Nufar",
+        "growth_stage": "transplanted seedlings, 3-week vegetative trial",
+        "environment": "controlled growth chambers",
+        "photoperiod_hours": 16
+      },
+      "observed_outcome": "생체중·건물중 증가량과 마디 출현은 약 29 °C 처리까지 증가한 뒤 약 35 °C에서 감소했다. 논문은 약 35 °C를 과최적 처리로 보았다.",
+      "applicability": {
+        "status": "contextual_anchor",
+        "allowed_use": "Nufar와 유사한 영양생장 조건의 초기 현장 검증 중심값 후보",
+        "prohibited_use": "모든 바질 품종의 29 °C 정상범위 또는 35 °C 고사 임계값으로 사용",
+        "unresolved_requirements": [
+          "대상 품종",
+          "생육 단계",
+          "현장 광량과 온도의 상호작용",
+          "점수 경계 의미"
+        ]
+      },
+      "evidence": {
+        "strength": "high_for_stated_context",
+        "source_type": "peer_reviewed_primary_experiment",
+        "title": "Growth and Development of Basil Species in Response to Temperature",
+        "publisher": "HortScience / American Society for Horticultural Science",
+        "year": 2019,
+        "doi": "10.21273/HORTSCI12976-18",
+        "url": "https://journals.ashs.org/view/journals/hortsci/54/11/article-p1915.xml",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "basil-plant-light-edible-biomass-001",
+      "subject_scope": "crop",
+      "crop": "basil",
+      "scientific_name": "Ocimum basilicum",
+      "axis": "plant_light",
+      "metric": "canopy_ppfd",
+      "claim_role": "author_recommended_target",
+      "value": {
+        "target": 500,
+        "unit": "umol_m-2_s-1",
+        "tested_levels": [300, 400, 500, 600],
+        "photoperiod_hours": 16
+      },
+      "measurement_basis": "관부 높이 PPFD",
+      "context": {
+        "cultivars": ["Genovese", "Italian Large Leaf", "Nufar"],
+        "growth_stage": "edible vegetative biomass production",
+        "environment": "controlled growth chambers",
+        "air_temperature": "25 +/- 4 degC",
+        "co2": "ambient, no enrichment"
+      },
+      "observed_outcome": "500과 600 PPFD에서 식용 생체량이 가장 컸고 600에서 추가 축적이 없었다. 저자는 에너지 절약을 함께 고려해 500을 권고했다.",
+      "applicability": {
+        "status": "contextual_anchor",
+        "allowed_use": "동일한 광주기와 유사한 실내 영양생장 조건의 광 목표 후보",
+        "prohibited_use": "자연광 lux 기준, 피해 상한, 모든 광주기의 단독 PPFD 기준으로 사용",
+        "unresolved_requirements": ["광원 스펙트럼", "관부 균일도", "현장 DLI", "전력비 목적함수"]
+      },
+      "evidence": {
+        "strength": "high_for_stated_context",
+        "source_type": "peer_reviewed_primary_experiment",
+        "title": "Sweet Basil Requires an Irradiance of 500 umol m-2 s-1 for Greatest Edible Biomass Production",
+        "publisher": "HortScience / American Society for Horticultural Science",
+        "year": 2009,
+        "doi": "10.21273/HORTSCI.44.1.64",
+        "url": "https://journals.ashs.org/view/journals/hortsci/44/1/article-p64.xml",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "basil-relative-humidity-downy-mildew-001",
+      "subject_scope": "crop",
+      "crop": "basil",
+      "scientific_name": "Ocimum basilicum",
+      "axis": "relative_humidity",
+      "metric": "canopy_relative_humidity_and_leaf_wetness_duration",
+      "claim_role": "disease_risk_condition",
+      "value": {
+        "canopy_rh_infection_condition": {"operator": ">=", "value": 85},
+        "night_rh_sporulation_condition": {"operator": ">", "value": 95},
+        "night_high_rh_duration_condition_hours": {"operator": ">", "value": 7.5},
+        "leaf_wetness_duration_condition_hours": {"operator": ">=", "value": 4},
+        "rh_unit": "percent"
+      },
+      "measurement_basis": "식물 군락 내부 RH와 잎 젖음 지속시간",
+      "context": {
+        "hazard": "basil downy mildew, Peronospora belbahrii",
+        "environment": "greenhouse",
+        "scope_note": "감염원 도달과 감수성 품종 등 병 발생 전제가 별도로 필요"
+      },
+      "observed_outcome": "UConn Extension은 군락 RH 85% 이상을 감염 조건으로, 야간 RH 95% 초과 상태가 7.5시간을 넘을 때를 포자형성 조건으로 설명한다.",
+      "applicability": {
+        "status": "score_semantics_pending",
+        "allowed_use": "병해 위험용 별도 특징량 후보 및 군락 내부 습도센서 필요성 검토",
+        "prohibited_use": "바질 최적 생육 RH, 단일 순간 RH 경보, 무조건적인 발병 예측으로 사용",
+        "unresolved_requirements": ["품종 저항성", "병원체 존재", "잎 젖음 센서 포함 여부", "지속시간 계산 규칙"]
+      },
+      "evidence": {
+        "strength": "high_for_disease_risk_description",
+        "source_type": "university_extension_fact_sheet_with_research_references",
+        "title": "Downy Mildew on Basil in the Greenhouse",
+        "publisher": "University of Connecticut Extension",
+        "year": 2024,
+        "doi": "10.61899/ucext.v1.034.2024",
+        "url": "https://extension.uconn.edu/publication/downy-mildew-on-basil-in-the-greenhouse/",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "peppermint-plant-light-growth-001",
+      "subject_scope": "crop",
+      "crop": "peppermint",
+      "scientific_name": "Mentha × piperita",
+      "axis": "plant_light",
+      "metric": "canopy_ppfd",
+      "claim_role": "comparative_suitable_band",
+      "value": {
+        "suitable_band_min": 150,
+        "suitable_band_max": 200,
+        "unit": "umol_m-2_s-1",
+        "tested_levels": [20, 100, 150, 200, 250],
+        "photoperiod_hours": 14
+      },
+      "measurement_basis": "실내 LED PPFD",
+      "context": {
+        "growth_stage": "short-term potted vegetative growth",
+        "environment": "indoor",
+        "air_temperature": "20-27 degC",
+        "relative_humidity": "30-60 percent",
+        "pot_volume_l": 0.9
+      },
+      "observed_outcome": "페퍼민트를 포함한 Mentha 3종의 건물중·SPAD 경향을 바탕으로 저자는 150-200 PPFD가 적합해 보인다고 결론냈다. 일부 종내 처리 차이는 유의하지 않았고, 20에서는 광 부족성 신장, 250에서는 광저해와 황화가 관찰됐다.",
+      "applicability": {
+        "status": "contextual_anchor_with_replication_limit",
+        "allowed_use": "페퍼민트를 포함한 Mentha 실내 화분재배에서 150-200 PPFD 비교 실증 후보",
+        "prohibited_use": "페퍼민트 단독의 확정 최적 범위, 자연 직사광선 상한 또는 장기·개화기 범용 최적값으로 사용",
+        "unresolved_requirements": ["반복 수 확대", "장기 재배", "광원 스펙트럼", "목표 수확물의 정유 조성"]
+      },
+      "evidence": {
+        "strength": "moderate_for_stated_context",
+        "source_type": "peer_reviewed_primary_experiment",
+        "title": "Growth Responses of Mentha spp. to Varying LED Light Intensities in Indoor Greening Applications",
+        "publisher": "HortScience / American Society for Horticultural Science",
+        "year": 2025,
+        "doi": "10.21273/HORTSCI18634-25",
+        "url": "https://journals.ashs.org/downloadpdf/view/journals/hortsci/60/7/article-p1161.pdf",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "wasabi-air-temperature-plantlet-001",
+      "subject_scope": "crop",
+      "crop": "wasabi",
+      "scientific_name": "Eutrema japonicum",
+      "axis": "air_temperature",
+      "metric": "day_night_air_temperature",
+      "claim_role": "comparative_best_tested_point",
+      "value": {
+        "best_biomass_day": 18,
+        "best_biomass_night": 18,
+        "unit": "degC",
+        "tested_regime_range": "10/10 to 26/26 degC"
+      },
+      "measurement_basis": "광독립영양 미세번식 배양의 주·야간 대기온도 처리",
+      "context": {
+        "growth_stage": "photoautotrophic micropropagated plantlets",
+        "duration_days": 28,
+        "environment": "in-vitro culture system"
+      },
+      "observed_outcome": "건물중과 잎 면적은 18/18 °C에서 가장 컸고, 개체 전체 순광합성률은 18/14, 18/18, 22/18 °C에서 높았다.",
+      "applicability": {
+        "status": "nursery_stage_only",
+        "allowed_use": "미세번식 유묘 단계의 실증 중심값 후보",
+        "prohibited_use": "성체 근경 생산이나 일반 토경의 온도 범위로 사용",
+        "unresolved_requirements": ["현장 육묘 방식", "정식 후 단계", "근경 수량과의 연결"]
+      },
+      "evidence": {
+        "strength": "high_for_micropropagation_stage",
+        "source_type": "peer_reviewed_primary_experiment",
+        "title": "Growth and physiological characteristics of wasabi plantlets cultured by photoautotrophic micropropagation at different temperatures",
+        "publisher": "Plant Cell, Tissue and Organ Culture",
+        "year": 2020,
+        "doi": "10.1007/s11240-020-01898-z",
+        "url": "https://link.springer.com/article/10.1007/s11240-020-01898-z",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "wasabi-plant-light-rhizome-001",
+      "subject_scope": "crop",
+      "crop": "wasabi",
+      "scientific_name": "Eutrema japonicum",
+      "axis": "plant_light",
+      "metric": "canopy_ppfd",
+      "claim_role": "comparative_best_tested_point",
+      "value": {
+        "best_tested": 140,
+        "unit": "umol_m-2_s-1",
+        "tested_levels": [35, 60, 90, 140],
+        "photoperiod_hours": 12
+      },
+      "measurement_basis": "LED PPFD와 광질의 요인실험",
+      "context": {
+        "cultivar": "Daruma",
+        "growth_stage": "seedling to 44-week harvest",
+        "environment": "controlled plant factory",
+        "air_temperature": "16-18 degC",
+        "relative_humidity": "68 percent",
+        "substrate": "peat moss:perlite 1:1"
+      },
+      "observed_outcome": "시험한 네 광량 중 140 PPFD에서 광합성, 잎 수, 근경 수량·품질 관련 지표가 가장 좋았다.",
+      "applicability": {
+        "status": "highest_tested_not_bounded_optimum",
+        "allowed_use": "Daruma 식물공장 실증에서 비교할 상단 처리 후보",
+        "prohibited_use": "140을 생리적 최적점 또는 그 이상을 위험으로 판정",
+        "unresolved_requirements": ["140 초과 처리", "광질", "현장 냉방조건", "근경 품질 목표"]
+      },
+      "evidence": {
+        "strength": "high_for_tested_range",
+        "source_type": "peer_reviewed_primary_experiment",
+        "title": "Impact of LED Combinations and Light Intensity on Growth and Yields of Wasabi",
+        "publisher": "Horticulturae",
+        "year": 2025,
+        "doi": "10.3390/horticulturae11010003",
+        "url": "https://www.mdpi.com/2311-7524/11/1/3",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "lettuce-air-temperature-light-interaction-001",
+      "subject_scope": "crop",
+      "crop": "lettuce",
+      "scientific_name": "Lactuca sativa",
+      "axis": "air_temperature",
+      "metric": "day_night_air_temperature",
+      "claim_role": "comparative_best_tested_point",
+      "value": {
+        "best_tested_day": 23,
+        "best_tested_night": 18,
+        "unit": "degC",
+        "tested_temperature_regimes": ["15/10", "23/18", "30/23"]
+      },
+      "measurement_basis": "온도와 PPFD의 완전요인 생장실 처리",
+      "context": {
+        "growth_stage": "vegetative lettuce production",
+        "environment": "controlled chambers",
+        "tested_ppfd": [100, 200, 350, 500, 600],
+        "interaction_note": "온도 결과를 광량과 분리해 해석하면 안 됨"
+      },
+      "observed_outcome": "세 온도 처리 중 23/18 °C에서 광합성 특성과 수량이 가장 좋았고, 이 온도에서 350-600 PPFD 처리가 저광 처리보다 높았다.",
+      "applicability": {
+        "status": "contextual_anchor_with_interaction",
+        "allowed_use": "유사 상추의 주·야간 온도 실증 후보",
+        "prohibited_use": "모든 상추 품종의 독립 온도 정상범위로 사용",
+        "unresolved_requirements": ["품종", "PPFD", "광주기", "결구형·잎상추 구분"]
+      },
+      "evidence": {
+        "strength": "high_for_stated_factorial_trial",
+        "source_type": "peer_reviewed_primary_experiment",
+        "title": "Effects of Light Intensity and Temperature on the Photosynthesis Characteristics and Yield of Lettuce",
+        "publisher": "Horticulturae",
+        "year": 2022,
+        "doi": "10.3390/horticulturae8020178",
+        "url": "https://www.mdpi.com/2311-7524/8/2/178",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "lettuce-plant-light-dli-iceberg-001",
+      "subject_scope": "crop",
+      "crop": "lettuce",
+      "scientific_name": "Lactuca sativa",
+      "axis": "plant_light",
+      "metric": "daily_light_integral",
+      "claim_role": "author_recommended_target",
+      "value": {
+        "target": 11.5,
+        "unit": "mol_m-2_day-1",
+        "tested_levels": [8.64, 11.5, 14.4],
+        "ppfd": 200,
+        "ppfd_unit": "umol_m-2_s-1",
+        "corresponding_photoperiod_hours": 16
+      },
+      "measurement_basis": "흰색 LED PPFD를 200으로 고정하고 광주기를 바꾼 DLI 처리",
+      "context": {
+        "cultivar": "Glendana",
+        "lettuce_type": "iceberg",
+        "growth_stage": "indoor production to harvest",
+        "environment": "vertical hydroponic system"
+      },
+      "observed_outcome": "11.5 DLI에서 수확 시 생체중, 물 이용효율, 에너지 이용효율이 가장 좋았고 14.4에서는 여러 생육지표가 감소했다.",
+      "applicability": {
+        "status": "contextual_anchor",
+        "allowed_use": "Glendana와 유사한 수직수경·흰색 LED 환경의 DLI 목표 후보",
+        "prohibited_use": "PPFD 200 자체를 독립 최적값으로 해석하거나 다른 품종의 범용 DLI로 사용",
+        "unresolved_requirements": ["품종", "재식밀도", "광원 스펙트럼", "자연광 혼입"]
+      },
+      "evidence": {
+        "strength": "high_for_stated_context",
+        "source_type": "peer_reviewed_primary_experiment",
+        "title": "Determination of optimal daily light integral (DLI) for indoor cultivation of iceberg lettuce in an indigenous vertical hydroponic system",
+        "publisher": "Scientific Reports",
+        "year": 2023,
+        "doi": "10.1038/s41598-023-36997-2",
+        "url": "https://www.nature.com/articles/s41598-023-36997-2",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "coriander-plant-light-fresh-leaf-001",
+      "subject_scope": "crop",
+      "crop": "coriander",
+      "scientific_name": "Coriandrum sativum",
+      "axis": "plant_light",
+      "metric": "canopy_ppfd_and_photoperiod",
+      "claim_role": "author_recommended_target",
+      "value": {
+        "ppfd": 200,
+        "ppfd_unit": "umol_m-2_s-1",
+        "photoperiod_hours": 16,
+        "tested_ppfd": [133, 200, 400],
+        "tested_photoperiod_hours": [8, 16, 24]
+      },
+      "measurement_basis": "식물공장의 PPFD x 광주기 요인실험",
+      "context": {
+        "growth_stage": "fresh leaf production",
+        "environment": "plant factory with artificial lighting",
+        "air_temperature": "24 degC",
+        "relative_humidity": "48 percent",
+        "co2": "400 ppm"
+      },
+      "observed_outcome": "133 PPFD에서는 생육이 느렸고 200에서 생체중·수량과 에너지 효율이 좋았다. 저자는 200 PPFD와 16시간을 권고했다.",
+      "applicability": {
+        "status": "contextual_anchor",
+        "allowed_use": "신선 잎 생산 PFAL의 광 목표 실증 후보",
+        "prohibited_use": "24 °C와 RH 48%를 최적값으로 해석하거나 자연광 lux 기준으로 사용",
+        "unresolved_requirements": ["품종", "광질", "수확 시기", "전력비 목적함수"]
+      },
+      "evidence": {
+        "strength": "high_for_stated_context",
+        "source_type": "peer_reviewed_primary_experiment",
+        "title": "Effects of Light Intensity and Photoperiod on Morphological Development and Photosynthetic Characteristics of Coriander",
+        "publisher": "Horticulturae",
+        "year": 2024,
+        "doi": "10.3390/horticulturae10030215",
+        "url": "https://www.mdpi.com/2311-7524/10/3/215",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "common-pm-who-aqg-2021-001",
+      "subject_scope": "common_human_health",
+      "crop": null,
+      "axis": "particulate_matter",
+      "metric": "mass_concentration",
+      "claim_role": "health_guideline",
+      "value": {
+        "unit": "ug_m-3",
+        "pm2_5": {
+          "annual_mean": 5,
+          "24_hour_mean": 15
+        },
+        "pm10": {
+          "annual_mean": 15,
+          "24_hour_mean": 45
+        }
+      },
+      "measurement_basis": "WHO 2021 대기질 지침의 연평균과 24시간 평균",
+      "context": {
+        "purpose": "human health protection",
+        "crop_dependency": false,
+        "regulatory_status": "health guideline, not a Korean legal indoor limit"
+      },
+      "observed_outcome": "WHO가 PM2.5와 PM10의 장·단기 건강보호 기준으로 제시한 수치다.",
+      "applicability": {
+        "status": "reference_ready",
+        "allowed_use": "근로자·이용자 건강 관점의 공통 장기 및 24시간 특징량 비교",
+        "prohibited_use": "순간 센서값의 직접 판정, 작물 피해 임계값, 대한민국 법정 준수 판정으로 사용",
+        "unresolved_requirements": ["실내·실외 측정 위치", "국내 법정기준 병행 여부", "센서 정확도"]
+      },
+      "evidence": {
+        "strength": "authoritative",
+        "source_type": "international_health_guideline",
+        "title": "WHO global air quality guidelines",
+        "publisher": "World Health Organization",
+        "year": 2021,
+        "isbn": "9789240034228",
+        "url": "https://www.who.int/publications/i/item/9789240034228",
+        "value_table_url": "https://www.who.int/teams/environment-climate-change-and-health/air-quality-and-health/health-impacts/types-of-pollutants",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "common-pm-korea-forecast-band-001",
+      "subject_scope": "common_public_air_quality",
+      "crop": null,
+      "axis": "particulate_matter",
+      "metric": "daily_mean_forecast_concentration_band",
+      "claim_role": "public_forecast_band",
+      "value": {
+        "unit": "ug_m-3",
+        "pm10": [
+          {"label": "good", "min_inclusive": 0, "max_inclusive": 30},
+          {"label": "moderate", "min_inclusive": 31, "max_inclusive": 80},
+          {"label": "bad", "min_inclusive": 81, "max_inclusive": 150},
+          {"label": "very_bad", "min_inclusive": 151, "max_inclusive": null}
+        ],
+        "pm2_5": [
+          {"label": "good", "min_inclusive": 0, "max_inclusive": 15},
+          {"label": "moderate", "min_inclusive": 16, "max_inclusive": 35},
+          {"label": "bad", "min_inclusive": 36, "max_inclusive": 75},
+          {"label": "very_bad", "min_inclusive": 76, "max_inclusive": null}
+        ]
+      },
+      "measurement_basis": "대한민국 미세먼지 일평균 예보 등급",
+      "context": {
+        "purpose": "public forecast communication",
+        "crop_dependency": false,
+        "source_selection_note": "환경보건포털 표의 PM10 31~81 중복 표기는 사용하지 않고, 현재 에어코리아 공식 표의 31~80을 채택"
+      },
+      "observed_outcome": "에어코리아가 제공하는 현재 PM10·PM2.5 예보 4등급 경계다.",
+      "applicability": {
+        "status": "reference_ready",
+        "allowed_use": "외기 일평균과 대한민국 공식 예보등급의 비교 또는 UI 참고표시",
+        "prohibited_use": "실내 허용기준, 순간값 등급, 작물 생육 점수로 사용",
+        "unresolved_requirements": ["외기 센서와 실내 센서 구분", "일평균 완성 전 실시간 표시 방식"]
+      },
+      "evidence": {
+        "strength": "authoritative",
+        "source_type": "official_public_air_quality_portal",
+        "title": "미세먼지 예·경보등급과 기준 농도",
+        "publisher": "한국환경공단 에어코리아",
+        "year": null,
+        "current_as_of": "2026-07-15",
+        "url": "https://m.airkorea.or.kr/info/behaviorInfo1",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "common-pm-korea-alert-trigger-001",
+      "subject_scope": "common_public_air_quality",
+      "crop": null,
+      "axis": "particulate_matter",
+      "metric": "hourly_mean_sustained_trigger",
+      "claim_role": "public_alert_trigger",
+      "value": {
+        "unit": "ug_m-3",
+        "minimum_duration_hours": 2,
+        "pm10": {"advisory_min": 150, "warning_min": 300},
+        "pm2_5": {"advisory_min": 75, "warning_min": 150}
+      },
+      "measurement_basis": "시간평균 농도가 2시간 지속될 때의 대한민국 주의보·경보 발령 기준",
+      "context": {
+        "purpose": "regional public alert",
+        "crop_dependency": false
+      },
+      "observed_outcome": "에어코리아 공식 행동정보에 제시된 미세먼지 주의보·경보 발령 경계다.",
+      "applicability": {
+        "status": "reference_ready",
+        "allowed_use": "공식 광역 경보 상태와 자체 센서 추세의 보조 비교",
+        "prohibited_use": "간이센서 한 대로 공식 경보를 발령하거나 2시간 지속조건을 제거",
+        "unresolved_requirements": ["공식 경보 API 연동", "자체센서 품질등급", "결측 처리"]
+      },
+      "evidence": {
+        "strength": "authoritative",
+        "source_type": "official_public_air_quality_portal",
+        "title": "미세먼지 예·경보등급과 기준 농도",
+        "publisher": "한국환경공단 에어코리아",
+        "year": null,
+        "current_as_of": "2026-07-15",
+        "url": "https://m.airkorea.or.kr/info/behaviorInfo1",
+        "accessed_at": "2026-07-15"
+      }
+    },
+    {
+      "id": "common-noise-korea-environmental-standard-001",
+      "subject_scope": "common_site_environment",
+      "crop": null,
+      "axis": "noise",
+      "metric": "equivalent_continuous_a_weighted_sound_level",
+      "claim_role": "environmental_standard",
+      "value": {
+        "unit": "Leq_dB_A",
+        "day_period": "06:00-22:00",
+        "night_period": "22:00-06:00",
+        "general_area": [
+          {"zone": "ga_exclusive_residential", "day": 50, "night": 40},
+          {"zone": "na_general_residential", "day": 55, "night": 45},
+          {"zone": "da_commercial_or_semi_industrial", "day": 65, "night": 55},
+          {"zone": "ra_industrial", "day": 70, "night": 65}
+        ],
+        "roadside_area": [
+          {"zone": "ga_or_na_residential", "day": 65, "night": 55},
+          {"zone": "da_commercial_or_semi_industrial", "day": 70, "night": 60},
+          {"zone": "ra_industrial", "day": 75, "night": 70}
+        ]
+      },
+      "measurement_basis": "A가중 등가소음도 Leq의 주·야간 환경기준",
+      "context": {
+        "purpose": "Korean environmental noise standard",
+        "crop_dependency": false,
+        "required_site_classification": true
+      },
+      "observed_outcome": "대한민국 소음환경기준은 일반·도로변 여부, 용도지역, 낮·밤에 따라 서로 다른 Leq dB(A)를 적용한다.",
+      "applicability": {
+        "status": "blocked_until_site_zoning_is_known",
+        "allowed_use": "부지의 용도지역과 도로변 여부가 확인된 후 해당 행 하나를 선택",
+        "prohibited_use": "모든 후보지에 임의의 단일 dB 경계를 적용하거나 순간 dB와 Leq를 비교",
+        "unresolved_requirements": ["법적 용도지역", "도로변 여부", "측정·평가 시간", "소음원 유형", "계측기 등급·교정"]
+      },
+      "evidence": {
+        "strength": "authoritative",
+        "source_type": "official_environmental_standard",
+        "title": "환경정책기본법 시행령 별표 1 환경기준 - 소음",
+        "publisher": "국가법령정보센터",
+        "year": 2025,
+        "url": "https://www.law.go.kr/LSW/flDownload.do?bylClsCd=110201&flSeq=159250987",
+        "legal_revision": "2025-10-01",
+        "accessed_at": "2026-07-15"
+      }
+    }
+  ],
+  "verified_coverage_gaps": [
+    {
+      "crop": "cherry_tomato",
+      "missing_axes": ["air_temperature", "relative_humidity", "plant_light"],
+      "reason": "방울토마토 품종·생육단계에 한정해 단일 축을 비교한 범용 수치를 확보하지 못함"
+    },
+    {
+      "crop": "welsh_onion",
+      "missing_axes": ["air_temperature", "relative_humidity", "plant_light"],
+      "reason": "온도는 2차 문헌의 일평균 범위이고, RH·PPFD는 대부분 고정 실험조건이어서 이 파일의 직접 비교 기준을 충족하지 못함"
+    },
+    {
+      "crop": "arugula",
+      "missing_axes": ["air_temperature", "relative_humidity", "plant_light"],
+      "reason": "확인된 광 시험은 수확 직전 처리 또는 광주기·DLI가 결합된 설계여서 전체 생육용 독립 축 값으로 분리할 수 없음"
+    },
+    {
+      "crop": "all_crops",
+      "missing_axes": ["relative_humidity_growth_optimum"],
+      "reason": "생육 최적 RH를 직접 비교한 작물별 근거가 부족함. 바질의 값은 병해 위험 조건이지 최적 생육 RH가 아님"
+    }
+  ]
+}

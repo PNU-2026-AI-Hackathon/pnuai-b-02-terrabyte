@@ -1,0 +1,1160 @@
+{
+  "schema_version": "1.0.0",
+  "document_type": "crop_evidence_gap_registry",
+  "language": "ko",
+  "scope": {
+    "description": "방울토마토, 대파, 루꼴라, 와사비, 상추, 고수의 생육환경 조사에서 직접 근거가 부족하거나 특정 조건에만 한정되어 범용값으로 사용할 수 없는 항목",
+    "included_crops": [
+      "방울토마토",
+      "대파",
+      "루꼴라",
+      "와사비",
+      "상추",
+      "고수"
+    ]
+  },
+  "evidence_status_definitions": {
+    "no_direct_evidence": "해당 작물에 직접 적용되는 수치 또는 기준을 확인하지 못함",
+    "cultivar_specific": "특정 품종에만 적용된 결과",
+    "system_specific": "특정 재배방식, 배지, 센서, 시설 또는 수경 시스템에만 적용된 결과",
+    "stage_specific": "특정 생육단계에만 적용된 결과",
+    "general_crop_reference": "해당 작물이 아니라 더 넓은 작물군 또는 일반 토마토·상추 등에서 가져온 참고값",
+    "experimental_condition_only": "시험에 사용된 조건일 뿐 최적값으로 검증되지 않음",
+    "measurement_not_transferable": "측정방식이 달라 다른 센서·배지·토양·EC 방식으로 직접 변환할 수 없음",
+    "not_a_risk_threshold": "적온·실험처리·생육범위이지만 위험 또는 고사 기준은 아님",
+    "insufficient_duration_data": "허용 노출시간 또는 피해 발생까지의 지속시간 근거가 없음",
+    "no_recovery_threshold": "정상 복귀 또는 경보 해제 기준 근거가 없음"
+  },
+  "common_gaps": [
+    {
+      "item": "재배 난이도",
+      "evidence_status": [
+        "no_direct_evidence"
+      ],
+      "detail": "낮음·보통·높음 등급을 직접 제시한 근거 부족"
+    },
+    {
+      "item": "고온·저온 허용 지속시간",
+      "evidence_status": [
+        "insufficient_duration_data"
+      ],
+      "detail": "대부분 작물에서 온도별 허용 노출시간 직접 근거 없음"
+    },
+    {
+      "item": "정상 복귀 기준",
+      "evidence_status": [
+        "no_recovery_threshold"
+      ],
+      "detail": "이상 상태 종료 후 경보 해제 기준을 직접 검증한 자료 부족"
+    },
+    {
+      "item": "배수성·보수성·통기성 요구도 등급",
+      "evidence_status": [
+        "no_direct_evidence"
+      ],
+      "detail": "낮음·보통·높음으로 정량 등급화할 직접 근거 부족"
+    },
+    {
+      "item": "과습·건조·염류·토양 다짐 내성 등급",
+      "evidence_status": [
+        "no_direct_evidence"
+      ],
+      "detail": "작물별 정량 등급과 공통 평가기준 부족"
+    },
+    {
+      "item": "물이 고였을 때 위험해지는 시간",
+      "evidence_status": [
+        "insufficient_duration_data"
+      ],
+      "detail": "침수 또는 정체수 노출시간별 피해 발생 기준 부족"
+    },
+    {
+      "item": "생육 단계별 완전한 환경 세트",
+      "evidence_status": [
+        "no_direct_evidence"
+      ],
+      "detail": "각 단계의 온도·습도·토양수분·토양온도·광량을 같은 시험설계로 비교한 자료 부족"
+    },
+    {
+      "item": "제한요인 우선순위",
+      "evidence_status": [
+        "no_direct_evidence"
+      ],
+      "detail": "동일 조건에서 1~5위로 직접 순위화한 자료 부족"
+    },
+    {
+      "item": "최소 유효 토심과 정확한 화분 부피",
+      "evidence_status": [
+        "no_direct_evidence"
+      ],
+      "detail": "대부분 작물에서 직접 검증된 최소값 부족"
+    }
+  ],
+  "crops": [
+    {
+      "crop_name": "방울토마토",
+      "scientific_name": "Solanum lycopersicum var. cerasiforme",
+      "evidence_gaps": [
+        {
+          "item": "주간 적정 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "방울토마토 고유 범용값 부족"
+        },
+        {
+          "item": "야간 적정 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "방울토마토 고유 범용값 부족"
+        },
+        {
+          "item": "생육 가능 최저·최고 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "품종 공통 생존 한계 부족"
+        },
+        {
+          "item": "고온 고사 기준",
+          "evidence_status": [
+            "no_direct_evidence",
+            "not_a_risk_threshold"
+          ],
+          "detail": "착과 저하 온도는 있으나 고사 기준 아님"
+        },
+        {
+          "item": "적정 상대습도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "방울토마토 고유 최적 RH 부족"
+        },
+        {
+          "item": "적정 VPD",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "검증된 범용 VPD 부족"
+        },
+        {
+          "item": "저온 허용시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "노출시간 직접 근거 없음"
+        },
+        {
+          "item": "환기 시작 온도·습도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "수치 기반 환기 개시값 부족"
+        },
+        {
+          "item": "최적 광주기",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "방울토마토 고유 최적 광주기 부족"
+        },
+        {
+          "item": "최적 PPFD",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "범용 최적 PPFD 부족"
+        },
+        {
+          "item": "최적 DLI",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "방울토마토 고유 DLI 부족"
+        },
+        {
+          "item": "자연 직사광선 상한",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "위험 PPFD 상한 부족"
+        },
+        {
+          "item": "저광 한계",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "저광 피해 경계 부족"
+        },
+        {
+          "item": "생육 단계별 광 요구량",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "동일 설계 단계 비교 부족"
+        },
+        {
+          "item": "최소 유효 토심",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 검증값 없음"
+        },
+        {
+          "item": "권장 화분 깊이",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "용량 자료 일부 있으나 깊이 직접값 부족"
+        },
+        {
+          "item": "성주기 적정·허용 토양온도",
+          "evidence_status": [
+            "no_direct_evidence",
+            "stage_specific"
+          ],
+          "detail": "발아·육묘값만 있고 성주기 범용값 없음"
+        },
+        {
+          "item": "범용 과습 수분값과 지속시간",
+          "evidence_status": [
+            "no_direct_evidence",
+            "measurement_not_transferable",
+            "insufficient_duration_data"
+          ],
+          "detail": "특정 배지 VWC만 존재"
+        },
+        {
+          "item": "침수 위험시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "경보별 정상 복귀값",
+          "evidence_status": [
+            "no_recovery_threshold"
+          ],
+          "detail": "직접 근거 없음"
+        }
+      ],
+      "limited_evidence": [
+        {
+          "item": "주야 온도",
+          "evidence_status": [
+            "general_crop_reference"
+          ],
+          "detail": "방울토마토 전용이 아니라 토마토 일반 착과 자료"
+        },
+        {
+          "item": "40℃ 초과 3시간 × 2일",
+          "evidence_status": [
+            "general_crop_reference",
+            "not_a_risk_threshold"
+          ],
+          "detail": "고사 기준이 아니라 착과 실패 참고값"
+        },
+        {
+          "item": "토양수분 VWC",
+          "evidence_status": [
+            "system_specific",
+            "measurement_not_transferable"
+          ],
+          "detail": "특정 토양·모래 혼합물과 특정 센서에만 적용"
+        },
+        {
+          "item": "EC",
+          "evidence_status": [
+            "cultivar_specific",
+            "system_specific",
+            "stage_specific"
+          ],
+          "detail": "Busan 88 코코피트 온실의 단계별 양액시험에 한정"
+        }
+      ]
+    },
+    {
+      "crop_name": "대파",
+      "scientific_name": "Allium fistulosum L.",
+      "evidence_gaps": [
+        {
+          "item": "재배기간 범용값",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "품종·작형별 통합값 부족"
+        },
+        {
+          "item": "지역 공통 파종·정식 시기",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "기후·작형별 차이가 큼"
+        },
+        {
+          "item": "실내 화분재배 통합 환경",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "실내 전용 통합값 부족"
+        },
+        {
+          "item": "위험 최저·최고 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "고사·심각 장해 기준 부족"
+        },
+        {
+          "item": "적정 상대습도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "최적 RH 부족"
+        },
+        {
+          "item": "적정 VPD",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "온도 허용시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "환기 시작 기준",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "수치 기준 없음"
+        },
+        {
+          "item": "일일 권장 일조시간",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "시간 단위 직접값 부족"
+        },
+        {
+          "item": "최적 PPFD",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "광질 시험조건만 존재"
+        },
+        {
+          "item": "최적 DLI",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "직사광선·저광 내성 등급",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "등급화 근거 없음"
+        },
+        {
+          "item": "생육 단계별 광 요구량",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "동일 설계 비교 부족"
+        },
+        {
+          "item": "허용 토성",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "토성별 허용범위 부족"
+        },
+        {
+          "item": "적정 EC",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "통합 권장 EC 부족"
+        },
+        {
+          "item": "허용 토양온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "최저·최고 한계 부족"
+        },
+        {
+          "item": "적정 토양수분 범위",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "범용 VWC 또는 포장용수량 기준 부족"
+        },
+        {
+          "item": "관수 개시 센서값",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "센서 기반 기준 부족"
+        },
+        {
+          "item": "과습 판단 수분값·지속시간",
+          "evidence_status": [
+            "no_direct_evidence",
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "최소 토심",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "화분 깊이·부피",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "침수 위험시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        }
+      ],
+      "limited_evidence": [
+        {
+          "item": "300 μmol/m²/s",
+          "evidence_status": [
+            "experimental_condition_only"
+          ],
+          "detail": "최적 PPFD가 아니라 LED 광질 비교시험의 고정 조건"
+        },
+        {
+          "item": "수분결핍 MPa 값",
+          "evidence_status": [
+            "measurement_not_transferable",
+            "experimental_condition_only"
+          ],
+          "detail": "일반 토양수분 센서값으로 사용할 수 없음"
+        },
+        {
+          "item": "7~30℃",
+          "evidence_status": [
+            "not_a_risk_threshold"
+          ],
+          "detail": "고사 범위가 아니라 유효 생육범위"
+        }
+      ]
+    },
+    {
+      "crop_name": "루꼴라",
+      "scientific_name": "Eruca vesicaria subsp. sativa",
+      "evidence_gaps": [
+        {
+          "item": "영양생장기 주간 적정 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "범용 직접값 부족"
+        },
+        {
+          "item": "야간 적정 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "성주기 생육 가능 최저·최고 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "발아 온도와 구분 필요"
+        },
+        {
+          "item": "위험 최저·최고 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "고사·심각장해 기준 부족"
+        },
+        {
+          "item": "적정 상대습도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "적정 VPD",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "온도 허용시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "환기 시작 기준",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "수치 기준 없음"
+        },
+        {
+          "item": "범용 최적 광주기",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "광질과 함께 바뀐 복합시험만 존재"
+        },
+        {
+          "item": "독립 검증 최적 PPFD",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "단일 요인 최적화 부족"
+        },
+        {
+          "item": "최적 DLI",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "직사광선·저광 내성 등급",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "등급화 근거 없음"
+        },
+        {
+          "item": "생육 단계별 광 요구량",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "동일 설계 비교 부족"
+        },
+        {
+          "item": "적정 토양 pH",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "허용 pH",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "허용 토성",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "최소 토심",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "화분 깊이·부피",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "범용 과습 기준",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "VWC 0.50 처리만으로 과습 경계 확정 불가"
+        },
+        {
+          "item": "침수 위험시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "성주기 고온·저온 알림값",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "발아 온도와 구분 필요"
+        }
+      ],
+      "limited_evidence": [
+        {
+          "item": "발아 최적 30℃·기저 5℃",
+          "evidence_status": [
+            "stage_specific",
+            "not_a_risk_threshold"
+          ],
+          "detail": "성주기 온도가 아니라 발아시험 값"
+        },
+        {
+          "item": "VWC 0.30 m³/m³",
+          "evidence_status": [
+            "system_specific",
+            "measurement_not_transferable"
+          ],
+          "detail": "특정 배지와 FDR 센서에서만 적용"
+        },
+        {
+          "item": "EC 1.5~1.8 dS/m",
+          "evidence_status": [
+            "cultivar_specific",
+            "system_specific"
+          ],
+          "detail": "NFT 수경 ‘Standard’ 품종에 한정"
+        },
+        {
+          "item": "PPFD·광주기",
+          "evidence_status": [
+            "experimental_condition_only"
+          ],
+          "detail": "광질까지 함께 바뀐 복합시험이라 단독 최적값으로 확정하기 어려움"
+        }
+      ]
+    },
+    {
+      "crop_name": "와사비",
+      "scientific_name": "Eutrema japonicum",
+      "evidence_gaps": [
+        {
+          "item": "주간·야간 분리 적정 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "통합 대기온도만 존재"
+        },
+        {
+          "item": "성체 적정 상대습도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "번식 RH와 구분 필요"
+        },
+        {
+          "item": "토경 적정 토양온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "반수경 수온 자료만 존재"
+        },
+        {
+          "item": "허용 토양온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "최저·최고 한계 없음"
+        },
+        {
+          "item": "일일 권장 일조시간",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "차광률 자료만 존재"
+        },
+        {
+          "item": "최적 DLI",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "자연광 PPFD 위험 상한",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "차광률과 PPFD 간 직접 변환 불가"
+        },
+        {
+          "item": "직사광선·저광 내성 등급",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "등급화 근거 없음"
+        },
+        {
+          "item": "최소 유효 토심",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "성체 화분 깊이·부피",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "육묘상 깊이만 존재"
+        },
+        {
+          "item": "과습·건조 내성 등급",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "등급화 근거 없음"
+        },
+        {
+          "item": "정체수 위험 지속시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "온도·VPD·광량 경보 지속시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "개화·결실 단계 환경",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "단계별 통합값 없음"
+        },
+        {
+          "item": "정상 복귀 기준",
+          "evidence_status": [
+            "no_recovery_threshold"
+          ],
+          "detail": "직접 근거 없음"
+        }
+      ],
+      "limited_evidence": [
+        {
+          "item": "VPD ≤2.0 kPa",
+          "evidence_status": [
+            "experimental_condition_only",
+            "system_specific"
+          ],
+          "detail": "2025년 시설연구의 초기 제안값"
+        },
+        {
+          "item": "토양수분 ≥95% 포장용수량",
+          "evidence_status": [
+            "experimental_condition_only",
+            "measurement_not_transferable"
+          ],
+          "detail": "초기 시설 제안값이며 VWC로 직접 변환 불가"
+        },
+        {
+          "item": "번식 RH 90~95%",
+          "evidence_status": [
+            "stage_specific"
+          ],
+          "detail": "성체 재배 습도가 아니라 발근조건"
+        },
+        {
+          "item": "PPFD 500~830 및 35~140",
+          "evidence_status": [
+            "system_specific",
+            "experimental_condition_only"
+          ],
+          "detail": "서로 다른 시설·생육목표라 통합 불가"
+        },
+        {
+          "item": "EC 원문 단위",
+          "evidence_status": [
+            "measurement_not_transferable"
+          ],
+          "detail": "일반 EC 표기와 달라 정확한 환산 근거 부족"
+        },
+        {
+          "item": "육묘상 4 in 깊이",
+          "evidence_status": [
+            "stage_specific"
+          ],
+          "detail": "성체 화분 규격이 아님"
+        }
+      ]
+    },
+    {
+      "crop_name": "상추",
+      "scientific_name": "Lactuca sativa L.",
+      "evidence_gaps": [
+        {
+          "item": "야간 적정 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "주야 분리 범용값 없음"
+        },
+        {
+          "item": "적정 상대습도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "범용 최적 RH 부족"
+        },
+        {
+          "item": "적정 VPD",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "통합 범위 부족"
+        },
+        {
+          "item": "고온·저온 허용시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "시간 단위 자연 일조시간",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "전일광 안내만 존재"
+        },
+        {
+          "item": "자연 직사광선·저광 내성 등급",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "등급화 근거 없음"
+        },
+        {
+          "item": "생육 단계별 광 요구량",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "동일 설계 비교 부족"
+        },
+        {
+          "item": "적정 토양수분 VWC",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "범용 센서값 없음"
+        },
+        {
+          "item": "과습 판단 수분값·지속시간",
+          "evidence_status": [
+            "no_direct_evidence",
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "최소 토심",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "화분 깊이·부피",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "침수 위험시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "정상 복귀 기준",
+          "evidence_status": [
+            "no_recovery_threshold"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "개화·결실 단계 환경",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "단계별 통합값 없음"
+        }
+      ],
+      "limited_evidence": [
+        {
+          "item": "PPFD 200·광주기 16시간·DLI 11.52",
+          "evidence_status": [
+            "cultivar_specific",
+            "system_specific"
+          ],
+          "detail": "빙산상추 ‘Glendana’ 수직수경 조건"
+        },
+        {
+          "item": "근권수온 24.5℃",
+          "evidence_status": [
+            "cultivar_specific",
+            "system_specific"
+          ],
+          "detail": "‘Spanish Green’ 여름 수경시험 결과"
+        },
+        {
+          "item": "18~24℃",
+          "evidence_status": [
+            "general_crop_reference",
+            "not_a_risk_threshold"
+          ],
+          "detail": "시설 상추 일반범위이며 품종별 주야 최적값 아님"
+        },
+        {
+          "item": "주당 1~2 in 관수",
+          "evidence_status": [
+            "general_crop_reference",
+            "measurement_not_transferable"
+          ],
+          "detail": "노지 관리량이며 센서 경보값이 아님"
+        }
+      ]
+    },
+    {
+      "crop_name": "고수",
+      "scientific_name": "Coriandrum sativum L.",
+      "evidence_gaps": [
+        {
+          "item": "주간 적정 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "범용 직접값 없음"
+        },
+        {
+          "item": "야간 적정 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "범용 직접값 없음"
+        },
+        {
+          "item": "생육 가능 최저·최고 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "성주기 생존 한계 부족"
+        },
+        {
+          "item": "대기 위험 최저·최고 온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "고사·심각장해 기준 부족"
+        },
+        {
+          "item": "적정 상대습도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "다습 회피 정성자료만 존재"
+        },
+        {
+          "item": "적정 VPD",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "고온·저온 허용시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "수치 기반 환기 기준",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "RH·온도 개시값 없음"
+        },
+        {
+          "item": "시간 단위 자연 일조시간",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "전일광 안내만 존재"
+        },
+        {
+          "item": "최적 DLI",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "직사광선·저광 내성 등급",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "등급화 근거 없음"
+        },
+        {
+          "item": "생육 단계별 광 요구량",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "동일 설계 비교 부족"
+        },
+        {
+          "item": "적정 EC",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "범용값 없음"
+        },
+        {
+          "item": "허용 pH 범위",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "약 6.5 값만 존재"
+        },
+        {
+          "item": "적정 토양수분 센서값",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "범용 VWC 없음"
+        },
+        {
+          "item": "건조 판단값·지속시간",
+          "evidence_status": [
+            "no_direct_evidence",
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "허용 토양온도",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "최저·최고 한계 부족"
+        },
+        {
+          "item": "최소 토심",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "정확한 화분 깊이·부피",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "충분히 깊은 용기라는 정성자료만 존재"
+        },
+        {
+          "item": "침수 위험시간",
+          "evidence_status": [
+            "insufficient_duration_data"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "저온 알림 기준",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "직접 근거 없음"
+        },
+        {
+          "item": "개화·결실 단계 정량 환경값",
+          "evidence_status": [
+            "no_direct_evidence"
+          ],
+          "detail": "단계별 통합값 없음"
+        }
+      ],
+      "limited_evidence": [
+        {
+          "item": "발아 토양온도 약 24.83℃",
+          "evidence_status": [
+            "stage_specific",
+            "experimental_condition_only"
+          ],
+          "detail": "종자시험의 추정값"
+        },
+        {
+          "item": "토양온도 23.9℃ 미만",
+          "evidence_status": [
+            "stage_specific",
+            "not_a_risk_threshold"
+          ],
+          "detail": "실내 추대 억제 안내이지 최적 근권 범위가 아님"
+        },
+        {
+          "item": "PPFD 200 μmol/m²/s·광주기 16시간",
+          "evidence_status": [
+            "system_specific",
+            "experimental_condition_only"
+          ],
+          "detail": "식물공장 잎 생산 조건"
+        },
+        {
+          "item": "133 μmol/m²/s 부족 및 400 μmol/m²/s + 24시간",
+          "evidence_status": [
+            "system_specific",
+            "experimental_condition_only"
+          ],
+          "detail": "같은 시설시험 내 비교값이며 자연광 경보로 사용 불가"
+        },
+        {
+          "item": "근권온도 15℃·30℃",
+          "evidence_status": [
+            "experimental_condition_only",
+            "stage_specific"
+          ],
+          "detail": "6일 단기 대사물질 시험처리로 장기 경보값이 아님"
+        }
+      ]
+    }
+  ],
+  "recommended_ai_usage": {
+    "filtering_examples": [
+      "evidence_status에 no_direct_evidence가 포함된 항목은 자동 제어값 생성에서 제외",
+      "measurement_not_transferable가 포함된 값은 센서·배지·토양·수경 방식이 동일할 때만 참고",
+      "experimental_condition_only가 포함된 값은 권장값으로 승격하지 않음",
+      "not_a_risk_threshold가 포함된 값은 경보 또는 고사 기준으로 사용하지 않음",
+      "cultivar_specific 또는 system_specific가 포함된 값은 품종·시스템이 일치할 때만 사용"
+    ],
+    "safe_default_behavior": "직접 근거가 없는 항목은 null로 유지하고, 사용자에게 추가 실험 또는 품종·재배시스템별 검증이 필요하다고 표시"
+  }
+}

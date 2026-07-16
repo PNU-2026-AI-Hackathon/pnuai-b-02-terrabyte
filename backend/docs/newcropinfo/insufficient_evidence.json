@@ -1,0 +1,277 @@
+{
+  "schema_version": "1.0.0",
+  "dataset_name": "urban_idle_space_smartfarm_quarantined_numeric_candidates",
+  "researched_at": "2026-07-15",
+  "purpose": "출처가 약하거나, 출처는 신뢰할 수 있어도 값의 적용 범위·주장 의미가 점수화에 불충분한 항목을 운영 데이터와 분리한다.",
+  "important_distinction": "quarantine_reason은 출처의 신뢰도 부족만 뜻하지 않는다. 고품질 논문이라도 단순 실험조건, 비대상 품종, 결합처리, 미확정 부지조건이면 격리한다.",
+  "reason_codes": {
+    "experimental_condition_only": "연구에서 고정했을 뿐 비교하거나 최적화하지 않은 값",
+    "not_bounded_optimum": "시험 범위의 끝에서 가장 좋았으므로 최적점의 상한이 확인되지 않음",
+    "limited_treatment_levels": "처리 수준 수가 적어 최적 구간을 확정할 수 없음",
+    "secondary_source_only": "원 1차 시험을 직접 검증하지 못한 2차 문헌 수치",
+    "wrong_crop_or_cultivar_scope": "대상 작물·품종과 직접 일치하지 않음",
+    "coupled_intervention": "광량·광질·광주기 등 여러 요인이 함께 변해 단일 축 값을 분리할 수 없음",
+    "endpoint_mismatch": "원하는 생육·수량 점수와 다른 결과변수를 측정함",
+    "no_significant_effect": "비교시험에서 목표 결과에 유의한 차이가 확인되지 않음",
+    "site_context_missing": "부지 분류가 없어 적용할 기준 행을 선택할 수 없음",
+    "unit_not_transferable": "lux와 PPFD처럼 광원 스펙트럼 없이는 직접 변환할 수 없음",
+    "conference_abstract_only": "학술대회 초록만 확인되어 상세 방법·결과 검증이 제한됨"
+  },
+  "records": [
+    {
+      "id": "basil-dli-two-levels-q001",
+      "crop": "basil",
+      "axis": "plant_light",
+      "candidate_value": {"higher_tested": 15, "lower_tested": 7, "unit": "mol_m-2_day-1"},
+      "source_claim": "약 15 DLI에서 약 7 DLI보다 생체중과 여러 생육지표가 컸다.",
+      "quarantine_reasons": ["limited_treatment_levels"],
+      "why_not_scoreable": "두 수준만 비교했으므로 15가 최적점인지, 그 이상의 반응이 어떤지 알 수 없다.",
+      "source": {
+        "title": "Effects of Nutrient Solution Concentration and Daily Light Integral on Growth and Nutrient Concentration of Several Basil Species in Hydroponic Production",
+        "year": 2018,
+        "doi": "10.21273/HORTSCI13126-18",
+        "url": "https://journals.ashs.org/view/journals/hortsci/53/9/article-p1319.xml"
+      }
+    },
+    {
+      "id": "peppermint-air-temperature-guide-q001",
+      "crop": "peppermint",
+      "axis": "air_temperature",
+      "candidate_value": {"min": 21, "max": 26, "unit": "degC"},
+      "source_claim": "정부 재배안내서가 전체 생장 적온으로 제시한다.",
+      "quarantine_reasons": ["secondary_source_only"],
+      "why_not_scoreable": "대조 처리·품종·생육단계별 원자료가 없어 센서 경계의 의미를 검증할 수 없다.",
+      "source": {
+        "title": "Peppermint Production Guide",
+        "publisher": "Philippines Agricultural Training Institute",
+        "url": "https://ati2.da.gov.ph/ati-4b/content/sites/default/files/2022-12/peppermint.pdf"
+      }
+    },
+    {
+      "id": "peppermint-rh-condition-q001",
+      "crop": "peppermint",
+      "axis": "relative_humidity",
+      "candidate_value": {"min": 30, "max": 60, "unit": "percent"},
+      "source_claim": "PPFD 비교시험 중 관측된 실내 RH 범위다.",
+      "quarantine_reasons": ["experimental_condition_only"],
+      "why_not_scoreable": "RH를 처리요인으로 비교하지 않았으므로 최적 RH가 아니다.",
+      "source": {
+        "title": "Growth Responses of Mentha spp. to Varying LED Light Intensities in Indoor Greening Applications",
+        "year": 2025,
+        "doi": "10.21273/HORTSCI18634-25",
+        "url": "https://journals.ashs.org/downloadpdf/view/journals/hortsci/60/7/article-p1161.pdf"
+      }
+    },
+    {
+      "id": "cherry-tomato-supplemental-light-q001",
+      "crop": "cherry_tomato",
+      "axis": "plant_light",
+      "candidate_value": {
+        "supplemental_ppfd_range": [112.14, 152.6],
+        "unit": "umol_m-2_s-1",
+        "photoperiod_hours": 8
+      },
+      "source_claim": "Berry King 방울토마토의 서로 다른 보광 처리에서 수량 증가가 관찰됐다.",
+      "quarantine_reasons": ["coupled_intervention", "not_bounded_optimum"],
+      "why_not_scoreable": "광질과 실제 PPFD가 처리별로 동시에 달랐고 자연광도 섞여 있어 독립 최적 PPFD를 정할 수 없다.",
+      "source": {
+        "title": "Growth, Fruit Yield, and Bioactive Compounds of Cherry Tomato in Response to Specific White-Based Full-Spectrum Supplemental LED Lighting",
+        "year": 2022,
+        "doi": "10.3390/horticulturae8040319",
+        "url": "https://www.mdpi.com/2311-7524/8/4/319"
+      }
+    },
+    {
+      "id": "cherry-tomato-rh-russeting-q001",
+      "crop": "cherry_tomato",
+      "axis": "relative_humidity",
+      "candidate_value": {
+        "low_rh_regime": [60, 70],
+        "high_rh_regime": [85, 95],
+        "unit": "percent"
+      },
+      "source_claim": "온실 토마토에서 주·야간 저·고 RH 처리를 비교했으나 과실 russeting에 유의한 영향이 없었다.",
+      "quarantine_reasons": ["wrong_crop_or_cultivar_scope", "no_significant_effect", "endpoint_mismatch"],
+      "why_not_scoreable": "방울토마토가 아니며, 생육 최적값 시험이 아니고 목표 장해에도 유의한 차이가 없었다.",
+      "source": {
+        "title": "Yield and Russeting of Greenhouse Tomato as Influenced by Leaf-to-fruit Ratio and Relative Humidity",
+        "year": 2007,
+        "url": "https://journals.ashs.org/downloadpdf/view/journals/hortsci/42/3/article-p503.pdf"
+      }
+    },
+    {
+      "id": "welsh-onion-air-temperature-review-q001",
+      "crop": "welsh_onion",
+      "axis": "air_temperature",
+      "candidate_value": {"daily_mean_min": 13, "daily_mean_max": 25, "unit": "degC"},
+      "source_claim": "peer-reviewed review가 가장 적합한 일평균 범위로 정리한다.",
+      "quarantine_reasons": ["secondary_source_only"],
+      "why_not_scoreable": "1차 원시험의 품종·단계·집계방식을 이번 조사에서 직접 검증하지 못했고, 순간 센서값으로 사용할 수도 없다.",
+      "source": {
+        "title": "A Review of Welsh Onion: Allium fistulosum L.",
+        "year": 2022,
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8839942/"
+      }
+    },
+    {
+      "id": "welsh-onion-light-condition-q001",
+      "crop": "welsh_onion",
+      "axis": "plant_light",
+      "candidate_value": {"ppfd_mean": 301.6, "ppfd_variation": 12.7, "unit": "umol_m-2_s-1", "photoperiod_hours": 12},
+      "source_claim": "LED 광질 비교시험의 고정 광량이다.",
+      "quarantine_reasons": ["experimental_condition_only"],
+      "why_not_scoreable": "PPFD를 비교하지 않았으므로 300은 최적값이 아니다.",
+      "source": {
+        "title": "Photosynthetic characteristics and chloroplast ultrastructure of welsh onion (Allium fistulosum L.) grown under different LED wavelengths",
+        "year": 2020,
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7027053/"
+      }
+    },
+    {
+      "id": "welsh-onion-rh-condition-q001",
+      "crop": "welsh_onion",
+      "axis": "relative_humidity",
+      "candidate_value": {"mean": 65.2, "variation": 4.5, "unit": "percent"},
+      "source_claim": "LED 광질 비교시험에서 유지한 RH다.",
+      "quarantine_reasons": ["experimental_condition_only"],
+      "why_not_scoreable": "RH 처리 비교가 아니므로 생육 적정값이 아니다.",
+      "source": {
+        "title": "Photosynthetic characteristics and chloroplast ultrastructure of welsh onion (Allium fistulosum L.) grown under different LED wavelengths",
+        "year": 2020,
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC7027053/"
+      }
+    },
+    {
+      "id": "arugula-harvest-light-q001",
+      "crop": "arugula",
+      "axis": "plant_light",
+      "candidate_value": {"ppfd": 200, "unit": "umol_m-2_s-1", "photoperiod_hours": 6},
+      "source_claim": "30일 생육 후 수확 직전 처리에서 200 PPFD와 6시간 조합이 전반적 수확후 품질 유지에 유리했다.",
+      "quarantine_reasons": ["endpoint_mismatch", "coupled_intervention"],
+      "why_not_scoreable": "전체 재배기간의 생육 최적값이 아니라 수확기 단기 광처리이며 광량과 시간이 결합되어 있다.",
+      "source": {
+        "title": "Effects of Light Intensity and Photoperiod on the Fresh Locking and Quality of Hydroponic Arugula in the Harvesting Period",
+        "year": 2023,
+        "doi": "10.3390/agronomy13071667",
+        "url": "https://www.mdpi.com/2073-4395/13/7/1667"
+      }
+    },
+    {
+      "id": "arugula-continuous-light-q001",
+      "crop": "arugula",
+      "axis": "plant_light",
+      "candidate_value": {"ppfd": 217.5, "unit": "umol_m-2_s-1", "photoperiod_hours": 24},
+      "source_claim": "연속광 처리에서 아루굴라와 청경채에 심한 황화가 나타나 해당 처리가 중단됐다.",
+      "quarantine_reasons": ["coupled_intervention", "endpoint_mismatch"],
+      "why_not_scoreable": "PPFD 단독 위험선이 아니라 연속광·DLI와 결합된 한 처리의 관찰이며 보편 임계값을 찾은 시험이 아니다.",
+      "source": {
+        "title": "Optimizing Light Use Efficiency and Quality of Indoor Organically Grown Leafy Greens by Using Different Lighting Strategies",
+        "year": 2023,
+        "url": "https://www.mdpi.com/2073-4395/13/10/2582"
+      }
+    },
+    {
+      "id": "arugula-temp-rh-condition-q001",
+      "crop": "arugula",
+      "axis": "relative_humidity",
+      "candidate_value": {"rh_min": 65, "rh_max": 75, "unit": "percent", "air_temperature": 25},
+      "source_claim": "수확기 광처리 시험에서 유지한 온습도 조건이다.",
+      "quarantine_reasons": ["experimental_condition_only"],
+      "why_not_scoreable": "온도와 RH를 비교하지 않았으므로 두 축 모두 최적값이 아니다.",
+      "source": {
+        "title": "Effects of Light Intensity and Photoperiod on the Fresh Locking and Quality of Hydroponic Arugula in the Harvesting Period",
+        "year": 2023,
+        "doi": "10.3390/agronomy13071667",
+        "url": "https://www.mdpi.com/2073-4395/13/7/1667"
+      }
+    },
+    {
+      "id": "wasabi-rh-condition-q001",
+      "crop": "wasabi",
+      "axis": "relative_humidity",
+      "candidate_value": {"rh": 68, "unit": "percent"},
+      "source_claim": "Daruma 광량·광질 시험에서 고정한 RH다.",
+      "quarantine_reasons": ["experimental_condition_only"],
+      "why_not_scoreable": "RH를 비교하지 않았고 다른 와사비 연구는 90% 전후의 서로 다른 고정조건도 사용하므로 최적 RH로 볼 수 없다.",
+      "source": {
+        "title": "Impact of LED Combinations and Light Intensity on Growth and Yields of Wasabi",
+        "year": 2025,
+        "doi": "10.3390/horticulturae11010003",
+        "url": "https://www.mdpi.com/2311-7524/11/1/3"
+      }
+    },
+    {
+      "id": "lettuce-vpd-anatomy-q001",
+      "crop": "lettuce",
+      "axis": "relative_humidity",
+      "candidate_value": {"low_vpd": 0.69, "high_vpd": 1.76, "unit": "kPa", "air_temperature": 24},
+      "source_claim": "두 VPD 처리에서 상추 잎의 기공·잎맥 등 해부학적 가소성이 달라졌다.",
+      "quarantine_reasons": ["endpoint_mismatch"],
+      "why_not_scoreable": "수량 최적 RH를 찾은 시험이 아니며, RH 원수치 대신 온도 의존적인 VPD로 처리했다.",
+      "source": {
+        "title": "Vapour Pressure Deficit (VPD) Drives the Balance of Hydraulic-Related Anatomical Traits in Lettuce Leaves",
+        "year": 2022,
+        "doi": "10.3390/plants11182369",
+        "url": "https://www.mdpi.com/2223-7747/11/18/2369"
+      }
+    },
+    {
+      "id": "lettuce-rh-condition-q002",
+      "crop": "lettuce",
+      "axis": "relative_humidity",
+      "candidate_value": {"mean": 69.61, "variation": 7.6, "unit": "percent"},
+      "source_claim": "빙산상추 DLI 시험의 평균 RH다.",
+      "quarantine_reasons": ["experimental_condition_only"],
+      "why_not_scoreable": "RH가 처리요인이 아니므로 Glendana의 최적 RH로 해석할 수 없다.",
+      "source": {
+        "title": "Determination of optimal daily light integral (DLI) for indoor cultivation of iceberg lettuce in an indigenous vertical hydroponic system",
+        "year": 2023,
+        "doi": "10.1038/s41598-023-36997-2",
+        "url": "https://www.nature.com/articles/s41598-023-36997-2"
+      }
+    },
+    {
+      "id": "coriander-air-temperature-abstract-q001",
+      "crop": "coriander",
+      "axis": "air_temperature",
+      "candidate_value": {"estimated_optimum_standard_cultivar": 26, "unit": "degC", "tested_targets": [11, 17, 23, 29, 35]},
+      "source_claim": "표준 품종의 생체중 온도반응에서 약 26 °C 최적점이 추정됐다.",
+      "quarantine_reasons": ["conference_abstract_only"],
+      "why_not_scoreable": "학술대회 초록만 확인되어 품종명, 반복·모형 상세와 전체 결과를 충분히 검증하지 못했다.",
+      "source": {
+        "title": "Modeling Growth of Cilantro in Response to Air Temperature",
+        "year": 2016,
+        "url": "https://ashs.confex.com/ashs/2016/webprogram/Paper24200.html"
+      }
+    },
+    {
+      "id": "coriander-rh-condition-q001",
+      "crop": "coriander",
+      "axis": "relative_humidity",
+      "candidate_value": {"rh": 48, "unit": "percent"},
+      "source_claim": "PPFD·광주기 비교시험에서 유지한 RH다.",
+      "quarantine_reasons": ["experimental_condition_only"],
+      "why_not_scoreable": "RH를 비교하지 않았으므로 최적 생육값이 아니다.",
+      "source": {
+        "title": "Effects of Light Intensity and Photoperiod on Morphological Development and Photosynthetic Characteristics of Coriander",
+        "year": 2024,
+        "doi": "10.3390/horticulturae10030215",
+        "url": "https://www.mdpi.com/2311-7524/10/3/215"
+      }
+    },
+    {
+      "id": "all-crops-universal-lux-threshold-q001",
+      "crop": "all_crops",
+      "axis": "plant_light",
+      "candidate_value": null,
+      "source_claim": "lux는 인간 시감도 기반이고 식물용 광 측정에는 PPFD·DLI가 권장된다.",
+      "quarantine_reasons": ["unit_not_transferable"],
+      "why_not_scoreable": "광원 스펙트럼별 변환계수 검증 없이 lux를 PPFD로 바꿀 수 없으며, 이번에 확인한 작물 실험값도 PPFD/DLI 기반이다.",
+      "source": {
+        "title": "Calculating and Using Daily Light Integral (DLI): An Introductory Guide",
+        "publisher": "Virginia Cooperative Extension, Virginia Tech",
+        "url": "https://www.pubs.ext.vt.edu/content/pubs_ext_vt_edu/en/SPES/spes-720/spes-720.html"
+      }
+    }
+  ]
+}
