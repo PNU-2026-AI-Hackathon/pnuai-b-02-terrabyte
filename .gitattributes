@@ -1,0 +1,2 @@
+# 배시 카운슬 래퍼는 CRLF가 섞이면 셔뱅 해석이 깨지므로 항상 LF로 체크아웃한다.
+scripts/council-* text eol=lf
