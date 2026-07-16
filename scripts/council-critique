@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Round 2 critique wrapper. Critics see ONLY the anonymised option cards,
+# never the original proposals — per the blackboard policy in CLAUDE.md.
+#
+# Usage: scripts/council-critique <ENGINE:codex|agy> <CRITIC_ID> <LENS> <OUT_DIR>
+set -euo pipefail
+
+ENGINE="${1:?engine required}"
+CRITIC_ID="${2:?critic id required}"
+LENS="${3:?lens required}"
+OUT_DIR="${4:-backend/docs/debate/cards}"
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+mkdir -p "$OUT_DIR"
+
+CARDS="$ROOT/backend/docs/debate/cards/options.json"
+SCHEMA="$ROOT/backend/docs/debate/critique_schema.json"
+
+PROMPT=$(cat <<EOF
+You are council critic: $CRITIC_ID
+
+Round 2 of a brainstorming council. Ten agents proposed independently; a moderator
+compressed their proposals into eight anonymised option cards. You are NOT the final
+decision maker and you do NOT get to see the original proposals — judge the ideas,
+not their authors.
+
+Your critical lens:
+$LENS
+
+Rules:
+- Do NOT edit any file.
+- You may read the source corpus to check a claim, but do not re-derive the settled
+  finding about which sensor channels are scorable. It is unanimous and verified.
+    $ROOT/backend/docs/cropinfo/            (8 Korean crop documents + gap registry)
+    $ROOT/backend/docs/debate/01_moderator_validation.json   (the 64-cell measurement)
+- Critique every option you are given. Do not skip any.
+- Be specific and unsentimental. Name the failure, not a vibe.
+- A critique that only lists weaknesses is useless: give the cheapest fix that would
+  most reduce each risk.
+- Options A-D are mutually exclusive. E-H are orthogonal and can combine with any of A-D.
+- Weigh every option against the moderator's measurement, which postdates eight of the
+  ten proposals.
+- Keep each field to roughly one sentence. Terse beats thorough here.
+- Output a single JSON object. No prose outside the JSON.
+
+--- BEGIN OPTION CARDS ---
+$(cat "$CARDS")
+--- END OPTION CARDS ---
+EOF
+)
+
+case "$ENGINE" in
+  codex)
+    codex exec \
+      -m "${COUNCIL_CODEX_MODEL:-gpt-5.6-sol}" \
+      -c model_reasoning_effort="${COUNCIL_CODEX_EFFORT:-xhigh}" \
+      -s read-only \
+      --cd "$ROOT" \
+      --skip-git-repo-check \
+      --output-schema "$SCHEMA" \
+      -o "$OUT_DIR/$CRITIC_ID.json" \
+      "$PROMPT" >"$OUT_DIR/$CRITIC_ID.log" 2>&1 </dev/null
+    ;;
+  agy)
+    AGY_PROMPT="$PROMPT
+
+OUTPUT CONTRACT — strict. Reply with ONE JSON object and nothing else. No markdown
+fence, no preamble. Shape:
+{
+  \"critic_id\": \"$CRITIC_ID\",
+  \"critiques\": [
+    {\"target_option\":\"Option A\",\"weakest_assumption\":\"...\",\"likely_failure_mode\":\"...\",\"hidden_cost\":\"...\",\"best_fix\":\"...\",\"verdict\":\"proceed|revise|reject\"}
+  ],
+  \"overall_ranking\": [\"Option X\", \"...\"],
+  \"decision_crux\": \"...\"
+}
+Include one critiques entry for every option A through H. overall_ranking must list all eight."
+
+    cd "$ROOT"
+    agy --model "${COUNCIL_AGY_MODEL:-Claude Opus 4.6 (Thinking)}" \
+      --mode plan \
+      --print-timeout "${COUNCIL_AGY_TIMEOUT:-25m}" \
+      -p "$AGY_PROMPT" \
+      >"$OUT_DIR/$CRITIC_ID.raw" 2>"$OUT_DIR/$CRITIC_ID.log" </dev/null
+    ;;
+  *)
+    echo "unknown engine: $ENGINE" >&2; exit 1 ;;
+esac
+
+echo "done: $CRITIC_ID"

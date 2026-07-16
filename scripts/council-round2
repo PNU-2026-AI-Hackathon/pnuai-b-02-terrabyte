@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Round 2 fan-out: five critics review the eight anonymised option cards.
+# Usage: scripts/council-round2
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
+OUT="backend/docs/debate/cards"
+mkdir -p "$OUT"
+
+run() { scripts/council-critique "$1" "$2" "$3" "$OUT" || echo "FAILED: $2"; }
+
+run codex critic-fidelity \
+"EVIDENCE FIDELITY. Your only concern is whether an option makes it structurally hard to fabricate or conflate a value. The corpus's entire discipline is refusing to invent numbers. For each option ask: where exactly could a well-meaning implementer, six weeks from now, silently turn a disease-risk threshold into a growth optimum, a daily mean into an instantaneous reading, or an experimental condition into a recommendation? Which options prevent it structurally versus by convention or hope?" &
+
+run codex critic-buildability \
+"BUILDABILITY. Hackathon timeline, small team, SQLite, and a backend that is currently an empty directory. For each option, estimate honestly what it costs to build and seed, and what a team actually ships by the deadline. Name specifically what you would cut from each. Be suspicious of designs whose cost lands on the seed-data curator rather than the schema author — that cost is real and usually invisible." &
+
+run codex critic-consumer \
+"THE CONSUMER'S LENS. A scoring layer and a dashboard will be built on this next cycle, by someone who was not in this debate. For each option, write the actual query that answers 'for crop X in deployment context Y, which axes may be scored, what is the band, and if not scorable, why not and what do I show instead'. Judge the options by how painful that query is and how easy it is to get wrong. An option that is safe only if you use the right view, in a database with no permissions, is not safe." &
+
+run agy critic-product \
+"PRODUCT VIABILITY. Two options embed abandonment thresholds that the moderator's measurement has now crossed: 3-4 scorable cells against a pre-committed floor of 12 for 'redesign guidance-first' and 3 for 'abandon numeric scoring entirely'. Three of eight MVP crops have zero scorable axes. Decide plainly whether the environment-score dashboard as specified is dead, and if so what the product honestly becomes. Then say what that verdict does to the schema question — does a guidance-first product need less schema, or differently-shaped schema?" &
+
+run agy critic-simplicity \
+"YAGNI AND OPPORTUNITY COST. Roughly 94% of the crop x axis matrix is empty and there are 3-5 scorable cells. For each option, ask what it is buying and whether anything will ever query it. But steelman the other side before you swing: the corpus holds 674 justified absences and a large body of qualitative guidance, so 'the data is empty' may be measuring the wrong thing — the absences may BE the payload. Decide whether that reframing rescues the heavier options or is a rationalisation for over-engineering." &
+
+wait
+echo "ROUND2_COMPLETE"
+ls -la "$OUT"

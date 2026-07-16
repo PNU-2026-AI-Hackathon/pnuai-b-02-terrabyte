@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Retry the agy agents that were blocked by quota exhaustion.
+# Polls until the agy individual quota resets, then runs the missing agents.
+#
+# Usage: scripts/council-round1-resume
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
+
+BRIEF="backend/docs/debate/00_brief.json"
+OUT_DIR="backend/docs/debate/raw"
+POLL_SECONDS="${COUNCIL_POLL_SECONDS:-600}"
+DEADLINE_SECONDS="${COUNCIL_DEADLINE_SECONDS:-28800}"   # give up after 8h
+
+declare -A MANDATES=(
+  [agy-product-advocate]="Own decision criterion 2. Work backwards from a dashboard a user would actually trust and find useful, and state what the schema must therefore carry. Confront the tension head-on: how do you build a screen worth looking at when the honest evidence base is mostly holes? Consider what uncertainty looks like in a UI without becoming noise."
+  [agy-skeptic]="Attack scope and cost. Apply YAGNI ruthlessly. This is a hackathon. Argue for the smallest schema that could possibly work, name what everyone else is over-engineering, and identify the opportunity cost of provenance modeling that may never be queried. If a JSON file on disk beats a database here, make that case."
+)
+
+# An agent is done when its .raw parses as JSON containing our contract's marker key.
+is_done() {
+  local f="$OUT_DIR/$1.raw"
+  [ -s "$f" ] || return 1
+  python - "$f" <<'PY' >/dev/null 2>&1
+import json,re,sys
+t=open(sys.argv[1],encoding='utf-8',errors='replace').read()
+m=re.findall(r'\{.*\}',t,re.S)
+if not m: sys.exit(1)
+d=json.loads(max(m,key=len))
+sys.exit(0 if 'change_mind_if' in d and 'recommendation' in d else 1)
+PY
+}
+
+quota_blocked() {
+  grep -qi "quota reached" "$OUT_DIR/$1.log" 2>/dev/null
+}
+
+START=$(date +%s)
+echo "[$(date '+%F %T')] resume watcher started"
+
+while true; do
+  PENDING=()
+  for a in "${!MANDATES[@]}"; do
+    is_done "$a" || PENDING+=("$a")
+  done
+
+  if [ ${#PENDING[@]} -eq 0 ]; then
+    echo "[$(date '+%F %T')] all agents complete"
+    break
+  fi
+
+  NOW=$(date +%s)
+  if [ $((NOW - START)) -ge "$DEADLINE_SECONDS" ]; then
+    echo "[$(date '+%F %T')] DEADLINE EXCEEDED; still pending: ${PENDING[*]}"
+    exit 2
+  fi
+
+  echo "[$(date '+%F %T')] attempting: ${PENDING[*]}"
+  for a in "${PENDING[@]}"; do
+    scripts/council-agy "$a" "$BRIEF" "${MANDATES[$a]}" "$OUT_DIR" >/dev/null 2>&1 &
+  done
+  wait
+
+  STILL=()
+  for a in "${PENDING[@]}"; do
+    if is_done "$a"; then
+      echo "[$(date '+%F %T')] OK: $a"
+    else
+      if quota_blocked "$a"; then
+        echo "[$(date '+%F %T')] quota-blocked: $a — $(grep -io 'Resets in [0-9hm ]*' "$OUT_DIR/$a.log" | head -1)"
+      else
+        echo "[$(date '+%F %T')] incomplete (non-quota): $a"
+      fi
+      STILL+=("$a")
+    fi
+  done
+
+  [ ${#STILL[@]} -eq 0 ] && { echo "[$(date '+%F %T')] all agents complete"; break; }
+
+  echo "[$(date '+%F %T')] sleeping ${POLL_SECONDS}s"
+  sleep "$POLL_SECONDS"
+done
+
+echo "ROUND1_RESUME_COMPLETE"
+for a in "${!MANDATES[@]}"; do
+  printf '%-28s %8s bytes\n' "$a" "$(wc -c < "$OUT_DIR/$a.raw" 2>/dev/null || echo 0)"
+done

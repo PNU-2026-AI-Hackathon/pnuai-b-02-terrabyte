@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# Generation-2 council agent wrapper (newcropinfo evidence base).
+# Usage: scripts/council-v2 <ENGINE:codex|agy> <AGENT_ID> <MANDATE> <OUT_DIR>
+set -euo pipefail
+
+ENGINE="${1:?engine required}"
+AGENT_ID="${2:?agent id required}"
+MANDATE="${3:?mandate required}"
+OUT_DIR="${4:-backend/docs/debate/v2/raw}"
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+mkdir -p "$OUT_DIR"
+
+BRIEF="$ROOT/backend/docs/debate/v2/00_brief.json"
+SCHEMA="$ROOT/backend/docs/debate/v2/proposal_schema.json"
+
+PROMPT=$(cat <<EOF
+You are council agent: $AGENT_ID
+
+You are in a brainstorming council. You are NOT the final decision maker. A moderator
+will compress your output and synthesise it with nine other agents.
+
+Your mandate:
+$MANDATE
+
+Rules:
+- Do NOT edit any file. You are read-only.
+- The repository root is exactly: $ROOT
+  Do NOT search the filesystem. Do NOT look in other conversations. Read these directly:
+    $ROOT/backend/docs/newcropinfo/README.md
+    $ROOT/backend/docs/newcropinfo/verified_numeric_evidence.json
+    $ROOT/backend/docs/newcropinfo/insufficient_evidence.json
+    $ROOT/backend/docs/newcropinfo/collection_contract.json
+  Optional context (a previous council judged an older corpus that no longer exists;
+  informative, NOT binding):
+    $ROOT/backend/docs/debate/02_synthesis.json
+- The files are Korean. Read them anyway; structure and numbers are what matter.
+- The brief below is the moderator's summary and may contain errors. Check it against
+  the files and report any errors in brief_corrections. This is valuable, not rude.
+- Budget your time: you have a hard wall-clock limit. Read the four files, then answer.
+- Analyse independently. You cannot see other agents' proposals.
+- Every record declares its own prohibited_use. Read it and honour it.
+- Be concrete: name tables, columns, formulas, UI states.
+- State assumptions and risks, including your own proposal's weaknesses.
+- Include exactly one cheap validation step (< 1 hour).
+- Include what would change your mind.
+- Keep 'why' + 'assumptions' + 'risks' to roughly 180 words total. 'sketch' is exempt.
+- Output a single JSON object. No prose outside the JSON.
+
+--- BEGIN BRIEF ---
+$(cat "$BRIEF")
+--- END BRIEF ---
+EOF
+)
+
+case "$ENGINE" in
+  codex)
+    codex exec \
+      -m "${COUNCIL_CODEX_MODEL:-gpt-5.6-sol}" \
+      -c model_reasoning_effort="${COUNCIL_CODEX_EFFORT:-xhigh}" \
+      -s read-only \
+      --cd "$ROOT" \
+      --skip-git-repo-check \
+      --output-schema "$SCHEMA" \
+      -o "$OUT_DIR/$AGENT_ID.json" \
+      "$PROMPT" >"$OUT_DIR/$AGENT_ID.log" 2>&1 </dev/null
+    ;;
+  agy)
+    AGY_PROMPT="$PROMPT
+
+OUTPUT CONTRACT — strict. Reply with ONE JSON object and nothing else. No markdown
+fence, no preamble, no trailing commentary. Shape:
+{
+  \"agent_id\": \"$AGENT_ID\",
+  \"role_summary\": \"...\",
+  \"recommendation\": \"...\",
+  \"why\": [\"...\"],
+  \"sketch\": \"...\",
+  \"score_verdict\": {
+    \"can_a_numeric_score_exist\": \"yes|yes_with_severe_limits|no\",
+    \"what_it_would_mean\": \"...\",
+    \"what_replaces_it_if_not\": \"...\"
+  },
+  \"brief_corrections\": [\"...\"],
+  \"procurement_implications\": [\"...\"],
+  \"assumptions\": [\"...\"],
+  \"risks\": [\"...\"],
+  \"cheap_validation\": \"...\",
+  \"change_mind_if\": \"...\"
+}"
+    cd "$ROOT"
+    # Never redirect straight onto the answer file: '>' truncates it the instant
+    # the retry starts, so a re-run of an agent that already answered destroys
+    # that answer, and a kill mid-run leaves 0 bytes. Stage, then promote only a
+    # non-empty result.
+    TMP="$OUT_DIR/$AGENT_ID.raw.partial"
+    agy --model "${COUNCIL_AGY_MODEL:-Claude Opus 4.6 (Thinking)}" \
+      --mode plan \
+      --print-timeout "${COUNCIL_AGY_TIMEOUT:-25m}" \
+      -p "$AGY_PROMPT" \
+      >"$TMP" 2>"$OUT_DIR/$AGENT_ID.log" </dev/null
+    if [ -s "$TMP" ]; then
+      mv -f "$TMP" "$OUT_DIR/$AGENT_ID.raw"
+    else
+      rm -f "$TMP"
+      echo "empty output, kept previous answer if any: $AGENT_ID" >&2
+    fi
+    ;;
+  *)
+    echo "unknown engine: $ENGINE" >&2; exit 1 ;;
+esac
+
+echo "done: $AGENT_ID"

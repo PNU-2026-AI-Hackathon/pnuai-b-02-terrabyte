@@ -1,0 +1,153 @@
+#!/usr/bin/env bash
+# Generation-2 Round 2: targeted follow-up on the BH1750 hardware decision.
+# Level-3 escalation per CLAUDE.md: a small panel, one specific issue.
+# Usage: scripts/council-v2-round2
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
+
+OUT="backend/docs/debate/v2/round2"
+mkdir -p "$OUT"
+POLL="${COUNCIL_POLL_SECONDS:-300}"
+DEADLINE="${COUNCIL_DEADLINE_SECONDS:-5400}"
+
+BRIEF="$ROOT/backend/docs/debate/v2/03_round2_brief.json"
+SCHEMA="$ROOT/backend/docs/debate/v2/03_round2_schema.json"
+
+declare -A ENGINE=(
+  [codex-schema-lux]=codex
+  [codex-curve-lux]=codex
+  [agy-procurement-lux]=agy
+)
+
+declare -A MANDATE=(
+  [codex-schema-lux]="You held codex-schema-v2 in Round 1: SQLite as the operational join layer, evidence documents loaded as-is with typed projections. Now answer Q3 above all. Give the DDL that represents a lux-native deployment and makes it STRUCTURALLY impossible — via CHECK constraints, table separation, or absent columns — to compare a raw lux reading with the corpus PPFD/DLI values. Then answer Q1, Q2, Q4, Q5."
+  [codex-curve-lux]="You held codex-curve-builder in Round 1: a comparative_best_tested_point licenses only argmax over the tested grid; untested regions are unknown, not bad. Now rule formally on Q2. Under what stated conditions, if any, does a lux reading become admissible evidence about a PPFD-denominated record? Treat the conversion coefficient as a measurement with its own uncertainty and validity domain. If a validated coefficient exists for a fixed LED spectrum, does the derived PPFD inherit the record's context gates, or does the conversion uncertainty swamp the 6-degree-wide grid spacing? Then answer Q1, Q3, Q4, Q5."
+  [agy-procurement-lux]="You held agy-procurement in Round 1, where you called a lux-only plant_light sensor 'an unrecoverable error' and said a cheap lux sensor 'kills' the axis. That was written without knowing BH1750 was already the user's decision. Defend or revise that position against the real decision — do not evade it. You may require a one-time reference measurement; that is an answer, not a hardware argument. Answer Q1 through Q5, and state plainly whether your Round 1 language was too strong or exactly right."
+)
+
+is_done() {
+  local a="$1" f
+  if [ "${ENGINE[$a]}" = "codex" ]; then f="$OUT/$a.json"; else f="$OUT/$a.raw"; fi
+  [ -s "$f" ] || return 1
+  python - "$f" <<'PY' >/dev/null 2>&1
+import json,sys
+t=open(sys.argv[1],encoding='utf-8',errors='replace').read()
+dec=json.JSONDecoder(strict=False)
+i=t.find('{')
+while i!=-1:
+    try:
+        o,_=dec.raw_decode(t,i)
+        if isinstance(o,dict) and 'plant_light_verdict' in o and 'change_mind_if' in o:
+            sys.exit(0)
+    except Exception: pass
+    i=t.find('{',i+1)
+sys.exit(1)
+PY
+}
+
+run_agent() {
+  local a="$1" eng="${ENGINE[$1]}"
+  local PROMPT
+  PROMPT="You are council agent: $a
+
+This is Round 2 of a brainstorming council. You are NOT the final decision maker.
+A moderator will synthesise your answer with the other agents'.
+
+Your mandate:
+${MANDATE[$a]}
+
+Rules:
+- Do NOT edit any file. You are read-only.
+- The repository root is exactly: $ROOT
+  Do NOT search the filesystem. Read these directly:
+    $ROOT/backend/docs/newcropinfo/README.md
+    $ROOT/backend/docs/newcropinfo/verified_numeric_evidence.json
+    $ROOT/backend/docs/newcropinfo/insufficient_evidence.json
+    $ROOT/backend/docs/newcropinfo/collection_contract.json
+- The files are Korean. Read them anyway; structure and numbers are what matter.
+- Pay particular attention to collection_contract.json axes.plant_light.lux_policy
+  and to the quarantine record all-crops-universal-lux-threshold-q001.
+- Budget your time: you have a hard wall-clock limit. Read the files, then answer.
+- Output a single JSON object. No prose outside the JSON.
+
+--- BEGIN ROUND 2 BRIEF ---
+$(cat "$BRIEF")
+--- END ROUND 2 BRIEF ---"
+
+  case "$eng" in
+    codex)
+      codex exec \
+        -m "${COUNCIL_CODEX_MODEL:-gpt-5.6-sol}" \
+        -c model_reasoning_effort="${COUNCIL_CODEX_EFFORT:-xhigh}" \
+        -s read-only \
+        --cd "$ROOT" \
+        --skip-git-repo-check \
+        --output-schema "$SCHEMA" \
+        -o "$OUT/$a.json" \
+        "$PROMPT" >"$OUT/$a.log" 2>&1 </dev/null
+      ;;
+    agy)
+      cd "$ROOT"
+      agy --model "${COUNCIL_AGY_MODEL:-Claude Opus 4.6 (Thinking)}" \
+        --mode plan \
+        --print-timeout "${COUNCIL_AGY_TIMEOUT:-25m}" \
+        -p "$PROMPT
+
+OUTPUT CONTRACT — strict. Reply with ONE JSON object and nothing else. No markdown
+fence, no preamble, no trailing commentary. Escape every newline inside a string as
+\\n and every double quote as \\\". The object must parse with a strict JSON parser.
+Shape:
+{
+  \"agent_id\": \"$a\",
+  \"recommendation\": \"...\",
+  \"why\": [\"...\"],
+  \"sketch\": \"...\",
+  \"plant_light_verdict\": {
+    \"is_plant_light_evaluable_with_bh1750\": \"yes|yes_only_under_stated_preconditions|no\",
+    \"conversion_exception_reachable\": \"yes|only_if|no\",
+    \"what_the_operator_sees\": \"...\",
+    \"what_dies\": \"...\"
+  },
+  \"assumptions\": [\"...\"],
+  \"risks\": [\"...\"],
+  \"cheap_validation\": \"...\",
+  \"change_mind_if\": \"...\"
+}" >"$OUT/$a.raw" 2>"$OUT/$a.log" </dev/null
+      ;;
+  esac
+}
+
+START=$(date +%s)
+while true; do
+  PENDING=()
+  for a in "${!ENGINE[@]}"; do is_done "$a" || PENDING+=("$a"); done
+  [ ${#PENDING[@]} -eq 0 ] && { echo "[$(date '+%F %T')] round2 complete"; break; }
+
+  NOW=$(date +%s)
+  if [ $((NOW - START)) -ge "$DEADLINE" ]; then
+    echo "[$(date '+%F %T')] DEADLINE EXCEEDED; pending: ${PENDING[*]}"; exit 2
+  fi
+
+  echo "[$(date '+%F %T')] attempting: ${PENDING[*]}"
+  for a in "${PENDING[@]}"; do run_agent "$a" & done
+  wait
+
+  STILL=()
+  for a in "${PENDING[@]}"; do
+    if is_done "$a"; then echo "[$(date '+%F %T')] OK: $a"
+    else
+      grep -qi "quota reached" "$OUT/$a.log" 2>/dev/null \
+        && echo "[$(date '+%F %T')] quota-blocked: $a" \
+        || echo "[$(date '+%F %T')] incomplete: $a"
+      STILL+=("$a")
+    fi
+  done
+  [ ${#STILL[@]} -eq 0 ] && { echo "[$(date '+%F %T')] round2 complete"; break; }
+  echo "[$(date '+%F %T')] sleeping ${POLL}s"
+  sleep "$POLL"
+done
+
+echo "V2_ROUND2_COMPLETE"
+ls -la "$OUT"

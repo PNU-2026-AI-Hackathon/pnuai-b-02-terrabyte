@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+# Council agent wrapper: Antigravity (agy) engine.
+# Usage: scripts/council-agy <AGENT_ID> <BRIEF_PATH> <MANDATE> <OUT_DIR>
+#
+# NOTE: agy has no --output-schema equivalent, so the JSON contract is enforced
+# in the prompt and the raw reply is post-extracted by the moderator.
+# Runs in plan mode so the agent cannot write to the workspace.
+set -euo pipefail
+
+AGENT_ID="${1:?agent id required}"
+BRIEF_PATH="${2:?brief path required}"
+MANDATE="${3:?mandate required}"
+OUT_DIR="${4:-.agent-runs/manual}"
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+mkdir -p "$OUT_DIR"
+
+MODEL="${COUNCIL_AGY_MODEL:-Claude Opus 4.6 (Thinking)}"
+
+PROMPT=$(cat <<EOF
+You are council agent: $AGENT_ID
+
+You are participating in a brainstorming council. You are NOT the final decision maker.
+A moderator will compress your output and synthesise it with nine other agents.
+
+Your mandate:
+$MANDATE
+
+Rules:
+- Do NOT edit any file. You are read-only.
+- The repository root is exactly: $ROOT
+  Do NOT search the filesystem for it. Do NOT look in other conversations. The files below
+  exist at these absolute paths — read them directly and immediately:
+    $ROOT/backend/docs/cropinfo/basil_growth_environment.md       (deepest, 1009 lines)
+    $ROOT/backend/docs/cropinfo/lettuce_growth_environment.md     (representative 254-line crop)
+    $ROOT/backend/docs/cropinfo/crop_evidence_gaps_6_crops.json   (gap registry)
+  The documents are in Korean. Read them anyway; the numbers and structure are what matter.
+- Budget your time: you have a hard wall-clock limit. Read the three files, then answer.
+  Do not explore beyond them.
+- Analyse independently. You cannot see other agents' proposals.
+- Be concrete: name tables, columns, types, steps.
+- State assumptions and risks, including your own proposal's weaknesses.
+- Include exactly one cheap validation step (< 1 hour).
+- Include what would change your mind.
+- Stay in scope: data refinement + schema design. Do NOT design the scoring formula.
+- Keep 'why' + 'assumptions' + 'risks' to roughly 180 words total. 'schema_sketch' is exempt.
+
+OUTPUT CONTRACT — this is strict:
+Reply with a single JSON object and NOTHING else. No markdown fence, no preamble,
+no trailing commentary. The object must match exactly this shape:
+
+{
+  "agent_id": "$AGENT_ID",
+  "role_summary": "<one sentence restating your mandate>",
+  "recommendation": "<1-3 decisive sentences>",
+  "why": ["<terse point>", "..."],
+  "schema_sketch": "<SQL DDL, pipeline steps, a predicate, or a worked example. Empty string if not applicable.>",
+  "scorable_axes": ["<sensor channel — one-clause justification>", "..."],
+  "unscorable_axes": ["<sensor channel — one-clause reason>", "..."],
+  "assumptions": ["<what you take for granted that could be false>", "..."],
+  "risks": ["<how YOUR OWN recommendation could fail>", "..."],
+  "cheap_validation": "<one check runnable in under an hour>",
+  "change_mind_if": "<the specific finding that would flip you>"
+}
+
+The full brief is below.
+
+--- BEGIN BRIEF ---
+$(cat "$ROOT/$BRIEF_PATH")
+--- END BRIEF ---
+EOF
+)
+
+# agy's --print-timeout defaults to 5m, which silently truncates the stream mid-answer.
+TIMEOUT="${COUNCIL_AGY_TIMEOUT:-25m}"
+
+cd "$ROOT"
+agy --model "$MODEL" --mode plan --print-timeout "$TIMEOUT" -p "$PROMPT" \
+  >"$OUT_DIR/$AGENT_ID.raw" 2>"$OUT_DIR/$AGENT_ID.log" </dev/null
+
+echo "done: $AGENT_ID -> $OUT_DIR/$AGENT_ID.raw"

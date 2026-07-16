@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Round 1 fan-out: dispatch all 10 council agents in parallel.
+# Usage: scripts/council-round1
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
+
+BRIEF="backend/docs/debate/00_brief.json"
+SCHEMA="backend/docs/debate/proposal_schema.json"
+OUT_DIR="backend/docs/debate/raw"
+mkdir -p "$OUT_DIR"
+
+run_codex() {
+  scripts/council-codex "$1" "$BRIEF" "$2" "$OUT_DIR" "$SCHEMA" \
+    || echo "FAILED: $1"
+}
+run_agy() {
+  scripts/council-agy "$1" "$BRIEF" "$2" "$OUT_DIR" \
+    || echo "FAILED: $1"
+}
+
+run_codex codex-schema-architect \
+"Own Q1, Q3, Q5. Propose the concrete SQLite relational shape. Give real DDL. Defend your normalisation choice against the sparsity and heterogeneity of this data." &
+
+run_codex codex-extraction-engineer \
+"Own Q6, Q7. Design the markdown-to-database pipeline. Decide the source of truth. Address reproducibility and what happens when a document is revised. Assess whether the shared 10-section skeleton is regular enough to parse deterministically — verify this claim against the actual files rather than assuming." &
+
+run_codex codex-evidence-modeler \
+"Own Q2, Q4. Model absence, evidence status, and applicability scope so that the registry's recommended_ai_usage filtering rules become executable SQL predicates instead of prose. Show the query that answers 'which axes may be scored for crop X in system Y'." &
+
+run_codex codex-sensor-integrator \
+"Own Q8, Q10. Decide which sensor channels are scorable, advisory, or record-only, and make that decision data-driven. Handle the lux/PPFD and VWC/field-capacity mismatches. If calibration is your answer, show how the schema keeps deployment-local calibration from contaminating literature evidence." &
+
+run_codex codex-critic \
+"Do not propose a design of your own first. Instead, identify the failure modes any design here will hit: maintainability, edge cases, migration, query complexity, and the ways a well-meaning implementer would accidentally violate the evidence principles. Then state the minimum schema guardrails that would prevent them." &
+
+run_agy agy-explorer \
+"Own Q1 from the opposite direction. Deliberately explore designs the obvious answer would miss: document-oriented storage inside SQLite (JSON1), a knowledge-graph/triple shape, event-sourced facts, or keeping markdown as the source of truth with the database as a derived cache. Argue for the strongest non-obvious option." &
+
+run_agy agy-domain-skeptic \
+"Own the horticultural validity question. Challenge the sensor-to-evidence mapping in this brief — correct it where it is wrong. Is an environment score computed from this evidence base scientifically defensible at all, or is it a number that merely looks authoritative? If the honest answer is that most axes cannot be scored, say so plainly and say what the product becomes instead." &
+
+run_agy agy-product-advocate \
+"Own decision criterion 2. Work backwards from a dashboard a user would actually trust and find useful, and state what the schema must therefore carry. Confront the tension head-on: how do you build a screen worth looking at when the honest evidence base is mostly holes? Consider what uncertainty looks like in a UI without becoming noise." &
+
+run_agy agy-skeptic \
+"Attack scope and cost. Apply YAGNI ruthlessly. This is a hackathon. Argue for the smallest schema that could possibly work, name what everyone else is over-engineering, and identify the opportunity cost of provenance modeling that may never be queried. If a JSON file on disk beats a database here, make that case." &
+
+run_agy agy-data-steward \
+"Own longevity. Versioning, provenance, reproducibility, migration, and the relationship between telemetry and the knowledge base. The documents will be revised and crops will be added. How do you version evidence without losing the ability to explain why last month's dashboard said what it said? Should telemetry and knowledge share one SQLite file?" &
+
+wait
+echo "ROUND1_COMPLETE"
+ls -la "$OUT_DIR"

@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Generation-2 Round 1 fan-out, with built-in retry for agy quota exhaustion.
+# Usage: scripts/council-v2-round1
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+cd "$ROOT"
+
+OUT="backend/docs/debate/v2/raw"
+mkdir -p "$OUT"
+POLL="${COUNCIL_POLL_SECONDS:-600}"
+DEADLINE="${COUNCIL_DEADLINE_SECONDS:-28800}"
+
+declare -A ENGINE=(
+  [codex-score-semantics]=codex
+  [codex-curve-builder]=codex
+  [codex-schema-v2]=codex
+  [codex-common-axis]=codex
+  [codex-critic]=codex
+  [agy-explorer]=agy
+  [agy-domain-skeptic]=agy
+  [agy-product-advocate]=agy
+  [agy-skeptic]=agy
+  [agy-procurement]=agy
+)
+
+declare -A MANDATE=(
+  [codex-score-semantics]="Own P4. Decide what 'score' means here. One composite index or several? Give each proposed index an explicit contract: what it claims, what inputs are admissible, and what it must never be read as. If a composite score across growth, health, and law is indefensible, say so and specify what replaces it."
+  [codex-curve-builder]="Own P1 and P2. Answer formally: can a comparative_best_tested_point produce a score curve? What is the honest shape between and beyond grid points? Address the unbounded-above case (wasabi 140) where no downslope was ever observed. If no continuous curve is licensed, state precisely what discrete representation IS licensed."
+  [codex-schema-v2]="Own P7. The new files already carry claim_role, applicability, measurement_basis, and a quarantine queue. Decide whether a database is still justified and give the DDL if so. Name the concrete query that the three JSON files cannot answer. If loading the files as-is wins, say that plainly."
+  [codex-common-axis]="Own P6. Handle PM's three time bases and noise's zoning block. Show how a raw reading is related to a 24-hour WHO mean, a daily forecast band, and a 2-hour-sustained trigger without conflation. Specify what the schema owes an axis whose evaluation is blocked pending deployment metadata."
+  [codex-critic]="Do not propose your own design first. Identify how a well-meaning implementer will violate the records' prohibited_use fields six weeks from now, and what structurally prevents it. Pay attention to P3: the basil 500 recommendation is an energy-cost optimum wearing a biology costume. Then state the minimum guardrails."
+  [agy-explorer]="Attack P1 from a direction the others will not. Consider representations that are not scores at all: distance-to-anchor, band membership, ordinal ranking, confidence intervals, showing the trial grid itself as the UI. Argue for the strongest non-obvious option."
+  [agy-domain-skeptic]="Own biological validity. Correct the brief's coverage matrix where it is wrong. Is ANY of the new evidence sufficient to tell a grower their plant is doing well? Note that wasabi's temperature record is a photoautotrophic micropropagation plantlet study and lettuce's temperature is confounded with PPFD in a factorial. Say plainly what these records can and cannot support."
+  [agy-product-advocate]="Own criterion 2. Work backwards from a screen an urban-farm operator would trust and use daily. Three crops have nothing; noise is blocked; PM is human-health not crop. Build the honest screen anyway and state what the schema must carry for it. Confront P3: does the operator actually want the energy-cost target? They pay the power bill."
+  [agy-skeptic]="YAGNI. Thirteen records. Five axes. Eight crops, three of them empty. Argue for the smallest thing that works and name what everyone else is over-building. If the answer is that these three JSON files ARE the product's data layer and SQLite adds nothing before the hackathon, make that case hard."
+  [agy-procurement]="Own criterion 3 — a role that did not exist in the first council. Hardware is unselected and the collection contract demands a quantum PPFD sensor, paired RH+temperature at canopy height, certified PM instruments, and LAeq with integration period. Translate the evidence base into a procurement position: what must be bought for any of this to be scorable, what is optional, and what is a trap. State what dies if the team buys a cheap lux meter and an uncertified PM sensor."
+)
+
+is_done() {
+  local a="$1" f
+  if [ "${ENGINE[$a]}" = "codex" ]; then f="$OUT/$a.json"; else f="$OUT/$a.raw"; fi
+  [ -s "$f" ] || return 1
+  # Lenient: agents may emit a prose preamble, a markdown fence, or literal
+  # newlines inside strings. A strict parser rejects those, the agent is judged
+  # incomplete, and the retry loop re-runs it and OVERWRITES a good answer.
+  python - "$f" <<'PY' >/dev/null 2>&1
+import json,sys
+t=open(sys.argv[1],encoding='utf-8',errors='replace').read()
+dec=json.JSONDecoder(strict=False)
+i=t.find('{')
+while i!=-1:
+    try:
+        o,_=dec.raw_decode(t,i)
+        if isinstance(o,dict) and 'change_mind_if' in o and 'score_verdict' in o:
+            sys.exit(0)
+    except Exception: pass
+    i=t.find('{',i+1)
+sys.exit(1)
+PY
+}
+
+START=$(date +%s)
+while true; do
+  PENDING=()
+  for a in "${!ENGINE[@]}"; do is_done "$a" || PENDING+=("$a"); done
+  [ ${#PENDING[@]} -eq 0 ] && { echo "[$(date '+%F %T')] all agents complete"; break; }
+
+  NOW=$(date +%s)
+  if [ $((NOW - START)) -ge "$DEADLINE" ]; then
+    echo "[$(date '+%F %T')] DEADLINE EXCEEDED; pending: ${PENDING[*]}"; exit 2
+  fi
+
+  echo "[$(date '+%F %T')] attempting: ${PENDING[*]}"
+  for a in "${PENDING[@]}"; do
+    scripts/council-v2 "${ENGINE[$a]}" "$a" "${MANDATE[$a]}" "$OUT" >/dev/null 2>&1 &
+  done
+  wait
+
+  STILL=()
+  for a in "${PENDING[@]}"; do
+    if is_done "$a"; then echo "[$(date '+%F %T')] OK: $a"
+    else
+      if grep -qi "quota reached" "$OUT/$a.log" 2>/dev/null; then
+        echo "[$(date '+%F %T')] quota-blocked: $a — $(grep -io 'Resets in [0-9hm ]*' "$OUT/$a.log" | head -1)"
+      else
+        echo "[$(date '+%F %T')] incomplete: $a"
+      fi
+      STILL+=("$a")
+    fi
+  done
+  [ ${#STILL[@]} -eq 0 ] && { echo "[$(date '+%F %T')] all agents complete"; break; }
+  echo "[$(date '+%F %T')] sleeping ${POLL}s"
+  sleep "$POLL"
+done
+
+echo "V2_ROUND1_COMPLETE"
+ls -la "$OUT"

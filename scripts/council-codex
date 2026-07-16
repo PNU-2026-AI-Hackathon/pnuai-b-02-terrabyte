@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Council agent wrapper: Codex engine.
+# Usage: scripts/council-codex <AGENT_ID> <BRIEF_PATH> <MANDATE> <OUT_DIR> [SCHEMA_PATH]
+set -euo pipefail
+
+AGENT_ID="${1:?agent id required}"
+BRIEF_PATH="${2:?brief path required}"
+MANDATE="${3:?mandate required}"
+OUT_DIR="${4:-.agent-runs/manual}"
+SCHEMA_PATH="${5:-}"
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+mkdir -p "$OUT_DIR"
+
+MODEL="${COUNCIL_CODEX_MODEL:-gpt-5.6-sol}"
+EFFORT="${COUNCIL_CODEX_EFFORT:-xhigh}"
+
+PROMPT=$(cat <<EOF
+You are council agent: $AGENT_ID
+
+You are participating in a brainstorming council. You are NOT the final decision maker.
+A moderator will compress your output and synthesise it with nine other agents.
+
+Your mandate:
+$MANDATE
+
+Rules:
+- Do NOT edit any file. You are read-only.
+- Read the actual source documents before proposing. Do not rely only on the brief's summary.
+  At minimum read:
+    backend/docs/cropinfo/basil_growth_environment.md          (deepest, 1009 lines)
+    backend/docs/cropinfo/lettuce_growth_environment.md        (representative 254-line crop)
+    backend/docs/cropinfo/crop_evidence_gaps_6_crops.json      (gap registry)
+- Analyse independently. You cannot see other agents' proposals.
+- Be concrete: name tables, columns, types, steps.
+- State assumptions and risks, including your own proposal's weaknesses.
+- Include exactly one cheap validation step (< 1 hour).
+- Include what would change your mind.
+- Stay in scope: data refinement + schema design. Do NOT design the scoring formula.
+- Keep 'why' + 'assumptions' + 'risks' to roughly 180 words total. 'schema_sketch' is exempt.
+- Output a single JSON object. No prose outside the JSON.
+
+The full brief is below.
+
+--- BEGIN BRIEF ---
+$(cat "$ROOT/$BRIEF_PATH")
+--- END BRIEF ---
+EOF
+)
+
+ARGS=(
+  exec
+  -m "$MODEL"
+  -c model_reasoning_effort="$EFFORT"
+  -s read-only
+  --cd "$ROOT"
+  --skip-git-repo-check
+  -o "$OUT_DIR/$AGENT_ID.json"
+)
+
+if [ -n "$SCHEMA_PATH" ]; then
+  ARGS+=(--output-schema "$ROOT/$SCHEMA_PATH")
+fi
+
+# stdin must be closed: codex otherwise blocks on "Reading additional input from stdin"
+# whenever stdin is a pipe rather than a tty.
+codex "${ARGS[@]}" "$PROMPT" >"$OUT_DIR/$AGENT_ID.log" 2>&1 </dev/null
+
+echo "done: $AGENT_ID -> $OUT_DIR/$AGENT_ID.json"
