@@ -1,0 +1,205 @@
+{
+  "schema_version": "2.0.0",
+  "document_type": "agent_council_brief",
+  "council_generation": 2,
+  "round": 0,
+  "round_name": "neutral_framing",
+  "language": "en",
+  "created_at": "2026-07-15",
+  "moderator": "claude-fable-5",
+
+  "why_this_council_exists": "A first council of ten agents debated an earlier corpus (backend/docs/cropinfo/) and concluded that the specified environment-score dashboard was not honestly buildable. The research was then REBUILT from scratch as backend/docs/newcropinfo/. The new evidence base adopts almost every finding of the first council — and in doing so exposes a harder problem that the first council never reached. This council debates that problem.",
+
+  "what_changed": {
+    "axes": "Reduced from 8 sensor channels to 5: air_temperature, relative_humidity, plant_light, particulate_matter, noise. Soil moisture, soil temperature, and CO2 were DROPPED from scope entirely.",
+    "light": "The 'illuminance / lux' channel is gone. It is now 'plant_light', and the collection contract REQUIRES a 400-700 nm quantum sensor or equivalent PPFD instrument. lux is demoted to an optional non-scoring channel whose prohibited_use explicitly includes 'universal crop scoring' and 'direct comparison with source PPFD boundaries'.",
+    "format": "Eight long Korean prose documents were replaced by three structured JSON files plus a README. The per-crop prose template was deliberately not reused.",
+    "pm_and_noise": "Previously zero evidence. Now backed by WHO Global Air Quality Guidelines 2021, Korean forecast bands, Korean advisory/warning triggers, and the Korean Framework Act on Environmental Policy noise standards table.",
+    "first_council_findings_now_encoded_in_the_data": "The new README's judgement principles 1-6 independently restate the first council's conclusions: do not convert a trial maximum into an optimum; do not mix daily-mean, day/night, and instantaneous temperature; store PPFD/photoperiod/DLI/spectrum separately and never convert to lux; do not adopt a fixed experimental RH as an optimum; keep WHO/forecast/alert time bases separate; only compare LAeq with an integration period. The lux and measurement-basis rulings were adopted verbatim in substance."
+  },
+
+  "the_data": {
+    "root": "backend/docs/newcropinfo/",
+    "files": {
+      "README.md": "Korean. Conclusions, per-crop gap table, collection requirements, sources, and an explicit list of what THIS council must decide.",
+      "verified_numeric_evidence.json": "13 records that passed verification. NOT a set of universal normal ranges — read interpretation_rule.",
+      "insufficient_evidence.json": "17 quarantined candidates with 8 reason codes. High-quality papers are quarantined too when scope or claim meaning fails.",
+      "collection_contract.json": "Pre-hardware measurement, unit, and metadata requirements. Sampling interval and scoring windows deliberately undecided."
+    },
+    "claim_roles_already_defined_in_the_data": {
+      "comparative_best_tested_point": "The treatment that produced the best result in a comparative trial. NOT a universal optimum or safe range.",
+      "comparative_suitable_band": "A band the authors judged suitable from trends across indicators. NOT a statistically established universal optimum.",
+      "author_recommended_target": "A recommendation limited to that paper's conditions and objective.",
+      "disease_risk_condition": "A condition favourable to disease, NOT a growth optimum.",
+      "health_guideline": "Protects human health, not crops.",
+      "public_forecast_band": "Korean air-quality forecast classification. Not an indoor permissible standard.",
+      "public_alert_trigger": "Korean advisory/warning issuance threshold.",
+      "environmental_standard": "Statutory environmental standard. Applicable only once site zoning and the specified time-average are known."
+    },
+    "quarantine_reason_codes": [
+      "experimental_condition_only",
+      "not_bounded_optimum",
+      "limited_treatment_levels",
+      "secondary_source_only",
+      "wrong_crop_or_cultivar_scope",
+      "coupled_intervention",
+      "endpoint_mismatch",
+      "(one further code — read the file)"
+    ],
+    "interpretation_rule_verbatim": "이 파일은 수치의 근거와 주장 유형을 보존한다. 점수 함수, 정상·주의·위험 경계, 가중치는 아직 정의하지 않는다. (This file preserves the basis and claim type of each number. The scoring function, normal/caution/danger boundaries, and weights are NOT yet defined.)",
+    "readme_principle_7_verbatim": "점수 함수, 정상·주의·위험 의미, 가중치, 경보 지속시간은 추후 심층 논의 전까지 만들지 않는다. (Do not create the scoring function, the meaning of normal/caution/danger, weights, or alert durations until a later in-depth discussion.) — That discussion is THIS council."
+  },
+
+  "the_thirteen_verified_records": [
+    { "id": "basil-air-temperature-vegetative-001", "crop": "basil", "axis": "air_temperature", "claim_role": "comparative_best_tested_point", "value": "best tested target 29 degC out of tested targets {11, 17, 23, 29, 35}", "prohibited_use": "Using 29 degC as a normal range for all basil cultivars, or 35 degC as a lethality threshold" },
+    { "id": "basil-plant-light-edible-biomass-001", "crop": "basil", "axis": "plant_light", "claim_role": "author_recommended_target", "value": "500 umol/m2/s canopy PPFD, 16 h photoperiod, out of tested levels {300, 400, 500, 600}", "prohibited_use": "Natural-light lux criteria, a damage ceiling, or a standalone PPFD criterion for any photoperiod" },
+    { "id": "basil-relative-humidity-downy-mildew-001", "crop": "basil", "axis": "relative_humidity", "claim_role": "disease_risk_condition", "value": "canopy RH >= 85% infection; night RH > 95% sustained > 7.5 h sporulation; leaf wetness >= 4 h", "prohibited_use": "Basil growth-optimum RH, a single instantaneous RH alarm, or unconditional disease prediction", "status": "score_semantics_pending" },
+    { "id": "peppermint-plant-light-growth-001", "crop": "peppermint", "axis": "plant_light", "claim_role": "comparative_suitable_band", "value": "150-200 umol/m2/s, 14 h, out of tested {20, 100, 150, 200, 250}", "status": "contextual_anchor_with_replication_limit", "note": "Some within-species differences were NOT statistically significant" },
+    { "id": "wasabi-air-temperature-plantlet-001", "crop": "wasabi", "axis": "air_temperature", "claim_role": "comparative_best_tested_point", "value": "18/18 degC day/night, regimes tested 10/10 to 26/26", "status": "nursery_stage_only", "prohibited_use": "Adult rhizome production or general soil cultivation" },
+    { "id": "wasabi-plant-light-rhizome-001", "crop": "wasabi", "axis": "plant_light", "claim_role": "comparative_best_tested_point", "value": "140 umol/m2/s best tested out of {35, 60, 90, 140}, 12 h", "status": "highest_tested_not_bounded_optimum", "prohibited_use": "Treating 140 as the physiological optimum, or anything above it as dangerous" },
+    { "id": "lettuce-air-temperature-light-interaction-001", "crop": "lettuce", "axis": "air_temperature", "claim_role": "comparative_best_tested_point", "value": "23/18 degC day/night, regimes tested {15/10, 23/18, 30/23}", "status": "contextual_anchor_with_interaction", "prohibited_use": "An independent temperature normal range for all lettuce cultivars" },
+    { "id": "lettuce-plant-light-dli-iceberg-001", "crop": "lettuce", "axis": "plant_light", "claim_role": "author_recommended_target", "value": "DLI 11.5 mol/m2/day, tested {8.64, 11.5, 14.4}, at fixed PPFD 200 with photoperiod varied", "prohibited_use": "Interpreting PPFD 200 itself as an independent optimum, or the DLI as universal for other cultivars" },
+    { "id": "coriander-plant-light-fresh-leaf-001", "crop": "coriander", "axis": "plant_light", "claim_role": "author_recommended_target", "value": "PPFD 200, 16 h, from a factorial of PPFD {133, 200, 400} x photoperiod {8, 16, 24}", "prohibited_use": "Interpreting the trial's 24 degC and RH 48% as optima, or using natural-light lux criteria" },
+    { "id": "common-pm-who-aqg-2021-001", "crop": null, "axis": "particulate_matter", "claim_role": "health_guideline", "value": "PM2.5 annual 5 / 24 h 15; PM10 annual 15 / 24 h 45 ug/m3", "prohibited_use": "Direct judgement of instantaneous sensor values, crop damage thresholds, or Korean statutory compliance" },
+    { "id": "common-pm-korea-forecast-band-001", "crop": null, "axis": "particulate_matter", "claim_role": "public_forecast_band", "value": "Daily-mean 4-band classification for PM10 and PM2.5", "prohibited_use": "Indoor permissible standard, instantaneous grading, or crop growth scoring" },
+    { "id": "common-pm-korea-alert-trigger-001", "crop": null, "axis": "particulate_matter", "claim_role": "public_alert_trigger", "value": "Hourly mean sustained >= 2 h; PM10 advisory 150 / warning 300; PM2.5 advisory 75 / warning 150", "prohibited_use": "Issuing an official alert from one low-cost sensor, or removing the 2-hour sustain condition" },
+    { "id": "common-noise-korea-environmental-standard-001", "crop": null, "axis": "noise", "claim_role": "environmental_standard", "value": "LAeq day/night table across zoning classes, general vs roadside, 40-75 dB(A)", "status": "blocked_until_site_zoning_is_known", "prohibited_use": "Applying one arbitrary dB boundary to all sites, or comparing instantaneous dB with Leq" }
+  ],
+
+  "verified_coverage_gaps": [
+    { "crop": "cherry_tomato", "missing_axes": ["air_temperature", "relative_humidity", "plant_light"], "reason": "No universal single-axis comparative value confined to cherry-tomato cultivar and stage" },
+    { "crop": "welsh_onion", "missing_axes": ["air_temperature", "relative_humidity", "plant_light"], "reason": "Temperature is a secondary-source daily-mean range; RH and PPFD are mostly fixed experimental conditions" },
+    { "crop": "arugula", "missing_axes": ["air_temperature", "relative_humidity", "plant_light"], "reason": "Light trials were pre-harvest treatments or coupled photoperiod/DLI designs; no independent whole-cycle axis value can be separated" },
+    { "crop": "all_crops", "missing_axes": ["relative_humidity_growth_optimum"], "reason": "No crop has a directly compared growth-optimum RH. Basil's values are disease-risk conditions, not optimum growth RH." }
+  ],
+
+  "coverage_matrix_as_the_moderator_reads_it": {
+    "note": "Verify this against the files. Correct it if it is wrong.",
+    "basil": "air_temperature: best-tested point. plant_light: author target. relative_humidity: disease-risk only.",
+    "peppermint": "plant_light: suitable band. air_temperature: quarantined (guide value). relative_humidity: quarantined (fixed condition).",
+    "wasabi": "air_temperature: best-tested point BUT nursery stage only. plant_light: best-tested point, unbounded above. relative_humidity: quarantined.",
+    "lettuce": "air_temperature: best-tested point, day/night, confounded with PPFD. plant_light: author DLI target. relative_humidity: quarantined.",
+    "coriander": "plant_light: author target. air_temperature: quarantined (conference abstract only). relative_humidity: quarantined.",
+    "cherry_tomato": "NOTHING on any crop axis.",
+    "welsh_onion": "NOTHING on any crop axis.",
+    "arugula": "NOTHING on any crop axis.",
+    "common": "particulate_matter: three records on three different time bases. noise: one record, blocked on site zoning."
+  },
+
+  "the_hard_problems": [
+    {
+      "id": "P1",
+      "name": "THE GRID-POINT PROBLEM",
+      "statement": "Basil's 29 degC was simply the best of {11, 17, 23, 29, 35}. It is a point on a coarse grid, not a measured optimum. The true optimum could be 31. The data explicitly forbids treating 29 as a normal range and 35 as a lethality threshold. Lettuce's 23/18 was the best of three regimes; wasabi's 18/18 the best of a 10/10-to-26/26 sweep. Every single air-temperature record in the corpus is of this kind.",
+      "question": "Can a comparative_best_tested_point become a score curve at all? If it can, what shape is honest, and what exactly does the number between grid points mean? If it cannot, what CAN this record legitimately drive in a UI?"
+    },
+    {
+      "id": "P2",
+      "name": "THE UNBOUNDED-ABOVE PROBLEM",
+      "statement": "Wasabi's 140 PPFD was the HIGHEST level tested out of {35, 60, 90, 140}. Its status is literally 'highest_tested_not_bounded_optimum' and its prohibited_use forbids judging anything above 140 as dangerous. Coriander's 200 came from a factorial where 400 was also tested.",
+      "question": "A score implies a peak with a downslope. When the trial never found the downslope, is a bounded score even definable? Does a monotone 'more is better up to the tested ceiling, unknown beyond' have any honest UI representation?"
+    },
+    {
+      "id": "P3",
+      "name": "ECONOMICS MASQUERADING AS BIOLOGY",
+      "statement": "Basil's 500 PPFD recommendation exists because 600 produced NO additional edible biomass while costing more electricity — the authors recommended not exceeding 500 for energy saving. The record's claim_role is author_recommended_target and its unresolved_requirements include 'power cost objective function'. Coriander's record carries the same signature. So the 'target' encodes an economic objective, not a plant physiological optimum.",
+      "question": "If the dashboard scores 600 PPFD as worse than 500, it is scoring the electricity bill as if it were plant health. Is that legitimate? Should economic targets and biological targets be different claim roles, different axes, or different scores entirely?"
+    },
+    {
+      "id": "P4",
+      "name": "THE WORD 'SCORE' NAMES FOUR DIFFERENT THINGS",
+      "statement": "The README asks it directly: does 'score' mean growth suitability, facility safety, human health, or disease risk? PM and noise are not crop axes at all — they are health_guideline and environmental_standard, protecting people and satisfying law. Basil's RH record is disease risk. Only air_temperature and plant_light speak to growth.",
+      "question": "Is a single composite environment score defensible when its inputs measure four incommensurable things? If not, how many indices are there, what is each one's contract, and does the user even want more than one number?"
+    },
+    {
+      "id": "P5",
+      "name": "THREE CROPS STILL HAVE NOTHING",
+      "statement": "Cherry tomato, welsh onion, and arugula have zero verified records on all three crop axes. The first council found the same structural problem with a different crop set — coriander has since been rescued by light evidence, and welsh onion has newly fallen out because its only temperature figure is a secondary-source daily mean, which the first council independently flagged as a category error before this research was redone.",
+      "question": "What do these three crops legitimately show? Does their existence change the product, the schema, both, or neither?"
+    },
+    {
+      "id": "P6",
+      "name": "COMMON AXES ARE BLOCKED OR MULTI-BASED",
+      "statement": "Noise is 'blocked_until_site_zoning_is_known' — the standard cannot be applied until the site's legal zoning and roadside status are known, and those are deployment metadata nobody has. PM has three records on three different time bases: WHO annual/24-hour guidance, Korean daily-mean forecast bands, and Korean 2-hour-sustained alert triggers. A raw sensor reading matches none of them.",
+      "question": "How are a blocked axis and a multi-time-base axis represented so they are neither silently dropped nor falsely scored? What does the schema owe a value that cannot be evaluated until a deployment fact is supplied?"
+    },
+    {
+      "id": "P7",
+      "name": "IS THE SCHEMA QUESTION NOW SETTLED?",
+      "statement": "The first council converged on: a flat store whose grain is crop x axis x claim_role, guidance/coverage as the primary row, numeric claims as optional children, evidence-status admissibility held in a policy TABLE so the corpus-boundary decision is an UPDATE not a migration, and required temporal_basis and measurement_basis enums. The new data independently arrived at claim_role, applicability with allowed_use/prohibited_use, measurement_basis, and a quarantine queue with reason codes.",
+      "question": "Do these three JSON files simply BECOME the schema — load them as-is? Or is there still a database worth building, and if so what does it add that the files do not already provide? Answer concretely: name what query justifies it."
+    }
+  ],
+
+  "constraints": [
+    "HARD: Do not invent numbers, and do not promote a claim beyond its declared role. Every record states its own prohibited_use. Read it and honour it.",
+    "HARD: Respect the data's own interpretation_rule — this council MAY discuss the scoring function, because README principle 7 defers it to exactly this discussion. But it may not manufacture evidence to feed it.",
+    "DECIDED PREVIOUSLY BY USER: All 8 crops stay in the MVP; crops lacking evidence get a documented supplementary-research list rather than deletion.",
+    "DECIDED PREVIOUSLY BY USER: Section-9-style qualitative guidance is presented in the original Korean, unmodified. No translation budget.",
+    "DECIDED PREVIOUSLY BY USER: The question of admitting general (non-crop-specific) horticultural references is DEFERRED, not settled. Design so that reversing it later costs an UPDATE, not a migration.",
+    "DECIDED PREVIOUSLY BY USER: Storage engine is SQLite.",
+    "CONTEXT: Hardware is NOT yet selected. project_stage is 'data_collection_before_hardware_selection'. The collection contract requires a quantum PPFD sensor; if the team buys a lux meter, the plant_light axis dies. This council's output may influence procurement.",
+    "CONTEXT: Hackathon scale, small team, short timeline."
+  ],
+
+  "decision_criteria": {
+    "ranked": [
+      "1. Claim-role fidelity — a best-tested grid point must not become an optimum, and an energy recommendation must not become a health verdict.",
+      "2. Honest usefulness — a product that shows nothing is as much a failure as one that lies. Both are on the table; argue for a real screen.",
+      "3. Procurement leverage — this is the last moment to influence what sensors get bought. Say what the data demands of the hardware.",
+      "4. Buildability — hackathon, small team, SQLite.",
+      "5. Reversibility — the deferred corpus-boundary decision must stay cheap to flip."
+    ],
+    "explicit_non_goals": [
+      "Dashboard visual design",
+      "Firmware and ingestion transport",
+      "Machine-learning models",
+      "Choosing a specific sensor product"
+    ]
+  },
+
+  "unknowns": [
+    "Site zoning and roadside status — noise cannot be evaluated without them.",
+    "Whether the deployment is indoor PFAL, greenhouse, or genuinely an urban idle space with natural light ingress. Most records are controlled-environment.",
+    "Cultivar per deployment. Almost every record is cultivar-bound (Nufar, Daruma, Glendana).",
+    "Growth stage tracking. Wasabi's temperature record is nursery-only; without a stage field it is unusable.",
+    "Whether one deployment grows one crop or several.",
+    "Who the user is — hobbyist, operator, or researcher. The README says 'urban idle space smart farm', which suggests an operator, not a hobbyist."
+  ],
+
+  "instructions_to_agents": {
+    "you_are_not_the_decision_maker": true,
+    "rules": [
+      "Do NOT edit any file. Read-only.",
+      "READ THE ACTUAL FILES before proposing. This brief is a summary and may be wrong; correcting it is valuable:",
+      "  backend/docs/newcropinfo/README.md",
+      "  backend/docs/newcropinfo/verified_numeric_evidence.json",
+      "  backend/docs/newcropinfo/insufficient_evidence.json",
+      "  backend/docs/newcropinfo/collection_contract.json",
+      "The files are Korean. Read them anyway; structure and numbers are what matter.",
+      "For context on what was already settled, you MAY read backend/docs/debate/02_synthesis.json. Do not treat it as binding — the corpus it judged no longer exists.",
+      "Analyse independently. You cannot see other agents' proposals.",
+      "Be concrete. Name tables, columns, formulas, UI states.",
+      "State assumptions and risks, including your own proposal's weaknesses.",
+      "Include exactly one cheap validation step (< 1 hour).",
+      "Include what would change your mind.",
+      "Keep 'why', 'assumptions', and 'risks' to roughly 180 words total. 'sketch' is exempt.",
+      "Output a single JSON object. No prose outside the JSON."
+    ]
+  },
+
+  "roles": [
+    { "agent_id": "codex-score-semantics", "engine": "codex", "mandate": "Own P4. Decide what 'score' means here. One composite index or several? Give each proposed index an explicit contract: what it claims, what inputs are admissible, and what it must never be read as. If a composite score across growth, health, and law is indefensible, say so and specify what replaces it." },
+    { "agent_id": "codex-curve-builder", "engine": "codex", "mandate": "Own P1 and P2. Answer formally: can a comparative_best_tested_point produce a score curve? What is the honest shape between and beyond grid points? Address the unbounded-above case (wasabi 140) where no downslope was ever observed. If the answer is that no continuous curve is licensed, state precisely what discrete representation IS licensed." },
+    { "agent_id": "codex-schema-v2", "engine": "codex", "mandate": "Own P7. The new files already carry claim_role, applicability, measurement_basis, and a quarantine queue. Decide whether a database is still justified and give the DDL if so. Name the concrete query that the three JSON files cannot answer. If loading the files as-is wins, say that plainly." },
+    { "agent_id": "codex-common-axis", "engine": "codex", "mandate": "Own P6. Handle PM's three time bases and noise's zoning block. Show how a raw reading is related to a 24-hour WHO mean, a daily forecast band, and a 2-hour-sustained trigger without conflation. Specify what the schema owes an axis whose evaluation is blocked pending deployment metadata." },
+    { "agent_id": "codex-critic", "engine": "codex", "mandate": "Do not propose your own design first. Identify how a well-meaning implementer will violate the records' prohibited_use fields six weeks from now, and what structurally prevents it. Pay attention to P3: the basil 500 recommendation is an energy-cost optimum wearing a biology costume. Then state the minimum guardrails." },
+    { "agent_id": "agy-explorer", "engine": "agy", "mandate": "Attack P1 from a direction the others will not. Consider representations that are not scores at all: distance-to-anchor, band membership, ordinal ranking, confidence intervals, showing the trial grid itself as the UI. Argue for the strongest non-obvious option." },
+    { "agent_id": "agy-domain-skeptic", "engine": "agy", "mandate": "Own biological validity. Correct this brief's coverage matrix where it is wrong. Is ANY of the new evidence sufficient to tell a grower their plant is doing well? Note that wasabi's temperature record is a photoautotrophic micropropagation plantlet study and lettuce's temperature is confounded with PPFD in a factorial. Say plainly what these records can and cannot support." },
+    { "agent_id": "agy-product-advocate", "engine": "agy", "mandate": "Own criterion 2. Work backwards from a screen an urban-farm operator would trust and use daily. Three crops have nothing; noise is blocked; PM is human-health not crop. Build the honest screen anyway and state what the schema must carry for it. Confront P3: does the operator actually want the energy-cost target? They pay the power bill." },
+    { "agent_id": "agy-skeptic", "engine": "agy", "mandate": "YAGNI. Thirteen records. Five axes. Eight crops, three of them empty. Argue for the smallest thing that works and name what everyone else is over-building. If the answer is that these three JSON files ARE the product's data layer and SQLite adds nothing before the hackathon, make that case hard." },
+    { "agent_id": "agy-procurement", "engine": "agy", "mandate": "Own criterion 3 — a role that did not exist in the first council. Hardware is unselected and the collection contract demands a quantum PPFD sensor, paired RH+temperature at canopy height, certified PM instruments, and LAeq with integration period. Translate the evidence base into a procurement position: what must be bought for any of this to be scorable, what is optional, and what is a trap. State what dies if the team buys a cheap lux meter and an uncertified PM sensor." }
+  ],
+
+  "required_output_schema_ref": "backend/docs/debate/v2/proposal_schema.json"
+}

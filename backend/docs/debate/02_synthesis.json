@@ -1,0 +1,153 @@
+{
+  "schema_version": "1.0.0",
+  "document_type": "agent_council_synthesis",
+  "round": 3,
+  "round_name": "synthesis",
+  "language": "en",
+  "created_at": "2026-07-15",
+  "synthesised_by": "claude-fable-5 (moderator)",
+
+  "council_composition": {
+    "round_1_proposers": 10,
+    "codex_agents": 5,
+    "codex_model": "gpt-5.6-sol @ xhigh reasoning",
+    "agy_agents": 5,
+    "agy_model": "Claude Opus 4.6 (Thinking), plan mode",
+    "round_2_critics": 5,
+    "critics_saw": "anonymised option cards only, never the original proposals",
+    "note": "Two agy agents were blocked by quota exhaustion at 02:48 and completed at 07:24 after an automatic retry watcher. They were deliberately waited for rather than substituted, because they carried the only anti-over-engineering mandates and the council would otherwise have been biased toward complexity. That judgement was vindicated: their positions dominate the final synthesis."
+  },
+
+  "verdict_tally": {
+    "Option A (normalised long-form claims)": { "proceed": 1, "revise": 2, "reject": 2 },
+    "Option B (JSON1 semi-structured, markdown canonical)": { "proceed": 0, "revise": 4, "reject": 1 },
+    "Option C (reviewed JSONL as operational SoT)": { "proceed": 0, "revise": 2, "reject": 3 },
+    "Option D (flat minimal table)": { "proceed": 0, "revise": 4, "reject": 1 },
+    "Option E (derived per-context disposition)": { "proceed": 0, "revise": 4, "reject": 1 },
+    "Option F (three-layer presentation)": { "proceed": 1, "revise": 4, "reject": 0 },
+    "Option G (two files + immutable revision replay)": { "proceed": 0, "revise": 0, "reject": 5 },
+    "Option H (product reframing: condition monitor)": { "proceed": 4, "revise": 1, "reject": 0 }
+  },
+
+  "rankings_by_critic": {
+    "critic-fidelity": ["A", "E", "H", "F", "C", "B", "G", "D"],
+    "critic-buildability": ["H", "D", "F", "E", "B", "A", "C", "G"],
+    "critic-consumer": ["H", "F", "D", "C", "A", "E", "B", "G"],
+    "critic-product": ["H", "D", "F", "B", "E", "A", "C", "G"],
+    "critic-simplicity": ["D", "H", "B", "F", "E", "C", "A", "G"]
+  },
+
+  "the_decision_crux": {
+    "statement": "critic-fidelity — the lone dissenter and the only critic ranking the heavy normalised schema first — framed the crux precisely: 'Will the MVP emit any semantic numeric judgment beyond the three clean instantaneous temperature ranges? If so, Options A and E are the minimum safe structural pair; otherwise Option H should govern a telemetry-and-guidance product.'",
+    "why_this_resolves_it": "The moderator's measurement answers the question empirically rather than by preference. There are 3 clean instantaneous ranges (basil 25-30C, peppermint 21-26C, wasabi 12.2-15C), 1 caveated (lettuce, general_crop_reference), and 1 requiring daily-mean aggregation (welsh onion). No fourth kind of numeric judgment is available to emit, because the evidence for it does not exist. The antecedent of the fidelity critic's conditional is false, so by its own reasoning Option H governs.",
+    "consequence": "The dissent is not overruled by majority; it is dissolved by measurement. Every critic, including the dissenter, ends up in the same place once the count is known."
+  },
+
+  "ranked_conclusion": [
+    {
+      "rank": 1,
+      "option": "Option H — product reframing",
+      "verdict": "ADOPT",
+      "rationale": "4 proceed, 1 revise, 0 reject; ranked first by three of five critics and never below third. It is the only option whose claims match the measured evidence base. The environment-score dashboard as specified is not buildable honestly: three of eight MVP crops have zero scorable axes, and 94% of the 64-cell matrix is empty. Both pre-committed abandonment thresholds were crossed by independent measurement.",
+      "required_revisions": [
+        "Pair the negation with a positive product identity. critic-product: 'Name the product what it is in the stakeholder pitch so the reframing has a positive identity, not just a negation.' A condition monitor that says 'we show you what we know, and what to do about what we don't' is a product; 'we cannot do what you asked' is not.",
+        "Cut push alerts entirely. With zero duration evidence anywhere in the corpus, a momentary excursion and a sustained one are indistinguishable, so threshold alerts will flap while appearing biologically meaningful. Use a disclosed display-only rolling average purely to stabilise the UI, never as a pseudo-duration threshold.",
+        "Whitelist eligibility explicitly. critic-fidelity: only the three clean instantaneous ranges may enter a range checker. Welsh onion's daily mean and lettuce's general reference must be structurally barred from instantaneous comparison."
+      ]
+    },
+    {
+      "rank": 2,
+      "option": "Option D — flat table, REPAIRED",
+      "verdict": "ADOPT WITH A MANDATORY REPAIR",
+      "rationale": "Ranked first by critic-simplicity and second by both critic-buildability and critic-product. Its sparsity argument is load-bearing: normalising a 94%-empty matrix protects an almost-empty table. But its one-row-per-crop-x-axis grain is fatally broken and its own author conceded it.",
+      "the_repair": "Change the grain to crop x axis x claim_role. All five critics independently converged on this same fix. critic-simplicity verified the failure concretely: basil air temperature simultaneously carries an optimum (25-30C), a chilling-injury threshold (12C), AND a supra-optimal experimental point (35C) — 'not a corner case, it is the richest cell in the entire matrix'. Cost estimates from the critics: 20-30 minutes.",
+      "why_not_left_unrepaired": "critic-simplicity named the real danger of shipping it broken: 'The team adds a second row for basil air-temp injury data, then a third for the experimental treatment, then discovers they need role labels, and arrives at a worse version of Option B through accretion rather than design.'"
+    },
+    {
+      "rank": 3,
+      "option": "Option F — three-layer presentation, INVERTED",
+      "verdict": "ADOPT THE DATA MODEL, INVERT THE UI HIERARCHY",
+      "rationale": "0 rejects from any critic — the only option besides H with none. Its data model (scored band + coverage_status + linked guidance action) is sound and is what makes the honest product usable. But its gauge-first UI premise died with its author's own threshold.",
+      "required_revisions": [
+        "Guidance card becomes primary; the scored band becomes a small inline indicator where evidence exists. critic-simplicity: 'Use F's three-tier data model but invert the UI hierarchy.'",
+        "Structurally prohibit score fields for advisory and monitor-only states. critic-consumer: 'unless advisory numeric fields are forced NULL, disease-risk values can still render as score-like bands and mislead users.' A disease-risk RH number placed beside a caveat still reads as a target.",
+        "Require one row per axis so no card can silently vanish."
+      ]
+    },
+    {
+      "rank": 4,
+      "option": "Option A — normalised claims",
+      "verdict": "REJECT THE STRUCTURE, KEEP THE DISCIPLINE",
+      "rationale": "Ranked first only by critic-fidelity, and 5th-7th by everyone else; 2 rejects. critic-buildability: 'By deadline the team ships migrations, joins, and a partial basil fixture rather than complete eight-crop data, APIs, and usable screens.' critic-simplicity: 'the safety constraints protect an empty table.'",
+      "what_survives": "Its safety goals migrate into CHECK constraints on the flat table rather than a relational cathedral. critic-simplicity's fix, which the synthesis adopts: 'Implement only the claim-role enum and the measurement-basis non-joinability constraint as CHECK constraints on a single flat table; defer the child interval table and composite FKs until a second crop batch actually produces conflicting join paths.'"
+    },
+    {
+      "rank": 5,
+      "option": "Options B, C, E",
+      "verdict": "DEFER",
+      "rationale": "B's JSON1 flexibility solves a schema-evolution problem that 8 fixed crops and 8 fixed sensors do not have. C's reviewed-JSONL pipeline with hash gates is the right answer at a scale this corpus has not reached, and its human-review bottleneck is real. E's per-context derived disposition is correct in principle but, with 3-5 scorable cells total, the disposition can be curated directly and verified by eye. Each becomes right if the project outlives the hackathon."
+    },
+    {
+      "rank": 6,
+      "option": "Option G — two files + immutable revision replay",
+      "verdict": "REJECT — the council's only unanimous rejection",
+      "rationale": "5 of 5 reject; ranked last by four of five critics. The fatal objection is internal, not budgetary: the revision chain claims reproducibility, but the extraction it records is LLM-assisted and therefore not deterministic. A provenance model that cannot actually reproduce its own inputs provides the appearance of auditability rather than auditability. Telemetry/knowledge separation may still be adopted later on ordinary engineering grounds (write contention, retention policy), but not as an evidence-integrity mechanism."
+    }
+  ],
+
+  "the_synthesis_insight": {
+    "statement": "The single most important idea to emerge from the council was not proposed in Round 1 at all. It came from critic-product in Round 2, reacting to the moderator's measurement: INVERT THE PRIMARY ENTITY.",
+    "quote": "'Invert the primary entity: model the guidance action (section 9 prose + coverage status) as the first-class row, and attach a scored interval as an optional child only when one exists. The safety constraints on unit/basis conflation survive; the schema just stops pretending numbers are the main content.'",
+    "why_it_matters": "Every Round 1 proposal — including the minimalist ones — assumed the database's job was to store numbers and account for missing ones. The measurement inverts that: 674 explicit absences and a large body of qualitative guidance are the payload; roughly 5 usable numbers are the exception. A schema whose primary entity is the numeric claim models the exception as the rule. critic-simplicity reached the same conclusion independently: 'with 3-5 scorable cells, the schema's job is storing 674 justified absences and qualitative guidance, not protecting a handful of numbers from conflation.'",
+    "effect_on_the_debate": "This dissolves the apparent conflict between the sparsity camp and the safety camp. They were not disagreeing about the same table. Once guidance and coverage are the primary rows, the table is not 94% empty — it is ~100% full of the thing that actually matters — and the safety constraints have something real to protect."
+  },
+
+  "new_hazards_surfaced_by_the_council": [
+    {
+      "hazard": "temporal_basis conflation",
+      "detail": "Welsh onion's 13-25C is a daily mean. Comparing it to an instantaneous sensor reading is the same class of category error as comparing field capacity to a pot sensor. No Round 1 agent caught this; the moderator found it during validation and critic-fidelity independently identified the schema consequence.",
+      "resolution": "temporal_basis must be a first-class required enum (instantaneous / daily_mean / cumulative / duration_window), not a note. Eligibility must match on it."
+    },
+    {
+      "hazard": "Absence is positive-claim-blind in most ontologies",
+      "detail": "critic-fidelity on Option A: 'the stated roles are positive-claim-centric... An implementer represents absence as no row... erasing why scoring is forbidden.'",
+      "resolution": "Absence is a claim_role value with a mandatory reason drawn from the registry's 10-value vocabulary, never a missing row and never NULL."
+    },
+    {
+      "hazard": "Unbudgeted translation work",
+      "detail": "critic-product: 'The section 9 guidance is written in Korean for professional gardeners. Without translation and adaptation, the actionable prose layer is unreadable to the target user. Nobody has budgeted that work, so the layer ships empty or untranslated, and the three-tier design collapses to one tier.' Since guidance is now the PRIMARY entity, this is no longer a cosmetic risk — it is the critical path.",
+      "resolution": "Must be raised with the user. The synthesis cannot resolve a resourcing question."
+    },
+    {
+      "hazard": "Political failure of an honest reframing",
+      "detail": "Raised independently by critic-product and critic-simplicity: 'Stakeholders hear this is not an environment-score product and respond by overriding with invented thresholds, which is exactly the failure the corpus was built to prevent.'",
+      "resolution": "Cannot be solved in the schema. Requires a stakeholder decision, escalated to the user."
+    }
+  ],
+
+  "the_open_question_the_council_could_not_settle": {
+    "question": "Is the corpus the only legitimate evidence base?",
+    "framing": "critic-simplicity put it most sharply: 'The card itself notes that well-known general horticultural RH ranges (e.g. 60-80%) were deliberately excluded and whether that exclusion was correct is unassessed. Steelmanning: the corpus was written precisely to prevent fabrication, so importing outside ranges would undermine its central discipline. Counter: a product that refuses to score 7 of 8 channels may provoke stakeholders into overriding with invented thresholds, which is worse than incorporating vetted general references with explicit provenance.' critic-product called the same thing 'a self-imposed evidence wound'.",
+    "why_the_council_cannot_decide_it": "This is not a technical question. It is a question about what the project is for, and only the project owner can answer it. Every agent that touched it correctly declined to overrule the corpus's authors.",
+    "the_lever": "This is the highest-leverage decision available. Admitting vetted general references — clearly marked as general_crop_reference with explicit provenance, exactly as the registry's existing vocabulary already anticipates — would rescue humidity and possibly light for all 8 crops and restore the scoring product. Refusing them keeps the corpus's discipline intact and yields a condition monitor. Both are defensible. The schema is identical either way, which is why this decision does not block schema work.",
+    "escalated_to": "user"
+  },
+
+  "adopted_design_summary": {
+    "product": "Condition monitor, not environment score. Telemetry graphs plus qualitative guidance, with range-membership indicators on the three crops whose air-temperature evidence supports an instantaneous comparison. No composite score. No push alerts.",
+    "storage": "Single SQLite file. Flat table, grain = crop x axis x claim_role. Guidance/coverage is the primary row; a scored interval is an optional child that exists only when direct evidence does.",
+    "safety": "CHECK constraints carry the discipline: claim_role enum, measurement_basis non-joinability, required temporal_basis, and forced-NULL score fields on advisory and monitor-only rows. No composite foreign keys, no interval child table, no revision replay, no two-file split.",
+    "extraction": "Hand-curated JSON per crop as the source of truth, loaded into SQLite by a trivial script. Deterministic parsing is safe for the six 254-line documents and unsafe for basil and peppermint, which a Round 1 agent verified structurally rather than assumed.",
+    "registry": "Extended from 6 crops to 8 and retired as a separate artifact; coverage becomes uniform per-crop data.",
+    "deferred": "JSON1 payloads, reviewed-JSONL pipeline with hash gates, per-context derived disposition, immutable revision replay, telemetry/knowledge file split. Each has a named trigger condition for revival."
+  },
+
+  "provenance": {
+    "brief": "backend/docs/debate/00_brief.json",
+    "moderator_validation": "backend/docs/debate/01_moderator_validation.json",
+    "raw_proposals": "backend/docs/debate/raw/ (10 files)",
+    "option_cards": "backend/docs/debate/cards/options.json",
+    "critique_cards": "backend/docs/debate/cards/critic-*.json|raw (5 files)",
+    "wrappers": "scripts/council-codex, scripts/council-agy, scripts/council-critique, scripts/council-round1, scripts/council-round2, scripts/council-round1-resume"
+  }
+}

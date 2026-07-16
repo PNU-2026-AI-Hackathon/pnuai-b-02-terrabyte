@@ -1,0 +1,311 @@
+{
+  "schema_version": "1.0.0",
+  "document_type": "agent_council_brief",
+  "round": 0,
+  "round_name": "neutral_framing",
+  "language": "en",
+  "created_at": "2026-07-15",
+  "moderator": "claude-fable-5",
+
+  "problem_statement": "We must decide how to refine the existing Korean-language crop growth-environment research (8 markdown documents plus one evidence-gap registry) into a SQLite database that can back an environment-scoring dashboard fed by hardware sensor telemetry. This debate covers DATA REFINEMENT and SCHEMA DESIGN only. The scoring algorithm itself and the dashboard API are explicitly deferred to a later cycle; propose only what the schema must expose so that a later scoring layer is possible.",
+
+  "known_facts": {
+    "repository": {
+      "name": "pnuai-b-02-terrabyte",
+      "branch": "develop",
+      "state": "Greenfield. backend/ contains only docs/. edge/ is empty. frontend/ has a bare app/ directory. No database, no framework, no code has been chosen yet.",
+      "source_data_path": "backend/docs/cropinfo/"
+    },
+    "source_documents": {
+      "count": 8,
+      "format": "Markdown, written in Korean, values embedded in prose inside markdown tables",
+      "files": [
+        "basil_growth_environment.md (1009 lines)",
+        "peppermint_growth_environment.md (570 lines)",
+        "cherry_tomato_growth_environment.md (254 lines)",
+        "welsh_onion_growth_environment.md (254 lines)",
+        "arugula_growth_environment.md (254 lines)",
+        "wasabi_growth_environment.md (254 lines)",
+        "lettuce_growth_environment.md (254 lines)",
+        "coriander_growth_environment.md (254 lines)"
+      ],
+      "shared_skeleton": [
+        "1. Crop basic info",
+        "2. Atmospheric environment",
+        "3. Light environment",
+        "4. Soil / growing-media environment",
+        "5. Root-zone environment",
+        "6. Stage-specific environment",
+        "7. Anomaly states and alert criteria",
+        "8. Limiting-factor priority",
+        "9. Recommended user actions",
+        "10. Source records",
+        "(trailing) Per-crop final summary template"
+      ],
+      "depth_asymmetry": "All 8 share an identical 10-section skeleton, but basil (1009 lines) and peppermint (570 lines) are researched far more deeply than the other six (254 lines each, suspiciously uniform). Paradoxically, basil and peppermint are the two crops MISSING from the evidence-gap registry."
+    },
+    "evidence_gap_registry": {
+      "file": "backend/docs/cropinfo/crop_evidence_gaps_6_crops.json",
+      "schema_version": "1.0.0",
+      "document_type": "crop_evidence_gap_registry",
+      "covers_only": ["cherry_tomato", "welsh_onion", "arugula", "wasabi", "lettuce", "coriander"],
+      "missing": ["basil", "peppermint"],
+      "structure": "scope, evidence_status_definitions, common_gaps[], crops[] (each with evidence_gaps[] and limited_evidence[]), recommended_ai_usage",
+      "evidence_status_vocabulary": {
+        "no_direct_evidence": "No value or criterion directly applicable to this crop was found",
+        "cultivar_specific": "Result applies to one cultivar only",
+        "system_specific": "Result applies to one cultivation system / medium / sensor / facility only",
+        "stage_specific": "Result applies to one growth stage only",
+        "general_crop_reference": "Borrowed from a broader crop group, not this crop",
+        "experimental_condition_only": "Merely a condition used in a trial; never validated as an optimum",
+        "measurement_not_transferable": "Different measurement basis; cannot be converted to another sensor/medium/EC method",
+        "not_a_risk_threshold": "An optimum or trial treatment, but NOT a danger or lethality threshold",
+        "insufficient_duration_data": "No basis for tolerated exposure duration or time-to-damage",
+        "no_recovery_threshold": "No basis for alarm-clear / return-to-normal criteria"
+      },
+      "recommended_ai_usage": {
+        "filtering_examples": [
+          "Exclude items containing no_direct_evidence from automated control-value generation",
+          "Only reference measurement_not_transferable values when sensor/medium/soil/hydroponic method match exactly",
+          "Never promote experimental_condition_only values to recommendations",
+          "Never use not_a_risk_threshold values as alarm or lethality criteria",
+          "Only use cultivar_specific / system_specific values when cultivar and system match"
+        ],
+        "safe_default_behavior": "Keep items without direct evidence as null and tell the user that further experiments or cultivar/system-specific validation are required"
+      }
+    },
+    "research_principles_declared_in_the_documents": [
+      "Only material directly applied to the crop may be used as numeric evidence",
+      "Distinguish conditions USED in an experiment from validated optima",
+      "Anything not directly confirmed is recorded verbatim as 'no direct evidence' rather than guessed",
+      "Do NOT derive DLI from PPFD, and do NOT convert qualitative descriptions into ordinal grades",
+      "Fahrenheit/inch conversions must retain the original unit alongside",
+      "A value outside the optimum range must NOT be reinterpreted as a death or danger threshold"
+    ],
+    "hardware_sensor_channels": [
+      "air temperature",
+      "air humidity",
+      "illuminance / light (lux-class sensor)",
+      "CO2 concentration",
+      "particulate matter / air quality",
+      "noise level",
+      "soil moisture",
+      "soil temperature"
+    ],
+    "worked_example_basil": {
+      "purpose": "Concrete illustration of what a single crop's data actually looks like. Agents should read the real file rather than trust this summary.",
+      "has_direct_evidence": {
+        "growth_optimum_air_temp": "25-30 C (literature-cited optimum; explicitly NOT a day/night split, explicitly NOT an alarm line)",
+        "soil_pH": "6.0-7.5",
+        "sunlight_hours": "6-8 h/day (home-gardening guidance)",
+        "chilling_injury": "below 12 C possible injury; 10 C leaf blackening reported; no duration data",
+        "downy_mildew_risk": "canopy RH >= 85% infection-capable; leaf wetness >= 4 h; night RH > 95% for >= 7.5 h sporulation-capable; these are DISEASE-RISK conditions, explicitly not growth-optimum humidity",
+        "PPFD": "~500 umol/m2/s for greatest edible biomass (Beaman 2009, growth chamber, 16 h photoperiod, 25+-4 C, cultivars Genovese/Italian Large Leaf/Nufar)",
+        "DLI": "~15 vs ~7 mol/m2/day compared (Walters & Currey 2018, NFT, cv Nufar); 15 outperformed 7 but only two levels were tested so no optimum is established",
+        "cultivar_temp_trial": "cv Nufar growth chamber at 11/17/23/29/35 C for 3 weeks; growth rose to ~29 C, fell at 35 C; node-appearance base temperature 8.2 C (explicitly NOT a safe minimum)",
+        "root_zone_hydroponic": "20-24 C and DO > 6 ppm (ideal 8-9 ppm) — these are Pythium DISEASE-MANAGEMENT targets, not soil optima",
+        "irrigation_salinity": "threshold EC 1.7 dS/m, ~10% yield loss per additional dS/m, EC50 = 6 dS/m — measured on IRRIGATION WATER, explicitly not hydroponic nutrient EC",
+        "soil_moisture_field_trial": "full irrigation triggered at 70% of field capacity (Kalamartzis 2020, open field, Mediterranean) — explicitly NOT the same as a pot sensor reading of 70%"
+      },
+      "explicitly_absent": [
+        "optimum relative humidity (lower bound)",
+        "optimum VPD, and VPD alarm bounds",
+        "pot-sensor volumetric water content upper AND lower bounds",
+        "high-temperature tolerated duration",
+        "low-temperature tolerated duration",
+        "waterlogging time-to-damage",
+        "natural-light PPFD danger ceiling",
+        "universal hydroponic nutrient EC danger bounds",
+        "return-to-normal hysteresis for every single alarm",
+        "limiting-factor ranking (all five slots are literally recorded as 'no direct ranking in literature')"
+      ],
+      "source_count": 16
+    }
+  },
+
+  "constraints": [
+    "HARD: Do not invent numbers. The source documents' central discipline is refusing to fabricate values. Any proposal that silently fills a gap with a plausible-looking threshold violates the project's premise and must be rejected.",
+    "HARD: Preserve the distinction between an optimum, an experimental condition, a disease-risk condition, and a danger/lethality threshold. These are different kinds of numbers and the documents repeatedly warn against conflating them.",
+    "HARD: Preserve measurement basis. Field-capacity percentage != pot sensor percentage. Irrigation-water EC != nutrient-solution EC != soil saturated-extract EC. Lux != PPFD != DLI.",
+    "DECIDED BY USER: Hybrid policy. Numeric scores may be computed ONLY from axes with direct evidence. Axes lacking direct evidence must NOT receive an invented numeric score; instead they surface qualitative guidance (the documents' section 9 'recommended user actions').",
+    "DECIDED BY USER: All 8 crops are in the MVP, including basil and peppermint which lack gap-registry entries.",
+    "DECIDED BY USER: Storage engine is SQLite.",
+    "SCOPE: This debate ends at data refinement + schema design. Do not design the scoring formula or the dashboard API; only state what the schema must expose to make them possible later.",
+    "CONTEXT: This is a hackathon-scale project with a small team and a short timeline. Elegance that cannot be built in time is worth less than a sound design that ships."
+  ],
+
+  "central_tension": {
+    "summary": "The sensor set and the evidence base barely overlap, and the dashboard is supposed to sit on top of both.",
+    "sensor_to_evidence_mapping": [
+      {
+        "sensor": "air temperature",
+        "status": "STRONGEST MATCH",
+        "note": "Directly comparable to documented optima such as basil 25-30 C. Still no tolerated-duration data anywhere, so any time-based alarm logic is unbacked."
+      },
+      {
+        "sensor": "air humidity",
+        "status": "PARTIAL / TREACHEROUS",
+        "note": "Documented RH numbers are overwhelmingly DISEASE-RISK thresholds (85%, 95%), not growth optima. Optimum RH is explicitly 'no direct evidence' for essentially every crop. Scoring humidity as if 85% were an optimum boundary would be a category error."
+      },
+      {
+        "sensor": "illuminance (lux)",
+        "status": "UNIT MISMATCH",
+        "note": "Every light-related figure in the documents is PPFD or DLI. The documents explicitly forbid deriving DLI from PPFD; lux-to-PPFD conversion is even weaker since it depends on the spectrum of the source. A lux sensor cannot be scored against PPFD evidence without an unbacked conversion."
+      },
+      {
+        "sensor": "soil moisture",
+        "status": "MEASUREMENT-BASIS MISMATCH",
+        "note": "Documents give field-capacity ratios and medium/sensor-specific VWC. The registry flags these measurement_not_transferable. A generic capacitive sensor's relative reading maps to none of them without calibration."
+      },
+      {
+        "sensor": "soil temperature",
+        "status": "STAGE-SPECIFIC ONLY",
+        "note": "Evidence exists for germination and transplanting, and for hydroponic Pythium management, but a whole-cycle optimum is 'no direct evidence' for most crops."
+      },
+      {
+        "sensor": "CO2",
+        "status": "ALMOST NO EVIDENCE",
+        "note": "Across all 8 documents the only CO2 material is a basil temperature-x-elevated-CO2 interaction study. There are no per-crop CO2 optima or thresholds."
+      },
+      {
+        "sensor": "particulate matter / air quality",
+        "status": "NO EVIDENCE",
+        "note": "No horticultural threshold appears anywhere in the corpus."
+      },
+      {
+        "sensor": "noise",
+        "status": "NO EVIDENCE AND NOT A RECOGNISED FACTOR",
+        "note": "Noise is not a crop growth factor in the horticultural literature at all. It is not merely under-evidenced; scoring it would be pseudoscience."
+      }
+    ]
+  },
+
+  "open_questions_for_the_council": [
+    "Q1 SCHEMA SHAPE: What relational shape survives this data? Candidates include a wide per-crop table, an EAV / long-form observation table, or a hybrid. The data is sparse, heterogeneous (ranges, points, thresholds, qualitative prose, and explicit absences), and every value carries provenance and applicability scope. What is the right trade-off between queryability and fidelity?",
+    "Q2 MODELING ABSENCE: 'No direct evidence' is a first-class, load-bearing fact in this corpus, not a missing row. How should the schema represent the difference between 'we never looked', 'we looked and found nothing', and 'a value exists but is not transferable to our sensor'? Is NULL sufficient, or does absence need its own explicit record with a reason?",
+    "Q3 VALUE TYPING: A single logical 'temperature' fact can be an optimum range (25-30 C), a single-cultivar trial point (35 C suboptimal), a base temperature (8.2 C), a disease-risk band (5-30 C), or an injury threshold (<12 C). Should these share one table with a discriminator, or be separated? How is the optimum/experimental/disease-risk/danger distinction enforced at the schema level rather than by convention?",
+    "Q4 APPLICABILITY SCOPE: Most values are qualified by cultivar, cultivation system, medium, growth stage, and measurement method. The registry's filtering rules depend on matching these. How should scope be modeled so the filtering rules are executable as SQL rather than being prose in a JSON file?",
+    "Q5 UNITS AND MEASUREMENT BASIS: How do we store units such that lux/PPFD/DLI and the four different EC bases cannot be accidentally compared? Should measurement basis be part of the unit, a separate dimension, or a constraint?",
+    "Q6 EXTRACTION PIPELINE: How do 8 Korean prose documents become structured rows? Options include hand-curation into an intermediate format, an LLM-assisted extraction pass with human review, or a deterministic parser exploiting the shared skeleton. Consider reproducibility, auditability, and the fact that the docs will keep changing. Which artifact is the source of truth afterwards: the markdown, the intermediate structured file, or the database?",
+    "Q7 REGISTRY UNIFICATION: The gap registry covers 6 crops; basil and peppermint carry their gap information as inline Korean markers in prose instead. Should the registry be extended to 8, should gaps be derived from the markdown for all 8 uniformly, or should the registry be retired in favour of gap facts living in the database?",
+    "Q8 SENSOR-AXIS DECISION: Given the mapping above, which of the 8 sensor channels can legitimately drive a numeric score, which are advisory-only, and which should be recorded but never scored? What does the schema need so this decision is data-driven rather than hardcoded in application logic?",
+    "Q9 ALARM VIABILITY: Section 7 of each document supplies caution/danger criteria but essentially never supplies duration or recovery thresholds. Without hysteresis, threshold alarms flap. Is an alarm feature even defensible on this evidence base, and if so what must the schema carry?",
+    "Q10 CALIBRATION ESCAPE HATCH: Several mismatches (lux to PPFD, sensor VWC to field capacity) could in principle be resolved by per-deployment calibration. Is that in scope, and if so how does the schema keep a calibrated, deployment-local mapping clearly separated from literature evidence so the two are never confused?"
+  ],
+
+  "decision_criteria": {
+    "ranked": [
+      "1. Evidence fidelity — the schema must make it structurally difficult to fabricate or conflate values. This is the project's reason for existing.",
+      "2. Dashboard viability — a design where almost everything renders as 'unknown' is a failure even if it is honest. There must be a credible path to a useful screen.",
+      "3. Auditability — every stored number must trace to a source, a measurement basis, and an applicability scope.",
+      "4. Buildability — hackathon timeline, small team, SQLite.",
+      "5. Extensibility — adding a 9th crop, or a 9th sensor, should not require a schema migration."
+    ],
+    "explicit_non_goals": [
+      "The scoring formula itself",
+      "Dashboard API and UI design",
+      "Hardware firmware and ingestion transport",
+      "Machine-learning models"
+    ]
+  },
+
+  "unknowns": [
+    "Sensor make/model, accuracy, and calibration state are unspecified; the edge/ directory is empty.",
+    "Telemetry sampling interval, payload schema, and retention policy are undefined.",
+    "Whether a single deployment grows one crop or several simultaneously.",
+    "Whether the target environment is indoor pot cultivation, greenhouse, or hydroponic — the documents' evidence is heavily conditioned on this and different values apply to each.",
+    "Expected user: hobby grower vs researcher. This changes how much epistemic hedging the UI can carry.",
+    "Whether historical telemetry must be stored in the same SQLite database as the crop knowledge base, or separately."
+  ],
+
+  "instructions_to_agents": {
+    "you_are_not_the_decision_maker": true,
+    "rules": [
+      "Do not edit any file. You have read-only access to the repository.",
+      "Read the actual source documents at backend/docs/cropinfo/ before proposing. Do not rely solely on this brief's summary. At minimum read basil (deepest), one of the 254-line crops, and the gap registry JSON.",
+      "Analyse independently. You cannot see other agents' proposals in this round.",
+      "Be concrete and specific. Name tables, columns, and types where relevant.",
+      "State your assumptions and risks explicitly.",
+      "Include exactly one cheap validation step that could be run in under an hour.",
+      "Include what would change your mind.",
+      "Stay within the debate scope: data refinement and schema design. Do not design the scoring formula.",
+      "Budget: keep 'why', 'assumptions', and 'risks' terse. Roughly 180 words total across those prose fields. The schema_sketch field is exempt from the word budget.",
+      "Respond with a single JSON object matching the required output schema. No prose outside the JSON."
+    ]
+  },
+
+  "roles": [
+    {
+      "agent_id": "codex-schema-architect",
+      "engine": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "mandate": "Own Q1, Q3, Q5. Propose the concrete SQLite relational shape. Give real DDL. Defend your normalisation choice against the sparsity and heterogeneity of this data."
+    },
+    {
+      "agent_id": "codex-extraction-engineer",
+      "engine": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "mandate": "Own Q6, Q7. Design the markdown-to-database pipeline. Decide the source of truth. Address reproducibility and what happens when a document is revised. Assess whether the shared 10-section skeleton is regular enough to parse deterministically — verify this claim against the actual files rather than assuming."
+    },
+    {
+      "agent_id": "codex-evidence-modeler",
+      "engine": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "mandate": "Own Q2, Q4. Model absence, evidence status, and applicability scope so that the registry's recommended_ai_usage filtering rules become executable SQL predicates instead of prose. Show the query that answers 'which axes may be scored for crop X in system Y'."
+    },
+    {
+      "agent_id": "codex-sensor-integrator",
+      "engine": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "mandate": "Own Q8, Q10. Decide which sensor channels are scorable, advisory, or record-only, and make that decision data-driven. Handle the lux/PPFD and VWC/field-capacity mismatches. If calibration is your answer, show how the schema keeps deployment-local calibration from contaminating literature evidence."
+    },
+    {
+      "agent_id": "codex-critic",
+      "engine": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoning_effort": "xhigh",
+      "mandate": "Do not propose a design of your own first. Instead, identify the failure modes any design here will hit: maintainability, edge cases, migration, query complexity, and the ways a well-meaning implementer would accidentally violate the evidence principles. Then state the minimum schema guardrails that would prevent them."
+    },
+    {
+      "agent_id": "agy-explorer",
+      "engine": "agy",
+      "model": "Claude Opus 4.6 (Thinking)",
+      "reasoning_effort": "thinking",
+      "mandate": "Own Q1 from the opposite direction. Deliberately explore designs the obvious answer would miss: document-oriented storage inside SQLite (JSON1), a knowledge-graph/triple shape, event-sourced facts, or keeping markdown as the source of truth with the database as a derived cache. Argue for the strongest non-obvious option."
+    },
+    {
+      "agent_id": "agy-domain-skeptic",
+      "engine": "agy",
+      "model": "Claude Opus 4.6 (Thinking)",
+      "reasoning_effort": "thinking",
+      "mandate": "Own the horticultural validity question. Challenge the sensor-to-evidence mapping in this brief — correct it where it is wrong. Is an environment score computed from this evidence base scientifically defensible at all, or is it a number that merely looks authoritative? If the honest answer is that most axes cannot be scored, say so plainly and say what the product becomes instead."
+    },
+    {
+      "agent_id": "agy-product-advocate",
+      "engine": "agy",
+      "model": "Claude Opus 4.6 (Thinking)",
+      "reasoning_effort": "thinking",
+      "mandate": "Own decision criterion 2. Work backwards from a dashboard a user would actually trust and find useful, and state what the schema must therefore carry. Confront the tension head-on: how do you build a screen worth looking at when the honest evidence base is mostly holes? Consider what uncertainty looks like in a UI without becoming noise."
+    },
+    {
+      "agent_id": "agy-skeptic",
+      "engine": "agy",
+      "model": "Claude Opus 4.6 (Thinking)",
+      "reasoning_effort": "thinking",
+      "mandate": "Attack scope and cost. Apply YAGNI ruthlessly. This is a hackathon. Argue for the smallest schema that could possibly work, name what everyone else is over-engineering, and identify the opportunity cost of provenance modeling that may never be queried. If a JSON file on disk beats a database here, make that case."
+    },
+    {
+      "agent_id": "agy-data-steward",
+      "engine": "agy",
+      "model": "Claude Opus 4.6 (Thinking)",
+      "reasoning_effort": "thinking",
+      "mandate": "Own longevity. Versioning, provenance, reproducibility, migration, and the relationship between telemetry and the knowledge base. The documents will be revised and crops will be added. How do you version evidence without losing the ability to explain why last month's dashboard said what it said? Should telemetry and knowledge share one SQLite file?"
+    }
+  ],
+
+  "required_output_schema_ref": "backend/docs/debate/proposal_schema.json"
+}

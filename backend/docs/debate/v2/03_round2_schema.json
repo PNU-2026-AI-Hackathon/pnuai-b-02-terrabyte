@@ -1,0 +1,54 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_id",
+    "recommendation",
+    "why",
+    "sketch",
+    "plant_light_verdict",
+    "assumptions",
+    "risks",
+    "cheap_validation",
+    "change_mind_if"
+  ],
+  "properties": {
+    "agent_id": { "type": "string", "description": "Your assigned agent_id, verbatim." },
+    "recommendation": { "type": "string", "description": "Your core answer in 1-3 decisive sentences." },
+    "why": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "3-5 terse supporting points. Trade-offs, not slogans."
+    },
+    "sketch": {
+      "type": "string",
+      "description": "Concrete artifact: SQLite DDL, constraints, state tables, worked example. Exempt from the word budget."
+    },
+    "plant_light_verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "is_plant_light_evaluable_with_bh1750",
+        "conversion_exception_reachable",
+        "what_the_operator_sees",
+        "what_dies"
+      ],
+      "properties": {
+        "is_plant_light_evaluable_with_bh1750": {
+          "type": "string",
+          "enum": ["yes", "yes_only_under_stated_preconditions", "no"]
+        },
+        "conversion_exception_reachable": {
+          "type": "string",
+          "enum": ["yes", "only_if", "no"]
+        },
+        "what_the_operator_sees": { "type": "string" },
+        "what_dies": { "type": "string" }
+      }
+    },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "risks": { "type": "array", "items": { "type": "string" }, "description": "How YOUR OWN answer could fail." },
+    "cheap_validation": { "type": "string", "description": "One check runnable in under an hour." },
+    "change_mind_if": { "type": "string" }
+  }
+}

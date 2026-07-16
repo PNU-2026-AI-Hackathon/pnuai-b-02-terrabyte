@@ -1,0 +1,63 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["critic_id", "critiques", "overall_ranking", "decision_crux"],
+  "properties": {
+    "critic_id": {
+      "type": "string",
+      "description": "Your assigned critic id, verbatim."
+    },
+    "critiques": {
+      "type": "array",
+      "description": "One entry per option card you were given. Do not skip any.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "target_option",
+          "weakest_assumption",
+          "likely_failure_mode",
+          "hidden_cost",
+          "best_fix",
+          "verdict"
+        ],
+        "properties": {
+          "target_option": {
+            "type": "string",
+            "description": "The option ID, e.g. 'Option A'."
+          },
+          "weakest_assumption": {
+            "type": "string",
+            "description": "One sentence. The load-bearing belief most likely to be false."
+          },
+          "likely_failure_mode": {
+            "type": "string",
+            "description": "One sentence. Concretely, how this breaks in practice."
+          },
+          "hidden_cost": {
+            "type": "string",
+            "description": "One sentence. The cost its advocates are not counting."
+          },
+          "best_fix": {
+            "type": "string",
+            "description": "One sentence. The cheapest change that most reduces the risk."
+          },
+          "verdict": {
+            "type": "string",
+            "enum": ["proceed", "revise", "reject"],
+            "description": "proceed / revise / reject"
+          }
+        }
+      }
+    },
+    "overall_ranking": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Option IDs from best to worst, by your judgement. Include every option."
+    },
+    "decision_crux": {
+      "type": "string",
+      "description": "The single question whose answer decides between the top options. One or two sentences."
+    }
+  }
+}

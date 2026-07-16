@@ -1,0 +1,129 @@
+{
+  "schema_version": "1.0.0",
+  "document_type": "agent_council_option_cards",
+  "round": 2,
+  "round_name": "anonymised_option_compression",
+  "language": "en",
+  "created_at": "2026-07-15",
+  "compressed_by": "claude-fable-5 (moderator)",
+
+  "compression_note": "Ten independent proposals were compressed into eight options. Authorship is deliberately withheld: critics must judge the idea, not its source. Options A-D are mutually exclusive answers to 'what shape does the store take'. Options E-H are orthogonal and can each be combined with any of A-D. Several options were proposed by more than one agent independently; convergence is not marked, so that popularity does not substitute for merit.",
+
+  "unanimous_finding_do_not_relitigate": {
+    "statement": "All ten agents independently concluded that air temperature is the only sensor channel that can drive a numeric score, and that air humidity, illuminance (lux), soil moisture, CO2, particulate matter, and noise cannot. Soil temperature is scorable only when gated to a specific growth stage.",
+    "reasons_given": [
+      "Every RH figure in the corpus is a disease-risk or propagation condition, never a growth optimum",
+      "The corpus contains no lux values at all; light evidence is PPFD/DLI, and the documents explicitly forbid deriving one from the other",
+      "Soil-moisture evidence uses field-capacity ratios or sensor+medium-specific VWC, all flagged measurement_not_transferable",
+      "CO2 has one interaction study corpus-wide; particulate matter has none; noise is not a horticultural factor"
+    ],
+    "instruction": "Treat this as settled. Do not spend your critique re-deriving it."
+  },
+
+  "moderator_validation_that_postdates_the_proposals": {
+    "note": "The moderator independently executed the 64-cell check that two agents proposed. Eight of the ten proposals were written before this result existed. Weigh the options against it. Full record: backend/docs/debate/01_moderator_validation.json",
+    "findings": [
+      "The corpus contains 674 explicit '직접 근거 없음' (no direct evidence) markers across 8 documents, 70-97 per crop. Absence is the dominant fact type in this data, not an edge case.",
+      "Optimum air humidity: 0 of 8 crops. Transferable soil moisture: 0 of 8. Lux-comparable light values: 0 of 8. Whole-cycle soil temperature: 0 of 8.",
+      "Air temperature: only 5 of 8 crops carry any value, and only 3 are cleanly usable against an instantaneous sensor reading — basil 25-30C, peppermint 21-26C, wasabi 12.2-15C. Lettuce's 18-24C is flagged general_crop_reference by the registry. Welsh onion's 13-25C is a DAILY MEAN, so comparing it to an instantaneous reading is itself the category error the documents warn against — no agent caught this.",
+      "CONSEQUENCE NOT VISIBLE IN THE BRIEF: cherry tomato, arugula, and coriander have ZERO scorable axes. Three of the eight MVP crops cannot be scored on anything without fabricating a number.",
+      "So the honest count is 3-5 scorable cells out of 64, roughly 94% empty."
+    ],
+    "two_thresholds_this_result_crosses": [
+      "One proposal pre-committed: 'if fewer than 12 cells are scored, the dashboard concept needs a fundamentally different design — guidance-first rather than gauge-first', and 'if 3 or fewer qualify, pivot to a pure guidance/checklist interface with telemetry graphs but no numeric scoring at all'. The measured count is 3 solid, 4 with a caveat.",
+      "Another pre-committed: 'if >80% of cells are empty, a flat 64-row table is justified; if <60%, reconsider normalisation'. The measured emptiness is ~94%."
+    ]
+  },
+
+  "options": [
+    {
+      "id": "Option A",
+      "family": "storage_shape",
+      "core_idea": "A constrained, normalised long-form claim schema. One atomic assertion per row, each carrying a controlled semantic role (growth target / experimental treatment / disease-risk condition / injury threshold), an applicability scope (cultivar, system, stage, medium), and immutable provenance. Numeric values live in a constrained interval child table. Measurement basis is a separate dimension from unit, and composite foreign keys make lux/PPFD/DLI and the four EC bases structurally non-joinable. Eligibility for scoring is a computed view, never a curator-set flag.",
+      "upside": "Conflation becomes structurally difficult rather than a matter of discipline. The registry's filtering rules become executable SQL. Handles the corpus's genuine heterogeneity — the same logical axis carries optima, trial points, base temperatures, disease bands, and injury thresholds simultaneously.",
+      "risk": "Row-heavy and join-heavy. Needs disciplined seed data and more build time than a hackathon may have. A curator can still assign the wrong role or basis; constraints cannot establish scientific truth. SQLite has no table-level permissions, so consumers can bypass the safety views and query raw claims directly.",
+      "cost": "high",
+      "reversibility": "moderate",
+      "best_validation": "Encode ~25 claims from basil sections 2-5 and lettuce sections 2-5 into a throwaway fixture; require that inserts pairing lux with PPFD units, or irrigation-water EC with a nutrient-solution basis, are rejected, and that experimental values never surface in the target view."
+    },
+    {
+      "id": "Option B",
+      "family": "storage_shape",
+      "core_idea": "Keep the 8 markdown files as canonical truth and treat SQLite as a derived, rebuildable cache. Store each extracted claim as a semi-structured row using SQLite's JSON1 extension: typed envelope columns for the fields you filter on, plus a JSON payload for the irreducibly heterogeneous value and its caveats. Generated columns expose scorability for querying.",
+      "upside": "The documents' value is in their caveats, not their numbers — '25-30C, not a day/night split, not an alarm line' is one indivisible fact, and a payload preserves it whole. Absorbs a 9th crop's novel value shape with no migration. Markdown is already in git, so revisions produce reviewable diffs and provenance is automatic.",
+      "risk": "JSON payloads defeat static checking; a typo in a payload key is invisible until query time. Scorability via LIKE patterns over a JSON string is fragile — a status tag like 'no_direct_evidence_yet' would false-match. Cross-payload queries require the application to know each shape, pushing complexity outward.",
+      "cost": "medium",
+      "reversibility": "easy",
+      "best_validation": "Hand-extract basil section 2 (~15 atomic claims including 5 explicit absences) into the fact table, then write the 'which axes are scorable for basil' query and confirm it excludes absences and disease-risk-only values while admitting the 25-30C optimum."
+    },
+    {
+      "id": "Option C",
+      "family": "storage_shape",
+      "core_idea": "Make reviewed, version-controlled JSONL the operational source of truth. Markdown and the gap registry become hashed provenance inputs; SQLite is compiled as an immutable release artifact. Deterministic parsing is used only for structural harvesting; semantic extraction is LLM-assisted candidate generation with mandatory human approval. The 6-crop registry is retired and migrated into uniform 8-crop coverage records.",
+      "upside": "No parser guess or model hallucination can become evidence without a human approving it. Hashes, source spans, and git commits preserve an audit trail back to the Korean originals. Rebuilds are reproducible and the registry's 6-versus-2 split disappears.",
+      "risk": "Human review becomes the bottleneck, especially for the narrative-heavy documents. The intermediate and the markdown can silently drift if the hash gate is ever bypassed. Stable record IDs are easy to assign inconsistently, and line locators rot as soon as a document is revised.",
+      "cost": "high",
+      "reversibility": "moderate",
+      "best_validation": "A 45-minute spike over basil section 2, peppermint section 3, and lettuce section 5: harvest and curate 20 records, build SQLite twice, and require identical logical manifest hashes plus exact source spans for all 20.",
+      "verified_structural_fact": "One agent actually checked the brief's claim that the 8 documents share a skeleton, and partly refuted it: all 8 share the same 11 H2 boundaries, but only the six 254-line documents share seven table layouts and five structured sources. Basil has 40 H3s and 16 sources; peppermint has 24 H3s and 10. Basil and peppermint use bullet-form basic info, narrative research blocks, differing table columns, and basil has an extra section-7 gap table. Deterministic semantic parsing is therefore safe for six documents and unsafe for two."
+    },
+    {
+      "id": "Option D",
+      "family": "storage_shape",
+      "core_idea": "Radical minimalism. Two hand-curated JSON files are the source of truth (one per-crop evidence file, one gap registry extended to 8 crops). A single flat SQLite table holds one row per crop x axis, loaded by a trivial script. Provenance, scope, stage, and calibration are NOT modelled relationally — they sit in a JSON blob column for the rare audit query. Roughly 64 rows total.",
+      "upside": "Shippable in a day. Queryable and debuggable by anyone. Normalising a table that is ~94% NULL buys nothing; the gap registry and inline markers already ARE the provenance model, and duplicating them into SQL doubles maintenance for queries nobody has written. Extensibility machinery solves problems this project will never have.",
+      "risk": "The JSON blob is not SQL-queryable, so any cultivar x system filtering forces application-level parsing. Hand-curation has no reproducibility; a document revision silently desyncs the database. One row per crop x axis cannot hold basil's air temperature having BOTH an optimum AND an injury threshold — fixing that pushes you back toward multiple rows per axis, i.e. toward the options it rejects.",
+      "cost": "low",
+      "reversibility": "easy",
+      "best_validation": "A 30-line script counting '직접 근거 없음' per section per crop, printing a crop x axis sparsity matrix. >80% empty justifies the flat table; <60% argues for normalisation. (The moderator has since measured ~94%.)"
+    },
+    {
+      "id": "Option E",
+      "family": "cross_cutting_eligibility",
+      "core_idea": "Never store an immutable channel-wide 'scorable' flag. Derive a disposition — SCORABLE / ADVISORY_ONLY / RECORD_ONLY — per crop, per deployment context, and per use case. A channel is SCORABLE only when its raw or approved locally-derived metric exactly matches a direct fact's unit, measurement basis, claim purpose, and applicability scope. Otherwise source-backed section 9 actions make it advisory. Channels with neither remain record-only.",
+      "upside": "Makes the same channel legitimately scorable in one context and not another — e.g. canopy RH is scorable for a separately-labelled disease-risk use case while ambient RH remains advisory for growth. Claim purpose, not channel identity, gates eligibility. Prevents a hardcoded product decision from ossifying in application logic.",
+      "risk": "Exact matching may leave nearly every crop-axis pair advisory-only, making the dashboard look empty. If calibration is the escape hatch, lux mappings drift with lamp spectrum and moisture mappings drift with medium, packing, temperature, salinity, and probe placement — and a calibration-quality policy can look authoritative without reference instruments.",
+      "cost": "medium",
+      "reversibility": "moderate",
+      "best_validation": "Run the disposition query once against a fixture and assert this exact vector: basil air-temp/growth=SCORABLE; ambient RH/growth=ADVISORY_ONLY; canopy RH/disease-risk=SCORABLE; raw lux=ADVISORY_ONLY; approved scope-matched lux-to-PPFD=SCORABLE; pot FC calibration against basil's field-study scope=ADVISORY_ONLY; CO2, PM, noise=RECORD_ONLY."
+    },
+    {
+      "id": "Option F",
+      "family": "cross_cutting_presentation",
+      "core_idea": "Every crop x axis cell carries three parallel layers: (1) a scored evidence band where direct evidence exists, (2) an explicit coverage_status enum exposing WHY no score exists, and (3) a linked qualitative action from section 9 that replaces the score with actionable prose. Every sensor card therefore always shows something — a number, a contextual warning, or honest guidance — each with drill-down to provenance.",
+      "upside": "Directly attacks the failure mode where a dashboard of 'unknown' cards is abandoned in a week. The documents already contain rich section 9 guidance for exactly the axes where numbers fail; this makes that guidance as queryable as a number. Mapping the registry's 10-value vocabulary to UI states belongs in the schema, not in frontend code.",
+      "risk": "Even with three tiers, a screen where only 2 of 8 cards carry real numbers may still disappoint users expecting a single score. Section 9 prose is written for Korean gardeners and needs adaptation — effort nobody budgeted. The advisory tier is a UX grey zone: showing disease-risk RH numbers without loudly labelling them as non-optima misleads users even when the schema is correct. Coverage rows are hand-curated judgments, so the same conflation risk simply relocates.",
+      "cost": "medium",
+      "reversibility": "easy",
+      "best_validation": "Classify all 64 cells as scored/advisory/monitor_only against the actual markdown. Its author pre-committed: under 12 scored means the gauge-first dashboard must be redesigned guidance-first; 3 or fewer means abandon numeric scoring entirely. (The moderator has since measured 3 solid, 4 with a caveat.)"
+    },
+    {
+      "id": "Option G",
+      "family": "cross_cutting_lifecycle",
+      "core_idea": "Split telemetry and knowledge into two SQLite files sharing a deployment_id. Version the knowledge base with an immutable append-only revision table keyed by (revision_id, fact_id) so any past dashboard render can be replayed against the revision active at that timestamp. The extraction pipeline's own version is recorded in each revision.",
+      "upside": "Telemetry is high-write append-only at potentially millions of rows; knowledge is ~200 facts, low-write and read-heavy. One file means write contention and incompatible backup/retention policies. Without immutable revisions, correcting a crop's evidence silently rewrites what the dashboard would have shown last month, which destroys auditability.",
+      "risk": "Revision tracking is schema complexity that may never be queried during a hackathon — build cost with no demo payoff. Two files force the application to manage two connections or ATTACH. Worst: if extraction is not truly deterministic (LLM-assisted candidate generation is not), the revision chain is unreliable and the whole provenance claim is hollow. Revisions capture value changes but not schema migrations, so replay still breaks when the fact table itself evolves.",
+      "cost": "medium",
+      "reversibility": "hard",
+      "best_validation": "Take lettuce alone. Extract every fact into a sheet matching the fact table. Verify each row maps to exactly one value_type and at least one evidence_status, that no value lacks a source_id, and that a round-trip back to markdown loses nothing."
+    },
+    {
+      "id": "Option H",
+      "family": "product_reframing",
+      "core_idea": "Reject the premise. This is not an environment-score product. Air temperature supports only a range-membership check (inside/outside), with no duration weighting because tolerated-duration data does not exist anywhere in the corpus. The product is a condition monitor: it shows current readings, flags the one or two channels where literature thresholds exist, and surfaces qualitative guidance for everything else.",
+      "upside": "The only option whose honesty matches the measured evidence base. Removes the pressure to fabricate the thresholds the documents were written specifically to avoid fabricating. Makes the three zero-scorable-axis crops representable instead of broken.",
+      "risk": "Declaring 7 of 8 channels unscorable reads as torpedoing the product; stakeholders may respond by overriding with invented thresholds — precisely the failure the corpus exists to prevent. Even air temperature is fragile: with no duration data, a momentary excursion and a sustained one produce identical responses, so alerts will flap. And the analysis is corpus-bound — well-known general horticultural references (e.g. RH 60-80%) exist outside it and were deliberately excluded; whether that exclusion was correct is unassessed.",
+      "cost": "low",
+      "reversibility": "easy",
+      "best_validation": "The 64-cell count. Its author predicted 10 or fewer qualifying cells, all air temperature or soil pH. (The moderator measured 3-5, and neither pH nor EC maps to any sensor in the current hardware set.)"
+    }
+  ],
+
+  "questions_for_critics": [
+    "Options A, B, C, and D are rivals. Given ~94% emptiness, 674 absence facts, and 3-5 scorable cells, which shape is correct — and does the sparsity argument actually defeat the safety argument, or are they answering different questions?",
+    "If absence is the dominant fact type, is the database's primary content the numbers at all? What follows for the schema if its main job is storing 674 justified absences and their qualitative guidance rather than a handful of ranges?",
+    "Option D's own author concedes that one row per crop x axis cannot represent basil's air temperature having both an optimum and an injury threshold. Is that concession fatal, or a cheap fix?",
+    "Two options embed pre-committed abandonment thresholds that the moderator's measurement has now crossed. Does that oblige the council to adopt Option H's reframing, or is a threshold set before the evidence arrived merely a guess that should not bind?",
+    "Which of E, F, G is worth its build cost on a hackathon timeline, and which is speculative? Be specific about what you would cut."
+  ]
+}

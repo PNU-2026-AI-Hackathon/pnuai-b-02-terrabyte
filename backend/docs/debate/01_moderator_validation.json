@@ -1,0 +1,91 @@
+{
+  "schema_version": "1.0.0",
+  "document_type": "moderator_validation_record",
+  "round": 1,
+  "language": "en",
+  "created_at": "2026-07-15",
+  "executed_by": "claude-fable-5 (moderator)",
+
+  "purpose": "agy-domain-skeptic proposed a cheap validation: across 8 sensor channels x 8 crops (64 cells), count the cells holding a value explicitly labelled as an optimum rather than a disease-risk, experimental, or stage-specific condition. Its stated prediction was '<= 10 of 64, and all of them are air_temperature or soil_pH'. The moderator executed this directly rather than taking any agent's word for it, because the result decides whether the product is viable as specified.",
+
+  "method": "Each crop document ends with a '작물별 최종 요약 양식' (per-crop final summary) block — the most normalised part of the corpus. The sensor-relevant axes were extracted from that block for all 8 crops verbatim, then cross-checked against crop_evidence_gaps_6_crops.json.",
+
+  "corpus_scale_finding": {
+    "explicit_no_direct_evidence_markers": 674,
+    "per_crop": {
+      "basil": 81,
+      "peppermint": 90,
+      "cherry_tomato": 75,
+      "welsh_onion": 97,
+      "arugula": 94,
+      "wasabi": 70,
+      "lettuce": 80,
+      "coriander": 87
+    },
+    "interpretation": "The corpus contains 674 explicit refusals to state a value. Absence is not an edge case in this data — it is the majority state. Any schema that models absence as NULL or as a missing row is modelling the dominant fact type as an exception."
+  },
+
+  "results_by_axis": {
+    "air_humidity": {
+      "crops_with_optimum": 0,
+      "of": 8,
+      "verdict": "UNSCORABLE — unanimous",
+      "evidence": "All 8 crops record optimum RH as absent, verbatim: basil '생육 최적 RH 직접 근거 없음', peppermint '직접 확인된 최적 수치 없음', cherry_tomato/welsh_onion/arugula/lettuce/coriander '직접 근거 없음', wasabi '성체 최적 RH 없음' (its 90-95% figure is a propagation rooting condition, not adult cultivation).",
+      "note": "Confirms the council's unanimous position. Every RH number in the corpus is a disease-risk or propagation condition."
+    },
+    "soil_moisture": {
+      "crops_with_transferable_optimum": 0,
+      "of": 8,
+      "verdict": "UNSCORABLE without per-deployment calibration",
+      "evidence": "basil/peppermint/welsh_onion/lettuce/coriander have no universal sensor value at all. The three crops that do have numbers are all measurement-locked: cherry_tomato 'VWC 0.319/0.330 m3/m3 in a specific medium, explicitly not universal', arugula 'VWC 0.30 m3/m3 on a specific FDR sensor and medium', wasabi '>=95% of field capacity, a facility proposal'. Three different measurement bases, none matching a generic capacitive probe."
+    },
+    "soil_temperature": {
+      "crops_with_whole_cycle_optimum": 0,
+      "of": 8,
+      "verdict": "STAGE-SPECIFIC ONLY — germination is the only supported phase",
+      "evidence": "basil/peppermint/wasabi record '직접 근거 없음'. The remaining five have germination-only values: cherry_tomato 23.9-29.4 C germination, welsh_onion 13-20 C germination, arugula 30 C germination optimum, lettuce 12.8-18.3 C germination, coriander ~24.83 C germination. Every one is explicitly marked as not a whole-cycle value."
+    },
+    "illuminance": {
+      "crops_with_lux_comparable_optimum": 0,
+      "of": 8,
+      "verdict": "UNSCORABLE — unit mismatch is total",
+      "evidence": "Not a single lux figure exists in the corpus. Light evidence is PPFD, DLI, shading percentage, or hours. Three crops give hour counts (basil 6-8 h/day, peppermint min 3 h/day, arugula 4-6 h/day) but a lux sensor cannot produce 'hours of bright light' without a brightness threshold that the corpus never defines. Three crops say '전일광' (full sun) with no hour value; welsh_onion and wasabi record '직접 근거 없음'."
+    },
+    "air_temperature": {
+      "crops_with_any_value": 5,
+      "of": 8,
+      "verdict": "THE ONLY PARTIALLY SCORABLE AXIS — and it is narrower than the council assumed",
+      "per_crop": [
+        { "crop": "basil", "value": "25-30 C", "usable_instantaneously": true, "caveat": "Literature-cited optimum. Explicitly not a day/night split and explicitly not an alarm line." },
+        { "crop": "peppermint", "value": "21-26 C", "usable_instantaneously": true, "caveat": "None found beyond the corpus-wide absence of duration data." },
+        { "crop": "wasabi", "value": "12.2-15 C (WSU ideal); other sources prefer 8-18 C", "usable_instantaneously": true, "caveat": "Two overlapping ranges from different sources; needs a curation decision." },
+        { "crop": "lettuce", "value": "18-24 C", "usable_instantaneously": true, "caveat": "DOWNGRADED: the registry flags this as general_crop_reference AND not_a_risk_threshold — it is a general protected-cultivation range, not a lettuce-specific validated optimum." },
+        { "crop": "welsh_onion", "value": "13-25 C", "usable_instantaneously": false, "caveat": "CATEGORY ERROR RISK: this is a 일평균 (DAILY MEAN) figure. Comparing an instantaneous sensor reading to a daily-mean optimum is exactly the kind of conflation the documents warn against. Scoring it requires aggregating to a daily mean first." },
+        { "crop": "cherry_tomato", "value": "none crop-specific", "usable_instantaneously": false, "caveat": "'고유 범용값 없음'. Only a general tomato fruit-set reference (day 15.6-32.2 C, night 15.6-23.9 C), flagged general_crop_reference in the registry." },
+        { "crop": "arugula", "value": "none", "usable_instantaneously": false, "caveat": "'영양생장 주야 범용값 직접 근거 없음'." },
+        { "crop": "coriander", "value": "none", "usable_instantaneously": false, "caveat": "'주야 범용 직접값 없음'. Only qualitative: cool-season crop." }
+      ]
+    }
+  },
+
+  "headline": {
+    "prediction": "agy-domain-skeptic predicted <=10 of 64 cells would qualify, all air_temperature or soil_pH.",
+    "outcome": "CONFIRMED, AND WORSE THAN PREDICTED.",
+    "scorable_cell_count": "3 solidly (basil, peppermint, wasabi air temperature), 4 with an explicit caveat (adding lettuce as a general-crop reference), 5 only if welsh_onion is first aggregated to a daily mean. Out of 64 cells. Every other axis is 0.",
+    "most_important_consequence": "THREE OF THE EIGHT MVP CROPS — cherry tomato, arugula, and coriander — have NO scorable axis whatsoever. Not a weak one: zero. For those crops an 'environment score' cannot be computed from any of the 8 sensor channels without fabricating a number. This is a product-definition problem, not a schema problem, and it was not visible in the brief."
+  },
+
+  "implications_for_the_debate": [
+    "The council's convergence on 'air temperature is the scorable axis' is empirically correct but was stated too generously. Air temperature is scorable for 3-4 crops, not for crops in general.",
+    "welsh_onion's daily-mean range is a new instance of the corpus's central hazard (comparing incommensurable measurement bases) that no agent caught. It supports the argument that measurement basis must be structural, not conventional.",
+    "674 explicit absence markers means 'no direct evidence' is the corpus's dominant value. This strongly supports codex-evidence-modeler's position that absence needs first-class representation and NULL is inadequate, and undercuts any wide-table design.",
+    "The 3-crops-with-zero-scorable-axes finding is the strongest available argument for agy-domain-skeptic's reframing: the product cannot honestly be 'an environment score dashboard' for all 8 crops. It can be a condition monitor that scores where evidence exists and advises everywhere else.",
+    "This finding must be put in front of agy-product-advocate and agy-skeptic when they run, since it directly determines what dashboard is buildable and how much schema is justified."
+  ],
+
+  "limits_of_this_validation": [
+    "It reads the per-crop final summary block, which is a distillation. A value could exist in the body but be omitted from the summary. Spot-checks against basil sections 2-5 and the registry did not surface such a case, but the check is not exhaustive.",
+    "It assesses only the 8 hardware channels. Axes such as soil pH and EC do have direct evidence (e.g. basil pH 6.0-7.5) but no sensor reports them in the current hardware set.",
+    "It is corpus-bound. Whether the researchers were right to exclude broader horticultural references is outside its scope."
+  ]
+}

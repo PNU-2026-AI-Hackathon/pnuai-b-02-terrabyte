@@ -1,0 +1,74 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_id",
+    "role_summary",
+    "recommendation",
+    "why",
+    "sketch",
+    "score_verdict",
+    "brief_corrections",
+    "procurement_implications",
+    "assumptions",
+    "risks",
+    "cheap_validation",
+    "change_mind_if"
+  ],
+  "properties": {
+    "agent_id": { "type": "string", "description": "Your assigned agent_id, verbatim." },
+    "role_summary": { "type": "string", "description": "One sentence restating your mandate." },
+    "recommendation": { "type": "string", "description": "Your core recommendation in 1-3 decisive sentences." },
+    "why": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "3-5 terse supporting points. Trade-offs, not slogans."
+    },
+    "sketch": {
+      "type": "string",
+      "description": "Concrete artifact: DDL, a formula, a UI state table, a procurement spec, or a worked example. Exempt from the word budget. Empty string if genuinely not applicable."
+    },
+    "score_verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["can_a_numeric_score_exist", "what_it_would_mean", "what_replaces_it_if_not"],
+      "properties": {
+        "can_a_numeric_score_exist": {
+          "type": "string",
+          "enum": ["yes", "yes_with_severe_limits", "no"],
+          "description": "Your verdict on whether a defensible numeric score is derivable from the 13 verified records."
+        },
+        "what_it_would_mean": {
+          "type": "string",
+          "description": "If yes or yes_with_severe_limits: the score's explicit contract — what it claims and what it must never be read as. If no: empty string."
+        },
+        "what_replaces_it_if_not": {
+          "type": "string",
+          "description": "If no or yes_with_severe_limits: the honest representation that replaces or supplements it."
+        }
+      }
+    },
+    "brief_corrections": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Errors you found in the moderator's brief after reading the actual files. Empty array if none — but check before claiming none."
+    },
+    "procurement_implications": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "What your recommendation demands of unselected hardware. Empty array if none."
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "What you take for granted that could be false."
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "How YOUR OWN recommendation could fail."
+    },
+    "cheap_validation": { "type": "string", "description": "One check runnable in under an hour." },
+    "change_mind_if": { "type": "string", "description": "The specific finding that would flip you." }
+  }
+}

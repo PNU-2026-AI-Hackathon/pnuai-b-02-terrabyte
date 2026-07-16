@@ -1,0 +1,109 @@
+{
+  "schema_version": "2.0.0",
+  "document_type": "agent_council_brief",
+  "council_generation": 2,
+  "round": 2,
+  "round_name": "targeted_followup_hardware_reality",
+  "language": "en",
+  "created_at": "2026-07-15",
+  "moderator": "claude-fable-5",
+  "escalation_level": "level_3_targeted_followup",
+
+  "why_this_round_exists": [
+    "Round 1 ran with hardware unselected. All ten agents reasoned about what SHOULD be bought.",
+    "The user has now decided the hardware. The decision invalidates a load-bearing assumption of Round 1.",
+    "This round asks only one question: given the actual instrument, what does the SQLite schema do?",
+    "You are not asked to redo Round 1. Do not re-litigate whether a composite score should exist — Round 1 reached near-consensus that it should not (8 of 10 said 'no', 2 said 'yes_with_severe_limits' meaning per-axis distance-to-anchor indicators only, never a composite). That conclusion stands unless this new fact overturns it."
+  ],
+
+  "the_new_fact": {
+    "status": "DECIDED BY USER — not negotiable, do not argue for different hardware",
+    "instrument": "BH1750 (ROHM), I2C digital ambient light sensor",
+    "what_it_measures": "illuminance in lux",
+    "spectral_response": "approximates the human photopic curve (CIE V-lambda), peak sensitivity near 555 nm",
+    "typical_range_lx": "1 to 65535",
+    "typical_accuracy": "roughly +/-20 percent, and spectrally dependent on the source",
+    "it_does_not_measure": "PPFD (400-700 nm photon flux). It is not a quantum sensor.",
+    "user_instruction_verbatim_translated": "We will use the BH1750 sensor. Do the best thing you can on that basis. This inference is left to you.",
+    "moderator_note": "The user did not say a quantum sensor is forbidden. The user said BH1750 is what will be used and left the design inference to the council. If the honest answer requires a one-time reference instrument, say so explicitly and say why."
+  },
+
+  "what_the_corpus_says_about_lux": {
+    "collection_contract_axes_plant_light_instrument_requirement": "The primary sensor for plant scoring must be a 400-700 nm quantum sensor or equivalent PPFD measurement.",
+    "collection_contract_lux_policy": {
+      "status": "optional_non_scoring_channel",
+      "allowed_use": "human visual environment, or relative change within one fixed light source",
+      "prohibited_use": "universal crop scoring, direct comparison against the sources' PPFD boundaries, unverified fixed-coefficient conversion",
+      "conversion_exception": "Only when the light source spectrum is fixed AND the conversion coefficient for that specific source-and-sensor combination has been field-validated, may it be preserved as a separate derived field."
+    },
+    "quarantine_record_all_crops_universal_lux_threshold_q001": {
+      "quarantine_reasons": ["unit_not_transferable"],
+      "why_not_scoreable": "lux cannot be converted to PPFD without a source-spectrum-specific validated coefficient, and every crop light value in the corpus is PPFD or DLI based."
+    },
+    "every_crop_light_record_is_ppfd_or_dli": [
+      "basil-plant-light-edible-biomass-001: 500 umol m-2 s-1, 16 h",
+      "peppermint-plant-light-growth-001: band 150-200 umol m-2 s-1, 14 h",
+      "wasabi-plant-light-rhizome-001: 140 umol m-2 s-1 highest tested, 12 h",
+      "lettuce-plant-light-dli-iceberg-001: DLI 11.5 mol m-2 day-1 at 200 PPFD, 16 h",
+      "coriander-plant-light-fresh-leaf-001: 200 umol m-2 s-1, 16 h"
+    ],
+    "significance": "plant_light is the largest single-axis cluster in the corpus: 5 of 13 verified records, covering 5 of 8 crops. It is the only axis with crop coverage broader than temperature."
+  },
+
+  "round_1_positions_you_must_account_for": {
+    "agy-procurement": "Called a lux-only sensor for plant_light 'an unrecoverable error' and said a cheap lux sensor 'kills' the entire plant_light axis. That position was written without knowing BH1750 was already chosen. It must now be either defended against the real decision or revised.",
+    "codex-schema-v2": "SQLite is justified only as the operational join layer; the evidence layer should load the three JSON documents as-is and add typed projections, an admission policy, deployment context, and measurement tables.",
+    "codex-curve-builder": "A comparative_best_tested_point licenses only x* in argmax over the tested grid. No interpolation, no extrapolation. Untested regions are 'unknown', not 'bad'.",
+    "codex-critic": "Default-deny every record from numeric scoring; permit role-specific output only after objective, cultivar/stage/environment, measurement basis, and temporal window all match.",
+    "consensus_replacement_for_a_score": "Per-axis, claim-typed, context-gated reference/distance indicators with first-class unknown and blocked states. Noise is already modelled as 'blocked until site zoning is known'."
+  },
+
+  "the_deployment_context": {
+    "site": "urban idle space (도심 유휴공간) smart farm",
+    "implication_you_must_address": "Natural light may mix with artificial light through windows. The conversion_exception requires a FIXED source spectrum. Mixed daylight-plus-LED is not a fixed spectrum, and the daylight fraction changes by hour, season, and weather.",
+    "unknown": "The moderator does not know whether the deployment is a sealed windowless room under LED only, or a daylit space. Do not assume. State what your answer depends on and give the answer for each case if it differs."
+  },
+
+  "user_decisions_already_fixed": {
+    "storage_engine": "SQLite (user decision)",
+    "axis_scope": "All five axes are carried in the schema. Scoring/evaluation concerns air_temperature, relative_humidity, plant_light. particulate_matter and noise are carried as common (human-health / legal) axes, not crop axes.",
+    "light_instrument": "BH1750"
+  },
+
+  "the_question": [
+    "Q1. Given BH1750 is the light instrument, is the plant_light axis evaluable at all? If yes, under exactly what preconditions. If no, say so plainly.",
+    "Q2. Is the collection_contract's conversion_exception reachable in practice here? Specify precisely what would have to be true and what one-time measurement would establish it. If it is unreachable in a daylit space, say that.",
+    "Q3. Give the concrete SQLite DDL for how a lux-native deployment is represented. The schema must make it structurally impossible to compare a raw lux reading against the corpus PPFD values (500, 150-200, 140, 200) or the DLI value (11.5). Name the tables and constraints that enforce this.",
+    "Q4. Does plant_light now become a 'blocked' axis in the same sense noise is blocked pending site zoning? If so, what unblocks it, and what does the operator see meanwhile? If it is a different kind of blocked, name the difference.",
+    "Q5. What is the honest, non-zero value the BH1750 still delivers? Be concrete and do not inflate it."
+  ],
+
+  "rules": [
+    "Do NOT edit any file. Read-only.",
+    "Do NOT argue that the team should buy different hardware INSTEAD of answering. You may state that a one-time reference measurement is required — that is an answer, not a hardware argument.",
+    "Honour every record's prohibited_use.",
+    "Be concrete: name tables, columns, constraints, states.",
+    "State assumptions and risks including your own proposal's weaknesses.",
+    "Exactly one cheap validation step (< 1 hour).",
+    "State what would change your mind.",
+    "Keep why + assumptions + risks to roughly 180 words total. 'sketch' is exempt.",
+    "Output a single JSON object. No prose outside the JSON."
+  ],
+
+  "required_output_shape": {
+    "agent_id": "string",
+    "recommendation": "string",
+    "why": ["string"],
+    "sketch": "string — DDL and states",
+    "plant_light_verdict": {
+      "is_plant_light_evaluable_with_bh1750": "yes | yes_only_under_stated_preconditions | no",
+      "conversion_exception_reachable": "yes | only_if | no",
+      "what_the_operator_sees": "string",
+      "what_dies": "string"
+    },
+    "assumptions": ["string"],
+    "risks": ["string"],
+    "cheap_validation": "string",
+    "change_mind_if": "string"
+  }
+}

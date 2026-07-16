@@ -1,0 +1,68 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_id",
+    "role_summary",
+    "recommendation",
+    "why",
+    "schema_sketch",
+    "scorable_axes",
+    "unscorable_axes",
+    "assumptions",
+    "risks",
+    "cheap_validation",
+    "change_mind_if"
+  ],
+  "properties": {
+    "agent_id": {
+      "type": "string",
+      "description": "Your assigned agent_id, verbatim."
+    },
+    "role_summary": {
+      "type": "string",
+      "description": "One sentence restating the mandate you were given."
+    },
+    "recommendation": {
+      "type": "string",
+      "description": "Your core recommendation in 1-3 sentences. Be decisive."
+    },
+    "why": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "3-5 terse supporting points. Trade-offs, not slogans."
+    },
+    "schema_sketch": {
+      "type": "string",
+      "description": "Concrete artifact supporting your recommendation: SQL DDL, pipeline steps, a predicate, or a worked example. Exempt from the word budget. Empty string if genuinely not applicable to your mandate."
+    },
+    "scorable_axes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Sensor channels you believe can legitimately drive a numeric score, each with a one-clause justification. Empty array is a valid and meaningful answer."
+    },
+    "unscorable_axes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Sensor channels that must not drive a numeric score, each with a one-clause reason."
+    },
+    "assumptions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "What you are taking for granted that could be false."
+    },
+    "risks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "How your own recommendation could fail. Be honest about your proposal's weaknesses, not just others'."
+    },
+    "cheap_validation": {
+      "type": "string",
+      "description": "Exactly one concrete check runnable in under an hour that would confirm or kill your recommendation."
+    },
+    "change_mind_if": {
+      "type": "string",
+      "description": "The specific finding that would make you abandon this recommendation."
+    }
+  }
+}
