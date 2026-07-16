@@ -1,0 +1,13 @@
+{
+    "autodeskProduct": "Fusion360",
+    "type": "script",
+    "id": "244407f0-fab3-466d-9f15-46301fc2f59f",
+    "author": "Terrabyte",
+    "description": {
+        "": "Creates a minimal modular home smart-farm concept with heating, lighting, and irrigation modules.",
+        "ko": "히팅, 조명, 관수 모듈을 탈부착할 수 있는 미니멀 가정용 스마트팜 콘셉트를 생성합니다."
+    },
+    "version": "1.0.0",
+    "runOnStartup": false,
+    "supportedOS": "windows|mac"
+}
