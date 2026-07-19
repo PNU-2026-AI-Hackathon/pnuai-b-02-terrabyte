@@ -17,6 +17,7 @@ type ScoreScreenProps = {
   selectedCrop: number;
   setSelectedCrop: (index: number) => void;
   onDashboard: () => void;
+  onShop: () => void;
 };
 
 function formatNumber(value: number) {
@@ -136,7 +137,13 @@ function FactorRow({ factor }: { factor: Factor }) {
   );
 }
 
-export function ScoreScreen({ isCompact, selectedCrop, setSelectedCrop, onDashboard }: ScoreScreenProps) {
+export function ScoreScreen({
+  isCompact,
+  selectedCrop,
+  setSelectedCrop,
+  onDashboard,
+  onShop,
+}: ScoreScreenProps) {
   const crop = crops[selectedCrop] ?? crops[0];
 
   return (
@@ -217,7 +224,7 @@ export function ScoreScreen({ isCompact, selectedCrop, setSelectedCrop, onDashbo
                         <Text style={styles.expectedGain}>기대 효과 {item.expectedGain}</Text>
                       ) : null}
                     </View>
-                    <PrimaryButton label="구매하기" style={styles.buyButton} />
+                    <PrimaryButton label="구매하기" onPress={onShop} style={styles.buyButton} />
                   </View>
                 );
               })}

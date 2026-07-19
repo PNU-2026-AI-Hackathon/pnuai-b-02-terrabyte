@@ -10,6 +10,7 @@ import { DeviceRegisterScreen } from './src/screens/DeviceRegisterScreen';
 import { DeviceSetupScreen } from './src/screens/DeviceSetupScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
 import { ScoreScreen } from './src/screens/ScoreScreen';
+import { ShopScreen } from './src/screens/ShopScreen';
 import { type ChartRange } from './src/data';
 import { colors, compactBreakpoint, glassWebStyle, maxContentWidth, typography } from './src/theme';
 
@@ -27,7 +28,7 @@ if (
   document.head.appendChild(link);
 }
 
-type Screen = 'login' | 'device' | 'crop' | 'setup' | 'score' | 'dashboard';
+type Screen = 'login' | 'device' | 'crop' | 'setup' | 'score' | 'dashboard' | 'shop';
 type AuthTab = 'login' | 'signup';
 
 function scrollToTop() {
@@ -45,6 +46,7 @@ type AppBarProps = {
 function AppBar({ isCompact, screen, goTo }: AppBarProps) {
   const scoreActive = screen === 'score';
   const dashboardActive = screen === 'dashboard';
+  const shopActive = screen === 'shop';
 
   return (
     <View style={styles.appBarWrap}>
@@ -75,6 +77,13 @@ function AppBar({ isCompact, screen, goTo }: AppBarProps) {
             style={[styles.appTab, dashboardActive && styles.activeAppTab]}
           >
             <Text style={[styles.appTabText, dashboardActive && styles.activeAppTabText]}>대시보드</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => goTo('shop')}
+            style={[styles.appTab, shopActive && styles.activeAppTab]}
+          >
+            <Text style={[styles.appTabText, shopActive && styles.activeAppTabText]}>구매</Text>
           </Pressable>
         </View>
 
@@ -134,7 +143,7 @@ export default function App() {
     <View style={[styles.root, styles.webRoot]}>
       <Background />
       <View style={styles.content}>
-        {screen === 'score' || screen === 'dashboard' ? (
+        {screen === 'score' || screen === 'dashboard' || screen === 'shop' ? (
           <AppBar goTo={goTo} isCompact={isCompact} screen={screen} />
         ) : null}
 
@@ -156,6 +165,7 @@ export default function App() {
           <ScoreScreen
             isCompact={isCompact}
             onDashboard={() => goTo('dashboard')}
+            onShop={() => goTo('shop')}
             selectedCrop={selectedCrop}
             setSelectedCrop={setSelectedCrop}
           />
@@ -169,6 +179,7 @@ export default function App() {
             setChartRange={setChartRange}
           />
         ) : null}
+        {screen === 'shop' ? <ShopScreen isCompact={isCompact} /> : null}
       </View>
       <StatusBar style="dark" />
     </View>
