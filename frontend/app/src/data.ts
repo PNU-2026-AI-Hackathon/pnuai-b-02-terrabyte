@@ -10,6 +10,9 @@ export type Factor = {
   label: string;
   unit: string;
   current: number;
+  avg24h: number;
+  min24h: number;
+  max24h: number;
   optimalMin: number;
   optimalMax: number;
   axisMin: number;
@@ -48,6 +51,9 @@ export const factors: Factor[] = [
     label: '온도',
     unit: '℃',
     current: 24.5,
+    avg24h: 24.1,
+    min24h: 21.8,
+    max24h: 26.3,
     optimalMin: 20,
     optimalMax: 26,
     axisMin: 10,
@@ -58,28 +64,37 @@ export const factors: Factor[] = [
     label: '습도',
     unit: '%',
     current: 45,
+    avg24h: 52,
+    min24h: 43,
+    max24h: 64,
     optimalMin: 60,
     optimalMax: 75,
     axisMin: 0,
     axisMax: 100,
     status: 'LOW',
-    gap: 15,
+    gap: 8,
   },
   {
     label: '조도',
     unit: 'lux',
     current: 8000,
+    avg24h: 11800,
+    min24h: 1200,
+    max24h: 18900,
     optimalMin: 15000,
     optimalMax: 20000,
     axisMin: 0,
     axisMax: 25000,
     status: 'LOW',
-    gap: 7000,
+    gap: 3200,
   },
   {
     label: '토양수분',
     unit: '%',
     current: 38,
+    avg24h: 36,
+    min24h: 31,
+    max24h: 42,
     optimalMin: 30,
     optimalMax: 45,
     axisMin: 0,
@@ -92,6 +107,8 @@ export const score = {
   value: 68,
   grade: '보통',
   measuredAt: '2026-07-14T10:30:00+09:00',
+  windowStart: '2026-07-13T10:30:00+09:00',
+  windowEnd: '2026-07-14T10:30:00+09:00',
 };
 
 export const altCrops = [
@@ -247,11 +264,62 @@ export const soil = {
   disclaimer: '추천 로직·API 스펙 확정 전 예시 데이터입니다',
 };
 
+export const dailyAvg = [
+  { label: '온도', emoji: '🌡️', value: '24.1℃', sub: '24h 평균 · 최저 21.8 · 최고 26.3' },
+  { label: '습도', emoji: '💧', value: '52%', sub: '24h 평균 · 최저 43 · 최고 64' },
+  { label: '조도', emoji: '☀️', value: '11,800 lux', sub: '24h 평균 · 최저 1,200 · 최고 18,900' },
+  { label: '토양수분', emoji: '🪴', value: '36%', sub: '24h 평균 · 최저 31 · 최고 42' },
+];
+
 export const latest = [
-  { label: '온도', emoji: '🌡️', value: '24.5℃', sub: '최적 범위 (20~26℃)' },
-  { label: '습도', emoji: '💧', value: '45%', sub: '최적 대비 15% 부족' },
-  { label: '조도', emoji: '☀️', value: '8,000 lux', sub: '최적 대비 7,000 lux 부족' },
-  { label: '토양수분', emoji: '🪴', value: '38%', sub: '최적 범위 (30~45%)' },
+  {
+    label: '온도',
+    emoji: '🌡️',
+    value: '24.5℃',
+    baseValue: 24.5,
+    unit: '℃',
+    decimals: 1,
+    jitter: 0.3,
+    color: '#d9822b',
+    sub: '최적 범위 (20~26℃)',
+    sparkline: [24.1, 24.2, 24.1, 24.3, 24.4, 24.3, 24.5, 24.4, 24.6, 24.5, 24.4, 24.5],
+  },
+  {
+    label: '습도',
+    emoji: '💧',
+    value: '45%',
+    baseValue: 45,
+    unit: '%',
+    decimals: 0,
+    jitter: 2,
+    color: '#2b8fae',
+    sub: '최적 대비 15% 부족',
+    sparkline: [47, 46, 47, 46, 45, 46, 44, 45, 46, 45, 44, 45],
+  },
+  {
+    label: '조도',
+    emoji: '☀️',
+    value: '8,000 lux',
+    baseValue: 8000,
+    unit: 'lux',
+    decimals: 0,
+    jitter: 250,
+    color: '#e0b23a',
+    sub: '최적 대비 7,000 lux 부족',
+    sparkline: [7650, 7820, 7900, 7750, 8010, 8150, 8070, 8240, 8100, 7950, 8120, 8000],
+  },
+  {
+    label: '토양수분',
+    emoji: '🪴',
+    value: '38%',
+    baseValue: 38,
+    unit: '%',
+    decimals: 0,
+    jitter: 1,
+    color: '#3fae6f',
+    sub: '최적 범위 (30~45%)',
+    sparkline: [39, 39, 38, 39, 38, 38, 37, 38, 38, 39, 38, 38],
+  },
 ];
 
 export const rangeTabs: Array<{ key: ChartRange; label: string }> = [

@@ -16,7 +16,7 @@ type ScoreScreenProps = {
   isCompact: boolean;
   selectedCrop: number;
   setSelectedCrop: (index: number) => void;
-  onDashboard: () => void;
+  onRealtime: () => void;
   onShop: () => void;
 };
 
@@ -26,6 +26,10 @@ function formatNumber(value: number) {
 
 function formatMetric(value: number, unit: string) {
   return unit === 'lux' ? `${formatNumber(value)} lux` : `${formatNumber(value)}${unit}`;
+}
+
+function formatWindowDate(value: string) {
+  return `${value.slice(5, 10)} ${value.slice(11, 16)}`;
 }
 
 function getPercent(factor: Factor, value: number) {
@@ -41,7 +45,12 @@ function ScoreGauge() {
   const dash = (score.value / 100) * circumference;
 
   return (
-    <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} accessibilityLabel="환경 점수 68점">
+    <Svg
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
+      accessibilityLabel="최근 24시간 평균 환경 점수 68점"
+    >
       <Defs>
         <SvgLinearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
           <Stop offset="0%" stopColor={colors.brandStart} />
@@ -98,11 +107,11 @@ function FactorRow({ factor }: { factor: Factor }) {
   const badge = ok ? '적정' : factor.status === 'LOW' ? '부족' : '초과';
   const bandLeft = getPercent(factor, factor.optimalMin);
   const bandWidth = getPercent(factor, factor.optimalMax) - bandLeft;
-  const markerLeft = getPercent(factor, factor.current);
+  const markerLeft = getPercent(factor, factor.avg24h);
   const markerColor = ok ? '#2b8f6e' : '#d9822b';
   const gapText =
     factor.gap && factor.gap > 0
-      ? `${factor.label}가 ${formatMetric(factor.gap, factor.unit)} ${
+      ? `${factor.label} 24h 평균이 ${formatMetric(factor.gap, factor.unit)} ${
           factor.status === 'LOW' ? '부족해요' : '초과예요'
         }`
       : null;
@@ -112,7 +121,7 @@ function FactorRow({ factor }: { factor: Factor }) {
       <View style={styles.factorHeader}>
         <View>
           <Text style={styles.factorLabel}>{factor.label}</Text>
-          <Text style={styles.factorCurrent}>{formatMetric(factor.current, factor.unit)}</Text>
+          <Text style={styles.factorCurrent}>24h 평균 {formatMetric(factor.avg24h, factor.unit)}</Text>
         </View>
         <View style={styles.factorRight}>
           <Text style={styles.factorOptimal}>
@@ -141,7 +150,7 @@ export function ScoreScreen({
   isCompact,
   selectedCrop,
   setSelectedCrop,
-  onDashboard,
+  onRealtime,
   onShop,
 }: ScoreScreenProps) {
   const crop = crops[selectedCrop] ?? crops[0];
@@ -160,7 +169,11 @@ export function ScoreScreen({
             <View style={styles.gaugeWrap}>
               <ScoreGauge />
             </View>
-            <Text style={styles.meta}>'{crop.name}' 기준, 지금 위치의 환경 점수 · 측정 07-14 10:30</Text>
+            <Text style={styles.meta}>
+              '{crop.name}' 기준 · 최근 24시간 평균 ({formatWindowDate(score.windowStart)} ~{' '}
+              {formatWindowDate(score.windowEnd)})
+            </Text>
+            <Text style={styles.scoreDisclaimer}>* 환경 점수 산정 로직 확정 전 예시 데이터입니다</Text>
             <Pressable accessibilityRole="button" onPress={() => undefined} style={styles.refreshButton}>
               <Text style={styles.refreshText}>새로고침 ⟳</Text>
             </Pressable>
@@ -246,7 +259,7 @@ export function ScoreScreen({
           </GlassCard>
         </View>
 
-        <PrimaryButton label="대시보드에서 실시간 데이터 보기 →" onPress={onDashboard} style={styles.dashboardCta} />
+        <PrimaryButton label="실시간 측정값 보기 →" onPress={onRealtime} style={styles.realtimeCta} />
       </View>
     </ScrollView>
   );
@@ -314,6 +327,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily,
     fontSize: 13,
     lineHeight: 20,
+    textAlign: 'center',
+  },
+  scoreDisclaimer: {
+    color: '#8aa192',
+    fontFamily: typography.fontFamily,
+    fontSize: 12,
     textAlign: 'center',
   },
   refreshButton: {
@@ -562,7 +581,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily,
     fontSize: 12,
   },
-  dashboardCta: {
+  realtimeCta: {
     alignSelf: 'center',
     borderRadius: 16,
     minWidth: 280,

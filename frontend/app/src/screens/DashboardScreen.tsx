@@ -3,7 +3,7 @@ import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
 
 import { GlassCard } from '../components/GlassCard';
 import { SegmentedTabs } from '../components/SegmentedTabs';
-import { chartMetrics, crops, latest, rangeTabs, score, type ChartRange } from '../data';
+import { chartMetrics, crops, dailyAvg, rangeTabs, score, type ChartRange } from '../data';
 import { colors, maxContentWidth, radii, typography } from '../theme';
 
 type DashboardScreenProps = {
@@ -11,6 +11,7 @@ type DashboardScreenProps = {
   isCompact: boolean;
   selectedCrop: number;
   setChartRange: (range: ChartRange) => void;
+  onRealtime: () => void;
   onScore: () => void;
 };
 
@@ -39,7 +40,7 @@ function SmallScoreGauge() {
   const dash = (score.value / 100) * circumference;
 
   return (
-    <Svg width={size} height={size} viewBox="0 0 36 36" accessibilityLabel="환경 점수 68점">
+    <Svg width={size} height={size} viewBox="0 0 36 36" accessibilityLabel="24h 평균 환경 점수 68점">
       <Circle
         cx="18"
         cy="18"
@@ -129,6 +130,7 @@ export function DashboardScreen({
   isCompact,
   selectedCrop,
   setChartRange,
+  onRealtime,
   onScore,
 }: DashboardScreenProps) {
   const crop = crops[selectedCrop] ?? crops[0];
@@ -145,7 +147,7 @@ export function DashboardScreen({
 
           <Pressable accessibilityRole="button" onPress={onScore} style={styles.scorePill}>
             <SmallScoreGauge />
-            <Text style={styles.scorePillText}>환경 점수 보기 →</Text>
+            <Text style={styles.scorePillText}>24h 평균 점수 보기 →</Text>
           </Pressable>
 
           <View style={[styles.onlineStatus, isCompact && styles.onlineStatusCompact]}>
@@ -154,10 +156,14 @@ export function DashboardScreen({
               <Text style={styles.onlineStrong}>온라인</Text> · 마지막 수신 방금 전
             </Text>
           </View>
+
+          <Pressable accessibilityRole="button" onPress={onRealtime} style={styles.realtimeLink}>
+            <Text style={styles.realtimeLinkText}>실시간 보기 →</Text>
+          </Pressable>
         </GlassCard>
 
         <View style={[styles.metricGrid, isCompact && styles.oneColumn]}>
-          {latest.map((metric) => (
+          {dailyAvg.map((metric) => (
             <GlassCard key={metric.label} soft style={styles.metricCard}>
               <View style={styles.metricLabelRow}>
                 <Text style={styles.metricEmoji}>{metric.emoji}</Text>
@@ -273,6 +279,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   onlineStrong: {
+    fontWeight: '800',
+  },
+  realtimeLink: {
+    paddingHorizontal: 6,
+    paddingVertical: 8,
+  },
+  realtimeLinkText: {
+    color: '#1f7a4d',
+    fontFamily: typography.fontFamily,
+    fontSize: 13,
     fontWeight: '800',
   },
   metricGrid: {

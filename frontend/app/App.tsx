@@ -9,6 +9,7 @@ import { DashboardScreen } from './src/screens/DashboardScreen';
 import { DeviceRegisterScreen } from './src/screens/DeviceRegisterScreen';
 import { DeviceSetupScreen } from './src/screens/DeviceSetupScreen';
 import { LoginScreen } from './src/screens/LoginScreen';
+import { RealtimeScreen } from './src/screens/RealtimeScreen';
 import { ScoreScreen } from './src/screens/ScoreScreen';
 import { ShopScreen } from './src/screens/ShopScreen';
 import { type ChartRange } from './src/data';
@@ -28,7 +29,7 @@ if (
   document.head.appendChild(link);
 }
 
-type Screen = 'login' | 'device' | 'crop' | 'setup' | 'score' | 'dashboard' | 'shop';
+type Screen = 'login' | 'device' | 'crop' | 'setup' | 'score' | 'dashboard' | 'realtime' | 'shop';
 type AuthTab = 'login' | 'signup';
 
 function scrollToTop() {
@@ -46,6 +47,7 @@ type AppBarProps = {
 function AppBar({ isCompact, screen, goTo }: AppBarProps) {
   const scoreActive = screen === 'score';
   const dashboardActive = screen === 'dashboard';
+  const realtimeActive = screen === 'realtime';
   const shopActive = screen === 'shop';
 
   return (
@@ -77,6 +79,13 @@ function AppBar({ isCompact, screen, goTo }: AppBarProps) {
             style={[styles.appTab, dashboardActive && styles.activeAppTab]}
           >
             <Text style={[styles.appTabText, dashboardActive && styles.activeAppTabText]}>대시보드</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => goTo('realtime')}
+            style={[styles.appTab, realtimeActive && styles.activeAppTab]}
+          >
+            <Text style={[styles.appTabText, realtimeActive && styles.activeAppTabText]}>실시간</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
@@ -143,7 +152,7 @@ export default function App() {
     <View style={[styles.root, styles.webRoot]}>
       <Background />
       <View style={styles.content}>
-        {screen === 'score' || screen === 'dashboard' || screen === 'shop' ? (
+        {screen === 'score' || screen === 'dashboard' || screen === 'realtime' || screen === 'shop' ? (
           <AppBar goTo={goTo} isCompact={isCompact} screen={screen} />
         ) : null}
 
@@ -164,7 +173,7 @@ export default function App() {
         {screen === 'score' ? (
           <ScoreScreen
             isCompact={isCompact}
-            onDashboard={() => goTo('dashboard')}
+            onRealtime={() => goTo('realtime')}
             onShop={() => goTo('shop')}
             selectedCrop={selectedCrop}
             setSelectedCrop={setSelectedCrop}
@@ -174,11 +183,13 @@ export default function App() {
           <DashboardScreen
             chartRange={chartRange}
             isCompact={isCompact}
+            onRealtime={() => goTo('realtime')}
             onScore={() => goTo('score')}
             selectedCrop={selectedCrop}
             setChartRange={setChartRange}
           />
         ) : null}
+        {screen === 'realtime' ? <RealtimeScreen isCompact={isCompact} /> : null}
         {screen === 'shop' ? <ShopScreen isCompact={isCompact} /> : null}
       </View>
       <StatusBar style="dark" />
