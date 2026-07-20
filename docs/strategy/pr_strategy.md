@@ -58,8 +58,12 @@
 - PR을 작게 나누고 리뷰·병합 주기를 짧게 가져가는 것을 우선합니다.
 
 ### 불가피하게 적층한 경우
-1. 자식 PR은 base를 `develop`이 아닌 **부모 브랜치**로 지정합니다. (diff에 부모 커밋이 섞이지 않고, 부모 병합 시 GitHub이 base를 자동으로 develop으로 전환합니다)
-2. 부모 PR이 병합되기 전까지 자식 PR은 **Draft** 상태로 둡니다. (병합 순서 사고 방지)
+1. 자식 PR은 base를 `develop`이 아닌 **부모 브랜치**로 지정합니다.
+   - diff에 부모 커밋이 섞이지 않고, 부모가 병합되어 브랜치가 삭제되면 GitHub이 base를 자동으로 develop으로 전환합니다.
+   - 규칙을 모르는 팀원이 자식 PR을 실수로 병합해도 develop이 아닌 부모 브랜치로 병합되므로, **develop 오염이 구조적으로 차단**됩니다.
+2. 부모 PR이 병합되기 전까지 자식 PR은 **Draft** 상태로 둡니다.
+   - Draft 상태에서는 GitHub이 머지 버튼을 비활성화하므로 병합 순서 사고가 UI 차원에서 막힙니다.
+   - 부모 병합 + 아래 rebase 완료 후에 "Ready for review"로 전환합니다.
 3. 부모 PR이 squash 병합된 직후, 자식 브랜치는 일반 rebase 대신 아래 명령을 사용합니다.
 
 ```bash
@@ -73,6 +77,10 @@ git push --force-with-lease origin <자식브랜치>
 ### 충돌 발생 시 대응 순서
 - 병합 순서가 꼬여 충돌이 나면 **revert보다 위 rebase 절차를 먼저** 시도합니다.
 - Revert는 develop 이력에 노이즈를 남기고, revert된 변경이 다른 PR에 실려 다시 들어오면 커밋 단위 추적(blame/bisect)이 어려워지므로 최후 수단으로만 사용합니다.
+
+### 추후 강화 옵션 (필요 시 도입)
+- 적층 PR 사용이 잦아지면 PR 본문에 `Depends-on: #번호`를 표기하고, 해당 PR이 병합되기 전까지 required status check를 실패시키는 GitHub Actions를 추가해 머지 버튼을 잠글 수 있습니다.
+- Branch protection의 "Require branches to be up to date before merging"을 켜면 오래된 base 기준 PR의 병합이 차단되어, rebase를 건너뛰는 실수가 강제로 드러납니다.
 
 ## 📌 작업 흐름 예시
 
