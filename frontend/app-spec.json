@@ -27,12 +27,12 @@
   },
   "navigation": {
     "type": "stack + top-tab hybrid",
-    "flow": ["P-01", "P-02", "P-03", "P-04", "P-05", "P-06", "P-07"],
-    "notes": "P-01→P-04 are a linear onboarding stack. After P-04 the app enters a persistent shell that shows a top app bar with three tabs: Environment Score (P-05), Dashboard (P-06), and Shop (P-07). The app bar is visible on P-05/P-06/P-07.",
+    "flow": ["P-01", "P-02", "P-03", "P-04", "P-05", "P-06"],
+    "notes": "P-01→P-04 are a linear onboarding stack. After P-04 the app enters a persistent shell that shows a top app bar with two tabs: Environment Score (P-05) and Dashboard (P-06). The app bar is only visible on P-05/P-06.",
     "appBar": {
-      "visibleOn": ["P-05", "P-06", "P-07"],
+      "visibleOn": ["P-05", "P-06"],
       "left": "brand logo + name",
-      "center": ["tab: Environment Score", "tab: Dashboard", "tab: Shop"],
+      "center": ["tab: Environment Score", "tab: Dashboard"],
       "right": ["device online indicator", "logout button (→ P-01)"]
     }
   },
@@ -133,7 +133,7 @@
         {
           "key": "D",
           "name": "Equipment purchase recommendation",
-          "content": { "items": "see data.equipment", "itemShows": ["emoji", "name", "source tag (규칙 기반 / ML 추천)", "reason", "expected gain (+N점) when present", "buy button"], "buyAction": "navigate P-07" }
+          "content": { "items": "see data.equipment", "itemShows": ["emoji", "name", "source tag (규칙 기반 / ML 추천)", "reason", "expected gain (+N점) when present", "buy button"] }
         },
         {
           "key": "E",
@@ -157,18 +157,6 @@
           "note": "Prototype uses synthetic wave data; wire to time-series API keyed by chartRange."
         } }
       ]
-    },
-    {
-      "id": "P-07",
-      "title": "Grow shop",
-      "route": "Shop",
-      "purpose": "Browse cultivation supplies by category and collect products in an in-memory prototype cart.",
-      "sections": [
-        { "key": "hero", "content": ["title", "subtitle", "cart item count", "decorative crop emoji"] },
-        { "key": "categoryTabs", "type": "segmentedTabs", "options": ["부품", "흙", "씨앗"], "default": "부품" },
-        { "key": "productGrid", "source": "data.shop.products", "itemShows": ["emoji", "badge when present", "name", "description", "formatted price", "add-to-cart button"] },
-        { "key": "disclaimer", "text": "상품과 가격은 예시이며 실제 결제 기능은 연결되지 않았습니다." }
-      ]
     }
   ],
   "data": {
@@ -176,11 +164,8 @@
       { "name": "방울토마토", "emoji": "🍅", "desc": "초보자에게 인기 있는 실내 작물" },
       { "name": "상추", "emoji": "🥬", "desc": "빠르게 자라고 관리가 쉬워요" },
       { "name": "바질", "emoji": "🌿", "desc": "햇빛을 좋아하는 허브" },
-      { "name": "페퍼민트", "emoji": "🌱", "desc": "상쾌한 향이 특징인 허브" },
-      { "name": "대파", "emoji": "🧅", "desc": "잎과 줄기를 활용하는 향신 채소" },
-      { "name": "루꼴라", "emoji": "🥗", "desc": "톡 쏘는 풍미가 특징인 잎채소" },
-      { "name": "와사비", "emoji": "🌿", "desc": "알싸한 맛이 특징인 향신 작물" },
-      { "name": "고수", "emoji": "☘️", "desc": "독특한 향을 지닌 향신 허브" }
+      { "name": "깻잎", "emoji": "🍃", "desc": "반그늘에서도 잘 자라요" },
+      { "name": "고추", "emoji": "🌶️", "desc": "따뜻한 환경이 필요해요" }
     ],
     "factors": [
       { "label": "온도", "unit": "℃", "current": 24.5, "optimalMin": 20, "optimalMax": 26, "axisMin": 10, "axisMax": 35, "status": "OK" },
@@ -191,7 +176,7 @@
     "score": { "value": 68, "grade": "보통", "measuredAt": "2026-07-14T10:30:00+09:00" },
     "altCrops": [
       { "name": "상추", "emoji": "🥬", "expectedScore": 85, "setsCropIndex": 1 },
-      { "name": "페퍼민트", "emoji": "🌱", "expectedScore": 79, "setsCropIndex": 3 },
+      { "name": "깻잎", "emoji": "🍃", "expectedScore": 79, "setsCropIndex": 3 },
       { "name": "바질", "emoji": "🌿", "expectedScore": 74, "setsCropIndex": 2 }
     ],
     "equipment": [
@@ -199,29 +184,6 @@
       { "name": "스마트 관수 시스템", "emoji": "💧", "reason": "물 주기 편의성 개선", "source": "ML 추천" }
     ],
     "soil": { "title": "배수 좋은 상토 + 펄라이트 2:1 배합", "reason": "토양수분이 최적 범위에 있어요." },
-    "shop": {
-      "categories": [
-        { "key": "parts", "label": "부품" },
-        { "key": "soil", "label": "흙" },
-        { "key": "seeds", "label": "씨앗" }
-      ],
-      "products": [
-        { "id": "grow-light", "category": "parts", "name": "식물 생장등 (LED)", "emoji": "💡", "price": 29900, "badge": "추천" },
-        { "id": "watering-kit", "category": "parts", "name": "자동 관수 키트", "emoji": "💧", "price": 39900 },
-        { "id": "soil-probe", "category": "parts", "name": "토양 수분 센서 프로브", "emoji": "🌡️", "price": 12900 },
-        { "id": "power-adapter", "category": "parts", "name": "USB-C 전원 어댑터", "emoji": "🔌", "price": 9900 },
-        { "id": "herb-soil", "category": "soil", "name": "실내 허브용 배양토 10L", "emoji": "🪴", "price": 12500, "badge": "인기" },
-        { "id": "perlite", "category": "soil", "name": "펄라이트 3L", "emoji": "⚪", "price": 6900 },
-        { "id": "coco-peat", "category": "soil", "name": "코코피트 블록 5L", "emoji": "🥥", "price": 7500 },
-        { "id": "gravel", "category": "soil", "name": "마사토 소립 5L", "emoji": "🪨", "price": 8900 },
-        { "id": "basil-seeds", "category": "seeds", "name": "바질 씨앗", "emoji": "🌿", "price": 2500, "badge": "초보 추천" },
-        { "id": "lettuce-seeds", "category": "seeds", "name": "상추 씨앗", "emoji": "🥬", "price": 2500 },
-        { "id": "arugula-seeds", "category": "seeds", "name": "루꼴라 씨앗", "emoji": "🥗", "price": 2800 },
-        { "id": "coriander-seeds", "category": "seeds", "name": "고수 씨앗", "emoji": "☘️", "price": 2800 },
-        { "id": "welsh-onion-seeds", "category": "seeds", "name": "대파 씨앗", "emoji": "🧅", "price": 3000 },
-        { "id": "peppermint-seeds", "category": "seeds", "name": "페퍼민트 씨앗", "emoji": "🌱", "price": 3200 }
-      ]
-    },
     "latest": [
       { "label": "온도", "emoji": "🌡️", "value": "24.5℃", "sub": "최적 범위 (20~26℃)" },
       { "label": "습도", "emoji": "💧", "value": "45%", "sub": "최적 대비 15% 부족" },
@@ -235,8 +197,7 @@
   },
   "openQuestions": [
     "Score formula and per-factor weights",
-    "Recommendation engine spec (rule-based vs ML)",
-    "Live product catalog, inventory, cart persistence, checkout, and payment integration",
+    "Recommendation engine spec (rule-based vs ML) and product catalog / commerce link for 구매하기",
     "Time-series API contract and sampling per range",
     "Auth backend and validation rules",
     "Multi-device / multi-pot support"
