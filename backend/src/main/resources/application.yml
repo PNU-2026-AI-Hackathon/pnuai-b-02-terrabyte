@@ -37,3 +37,9 @@ app:
       driver-class-name: org.sqlite.JDBC
       configuration:
         maximum-pool-size: ${SQLITE_POOL_SIZE:2}
+  influx:
+    url: ${INFLUX_URL:http://localhost:8086}
+    token: ${INFLUX_TOKEN:terrabyte-local-token}
+    org: ${INFLUX_ORG:terrabyte}
+    bucket: ${INFLUX_BUCKET:telemetry}
+    device-key: ${TELEMETRY_DEVICE_KEY:terrabyte-local-device-key}

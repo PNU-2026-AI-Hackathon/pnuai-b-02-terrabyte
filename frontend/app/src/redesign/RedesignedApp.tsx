@@ -26,6 +26,12 @@ import {
 import { BrandMark } from '../components/BrandMark';
 import { crops, factors, latest, score, shopProducts, type ShopCategory, type ShopProduct } from '../data';
 import { registerDevice } from '../device/deviceApi';
+import {
+  getEnvironmentScore,
+  getLatestMeasurements,
+  type EnvironmentScore,
+  type LatestMeasurements,
+} from '../measurement/measurementApi';
 
 const FONT_URL =
   'https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css';
@@ -357,12 +363,14 @@ function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void 
 
 function SetupFlow({
   onBack,
+  onDeviceRegistered,
   onNext,
   selectedCrop,
   setSelectedCrop,
   stage,
 }: {
   onBack: () => void;
+  onDeviceRegistered: (deviceId: number) => void;
   onNext: () => void;
   selectedCrop: number;
   setSelectedCrop: (index: number) => void;
@@ -417,12 +425,13 @@ function SetupFlow({
     setDeviceError(null);
     setRegisteringDevice(true);
     try {
-      await registerDevice({
+      const registered = await registerDevice({
         serialCode,
         spaceName: spaceName.trim(),
         spaceType: spaceType.trim(),
         areaSquareMeters: parsedArea,
       });
+      onDeviceRegistered(registered.id);
       onNext();
     } catch (requestError) {
       setDeviceError(requestError instanceof Error ? requestError.message : '기기를 등록하지 못했습니다.');
@@ -839,23 +848,128 @@ function SectionHeader({ action, description, title }: { action?: React.ReactNod
   );
 }
 
+function SuitabilityFormulaModal({
+  onClose,
+  scoreData,
+  visible,
+}: {
+  onClose: () => void;
+  scoreData: EnvironmentScore | null;
+  visible: boolean;
+}) {
+  return (
+    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
+      <View style={styles.modalBackdrop}>
+        <Surface style={styles.formulaModal}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHeaderCopy}>
+              <Text style={styles.modalEyebrow}>SUITABILITY FORMULA</Text>
+              <Text style={styles.modalTitle}>적합도 계산식</Text>
+              <Text style={styles.modalDescription}>온도·습도·PPFD 세 가지 환경값만 사용합니다.</Text>
+            </View>
+            <Pressable onPress={onClose} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>닫기</Text>
+            </Pressable>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.formulaContent}>
+            <View style={styles.formulaSection}>
+              <Text style={styles.formulaSectionTitle}>1. 지표별 점수 계산</Text>
+              <Text style={styles.formulaBody}>
+                작물별 0점 하한(L₀), 적정 하한(L), 적정 상한(U), 0점 상한(U₀)을 기준으로 각 지표를 0~100점으로 환산합니다. 적정 범위는 100점이며 바깥 구간은 선형으로 감소합니다.
+              </Text>
+              {scoreData?.factors.map((factor) => (
+                <View key={factor.key} style={styles.formulaFactorRow}>
+                  <View>
+                    <Text style={styles.formulaFactorName}>{factor.label}</Text>
+                    <Text style={styles.formulaFactorRange}>적정 {factor.optimalMin.toLocaleString('ko-KR')}~{factor.optimalMax.toLocaleString('ko-KR')}{factor.unit}</Text>
+                  </View>
+                  <Text style={styles.formulaFactorScore}>{factor.score}점</Text>
+                </View>
+              ))}
+            </View>
+
+            <View style={styles.formulaSection}>
+              <Text style={styles.formulaSectionTitle}>2. 종합 적합도 계산</Text>
+              <View style={styles.formulaExpressionBox}>
+                <Text style={styles.formulaExpression}>
+                  100 × (T/100)¹⁄³ × (H/100)¹⁄³ × (L/100)¹⁄³
+                </Text>
+                <Text style={styles.formulaEquivalentExpression}>= (T × H × L)¹⁄³</Text>
+              </View>
+              <Text style={styles.formulaBody}>T = 온도 점수 · H = 습도 점수 · L = PPFD 광량 점수</Text>
+            </View>
+
+            <View style={styles.formulaNotice}>
+              <Text style={styles.formulaNoticeTitle}>점수 제외 항목</Text>
+              <Text style={styles.formulaBody}>오염도, CO₂, 토양수분은 종합 적합도에 포함하지 않습니다.</Text>
+            </View>
+          </ScrollView>
+        </Surface>
+      </View>
+    </Modal>
+  );
+}
+
 function Dashboard({
   compact,
+  deviceId,
   onNavigate,
   selectedCrop,
 }: {
   compact: boolean;
+  deviceId?: number;
   onNavigate: (page: Page) => void;
   selectedCrop: number;
 }) {
   const currentCrop = crops[selectedCrop] ?? crops[0];
   const [chartRange, setChartRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
+  const [scoreData, setScoreData] = useState<EnvironmentScore | null>(null);
+  const [latestData, setLatestData] = useState<LatestMeasurements | null>(null);
+  const [monitoringError, setMonitoringError] = useState<string | null>(null);
+  const [formulaOpen, setFormulaOpen] = useState(false);
+
+  useEffect(() => {
+    if (!deviceId) return undefined;
+    let active = true;
+    const load = async () => {
+      try {
+        const [nextScore, nextLatest] = await Promise.all([
+          getEnvironmentScore(deviceId),
+          getLatestMeasurements(deviceId),
+        ]);
+        if (active) {
+          setScoreData(nextScore);
+          setLatestData(nextLatest);
+          setMonitoringError(null);
+        }
+      } catch (error) {
+        if (active) setMonitoringError(error instanceof Error ? error.message : '측정 데이터를 불러오지 못했습니다.');
+      }
+    };
+    void load();
+    const interval = setInterval(() => void load(), 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [deviceId]);
+
+  const factorDetail = (key: string) => {
+    const factor = scoreData?.factors.find((item) => item.key === key);
+    return factor
+      ? `적정 범위 ${factor.optimalMin.toLocaleString('ko-KR')}~${factor.optimalMax.toLocaleString('ko-KR')}${factor.unit} · ${factor.score}점`
+      : '점수 데이터를 기다리는 중';
+  };
   const stats = [
-    { label: '온도', value: '24.1℃', detail: '적정 범위 20~26℃' },
-    { label: '습도', value: '52%', detail: '권장 범위보다 8% 낮음' },
-    { label: '조도', value: '11,800', detail: '24시간 평균 lux' },
-    { label: '토양수분', value: '36%', detail: '적정 범위 유지 중' },
+    { label: '온도', value: latestData ? `${latestData.measurements.airTemperatureC}℃` : '--', detail: factorDetail('temperature') },
+    { label: '습도', value: latestData ? `${latestData.measurements.airHumidityPct}%` : '--', detail: factorDetail('humidity') },
+    { label: '광량', value: latestData ? `${latestData.measurements.plantLightPpfdUmolM2S.toLocaleString('ko-KR')} PPFD` : '--', detail: factorDetail('plantLight') },
+    { label: '토양수분', value: latestData ? `${latestData.measurements.soilMoisturePct}%` : '--', detail: '종합 적합도 산식에서는 제외' },
   ];
+  const displayFactors = scoreData?.factors ?? factors.slice(0, 3);
+  const issueFactors = scoreData?.factors.filter((factor) => factor.status !== 'OK') ?? [];
+  const gradeText = scoreData?.grade === 'GOOD' ? '적합' : scoreData?.grade === 'NORMAL' ? '보통' : scoreData ? '보완 필요' : '계산 중';
   const extendedStats = [
     { label: '토양 온도', value: '22.8℃', detail: 'DS18B20 · 적정' },
     { label: 'CO₂', value: '742ppm', detail: 'SCD40 · 적정' },
@@ -896,37 +1010,39 @@ function Dashboard({
         <View style={styles.scoreHeroCopy}>
           <Text style={styles.scoreHeroEyebrow}>스마트팜 전환 적합도</Text>
           <View style={styles.scoreHeroValueRow}>
-            <Text style={styles.scoreHeroValue}>82</Text>
+            <Text style={styles.scoreHeroValue}>{scoreData?.total ?? '--'}</Text>
             <Text style={styles.scoreHeroUnit}>/ 100</Text>
           </View>
-          <Text style={styles.scoreHeroGrade}>전환 권장 · {currentCrop.name} 재배 기준</Text>
+          <Text style={styles.scoreHeroGrade}>{gradeText} · {scoreData?.cropName ?? currentCrop.name} 재배 기준</Text>
         </View>
-        <View style={styles.scoreHeroSummary}>
-          <Text style={styles.scoreHeroSummaryTitle}>공간 진단 완료</Text>
-          <Text style={styles.scoreHeroSummaryBody}>채광과 환기 조건은 전환에 적합합니다. 보조 조명과 오후 습도 관리 설비를 적용하면 안정적인 운영이 가능합니다.</Text>
-          <ActionButton label="공간 진단 보고서" onPress={() => onNavigate('analysis')} quiet />
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => setFormulaOpen(true)}
+          style={({ pressed }) => [styles.formulaLink, styles.formulaLinkTop, pressed && styles.pressed]}
+        >
+          <Text style={styles.formulaLinkText}>적합도 계산식</Text>
+          <Text style={styles.formulaLinkArrow}>→</Text>
+        </Pressable>
       </Surface>
+
+      <SuitabilityFormulaModal onClose={() => setFormulaOpen(false)} scoreData={scoreData} visible={formulaOpen} />
 
       <Surface style={styles.dashboardAlertPanel}>
         <View style={[styles.dashboardAlertHeader, compact && styles.stack]}>
           <View style={styles.dashboardAlertCopy}>
             <Text style={styles.dashboardAlertEyebrow}>현재 확인이 필요한 항목</Text>
-            <Text style={styles.dashboardAlertTitle}>이상 환경 2건이 감지되었습니다</Text>
+            <Text style={styles.dashboardAlertTitle}>확인 필요한 환경 {issueFactors.length}건</Text>
           </View>
           <ActionButton label="분석 보고서 보기" onPress={() => onNavigate('analysis')} quiet />
         </View>
         <View style={[styles.dashboardAlertRows, compact && styles.stack]}>
-          <View style={styles.dashboardAlertItem}>
-            <Text style={styles.dashboardAlertItemLabel}>조도 부족</Text>
-            <Text style={styles.dashboardAlertItemValue}>8,000lux</Text>
-            <Text style={styles.dashboardAlertItemBody}>권장 하한보다 7,000lux 낮음</Text>
-          </View>
-          <View style={styles.dashboardAlertItem}>
-            <Text style={styles.dashboardAlertItemLabel}>습도 하락</Text>
-            <Text style={styles.dashboardAlertItemValue}>45%</Text>
-            <Text style={styles.dashboardAlertItemBody}>최근 30분 동안 5% 감소</Text>
-          </View>
+          {issueFactors.length ? issueFactors.map((factor) => (
+            <View key={factor.key} style={styles.dashboardAlertItem}>
+              <Text style={styles.dashboardAlertItemLabel}>{factor.label} {factor.status === 'LOW' ? '부족' : '초과'}</Text>
+              <Text style={styles.dashboardAlertItemValue}>{factor.current.toLocaleString('ko-KR')}{factor.unit}</Text>
+              <Text style={styles.dashboardAlertItemBody}>적정 범위와 {factor.gap.toLocaleString('ko-KR')}{factor.unit} 차이 · 축 점수 {factor.score}점</Text>
+            </View>
+          )) : <Text style={styles.dashboardAlertItemBody}>현재 세 지표가 모두 적정 범위입니다.</Text>}
         </View>
       </Surface>
 
@@ -982,7 +1098,7 @@ function Dashboard({
             <Text style={styles.tableHeaderText}>권장 범위</Text>
             <Text style={styles.tableHeaderText}>상태</Text>
           </View>
-          {factors.map((factor) => (
+          {displayFactors.map((factor) => (
             <View key={factor.label} style={styles.tableRow}>
               <Text style={[styles.tableCellStrong, styles.tableName]}>{factor.label}</Text>
               <Text style={styles.tableCell}>{factor.current.toLocaleString('ko-KR')}{factor.unit}</Text>
@@ -1025,34 +1141,69 @@ function Dashboard({
   );
 }
 
-function Analysis({ compact, onNavigate, selectedCrop, setSelectedCrop }: { compact: boolean; onNavigate: (page: Page) => void; selectedCrop: number; setSelectedCrop: (index: number) => void }) {
+function Analysis({ compact, deviceId, onNavigate, selectedCrop, setSelectedCrop }: { compact: boolean; deviceId?: number; onNavigate: (page: Page) => void; selectedCrop: number; setSelectedCrop: (index: number) => void }) {
   const currentCrop = crops[selectedCrop] ?? crops[0];
-  const factorReports = [...factors.map((factor) => {
-    const details: Record<string, { finding: string; recommendation: string }> = {
-      온도: {
-        finding: '최근 24시간 변동폭은 2.3℃로 안정적이며 야간 급락 현상은 관찰되지 않았습니다.',
-        recommendation: '현재 환기 설정을 유지하고 오전 10시 전후의 상승 구간만 확인하세요.',
-      },
-      습도: {
-        finding: '권장 하한보다 평균 8% 낮습니다. 오후 시간대에 48%까지 내려가는 구간이 반복됩니다.',
-        recommendation: '오전 관수 후 10분간 환기를 줄이고, 주변에 물받이 트레이를 추가하세요.',
-      },
-      조도: {
-        finding: '유효 광량이 권장 범위에 약 2,200lux 부족하며 오후 4시 이후 감소 폭이 큽니다.',
-        recommendation: '식물 생장등을 하루 4시간 보조 운전하고 잎과 조명 사이 거리를 30cm로 맞추세요.',
-      },
-      토양수분: {
-        finding: '현재 수분은 권장 범위 안에 있으며 급격한 건조나 과습 신호가 없습니다.',
-        recommendation: '다음 관수는 수분값이 31% 이하로 내려갈 때 진행하세요.',
-      },
+  const [analysisScore, setAnalysisScore] = useState<EnvironmentScore | null>(null);
+  const [analysisLatest, setAnalysisLatest] = useState<LatestMeasurements | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysisFormulaOpen, setAnalysisFormulaOpen] = useState(false);
+
+  useEffect(() => {
+    if (!deviceId) return undefined;
+    let active = true;
+    const load = async () => {
+      try {
+        const [nextScore, nextLatest] = await Promise.all([
+          getEnvironmentScore(deviceId),
+          getLatestMeasurements(deviceId),
+        ]);
+        if (active) {
+          setAnalysisScore(nextScore);
+          setAnalysisLatest(nextLatest);
+          setAnalysisError(null);
+        }
+      } catch (error) {
+        if (active) setAnalysisError(error instanceof Error ? error.message : '진단 데이터를 불러오지 못했습니다.');
+      }
     };
-    return { ...factor, ...details[factor.label] };
-  }),
-  { label: '토양 온도', unit: '℃', avg24h: 22.8, axisMax: 40, status: 'OK', finding: '뿌리 활착에 적합한 범위를 유지하고 있으며 일중 변동폭도 1.6℃로 안정적입니다.', recommendation: '화분이 외벽이나 바닥의 직접적인 열에 노출되지 않도록 현재 위치를 유지하세요.' },
-  { label: 'CO₂', unit: 'ppm', avg24h: 742, axisMax: 1500, status: 'OK', finding: '환기 후 650~810ppm 범위로 유지되어 광합성 및 작업자 안전 기준에 적합합니다.', recommendation: '오전과 오후 각 15분의 자연 환기 일정을 유지하세요.' },
-  { label: '미세먼지', unit: '㎍/㎥', avg24h: 14, axisMax: 100, status: 'OK', finding: 'PM2.5 평균값이 양호하며 외부 도로 영향이 낮은 시간대가 확인됩니다.', recommendation: '외부 미세먼지가 높은 날에는 환기 시간을 줄이고 필터 상태를 점검하세요.' },
-  { label: '소음', unit: 'dB', avg24h: 42, axisMax: 100, status: 'OK', finding: '주간 평균 소음은 운영에 적합하며 장비 진동으로 인한 반복 소음도 감지되지 않았습니다.', recommendation: '관수 펌프가 작동하는 시간대의 최대 소음만 주 1회 확인하세요.' },
-  ];
+    void load();
+    const interval = setInterval(() => void load(), 30000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [deviceId]);
+
+  const recommendationByKey: Record<string, string> = {
+    temperature: '온도가 적정 범위를 벗어나면 환기 또는 히팅 장치를 조절하세요.',
+    humidity: '관수와 환기 시간을 조절해 적정 습도를 유지하세요.',
+    plantLight: 'PPFD가 부족하면 생장등의 세기와 설치 거리를 조절하세요.',
+  };
+  const scoreFactorReports = analysisScore?.factors.map((factor) => ({
+    label: factor.label,
+    unit: factor.unit,
+    avg24h: factor.current,
+    axisMax: Math.max(factor.current, factor.optimalMax * 1.25, 1),
+    status: factor.status,
+    finding: factor.status === 'OK'
+      ? `현재 ${factor.current.toLocaleString('ko-KR')}${factor.unit}로 적정 범위 안에 있으며 축 점수는 ${factor.score}점입니다.`
+      : `현재값이 적정 범위에서 ${factor.gap.toLocaleString('ko-KR')}${factor.unit} ${factor.status === 'LOW' ? '부족' : '초과'}하며 축 점수는 ${factor.score}점입니다.`,
+    recommendation: recommendationByKey[factor.key],
+  })) ?? [];
+  const soilMoistureReport = analysisLatest ? [{
+    label: '토양수분',
+    unit: '%',
+    avg24h: analysisLatest.measurements.soilMoisturePct,
+    axisMax: 100,
+    status: 'REFERENCE',
+    finding: `현재 토양수분은 ${analysisLatest.measurements.soilMoisturePct}%입니다. 이 값은 모니터링용이며 종합 적합도에는 포함되지 않습니다.`,
+    recommendation: '작물과 배지에 맞는 관수 기준이 확정되면 별도 관수 판단에 활용하세요.',
+  }] : [];
+  const factorReports = [...scoreFactorReports, ...soilMoistureReport];
+  const issueFactors = analysisScore?.factors.filter((factor) => factor.status !== 'OK') ?? [];
+  const measuredAtText = analysisScore
+    ? new Date(analysisScore.measuredAt).toLocaleString('ko-KR')
+    : '데이터 수신 대기 중';
   const cropReports = [
     { index: 1, name: '상추', score: 85, reason: '현재 온도와 토양수분 조건에 가장 잘 맞고, 조도 보완 효과를 빠르게 받을 수 있습니다.', caution: '습도가 45% 아래로 내려가지 않도록 관리가 필요합니다.' },
     { index: 3, name: '페퍼민트', score: 79, reason: '환경 변화에 대한 적응력이 높아 현재 조건에서도 비교적 안정적인 생장이 예상됩니다.', caution: '과도한 번식을 막기 위해 단독 화분 재배를 권장합니다.' },
@@ -1064,37 +1215,51 @@ function Analysis({ compact, onNavigate, selectedCrop, setSelectedCrop }: { comp
       <Surface style={styles.reportCover}>
         <View style={[styles.reportCoverTop, compact && styles.stack]}>
           <View style={styles.reportCoverCopy}>
-            <Text style={styles.reportLabel}>ENVIRONMENT REPORT · 24H</Text>
+            <Text style={styles.reportLabel}>ENVIRONMENT REPORT · REALTIME</Text>
             <Text style={styles.reportTitle}>부산 도심 옥상 A 공간 진단 보고서</Text>
-            <Text style={styles.reportLead}>{currentCrop.name} 재배 기준으로 공간 전환 적합도, 최근 24시간 환경 데이터와 개선 우선순위를 정리했습니다.</Text>
+            <Text style={styles.reportLead}>{analysisScore?.cropName ?? currentCrop.name} 재배 기준으로 InfluxDB 최신 측정값과 환경 적합도를 분석했습니다.</Text>
           </View>
           <View style={styles.reportMeta}>
             <Text style={styles.reportMetaLabel}>분석 기준</Text>
-            <Text style={styles.reportMetaValue}>오늘 00:00–현재</Text>
+            <Text style={styles.reportMetaValue}>{measuredAtText}</Text>
             <Text style={styles.reportMetaLabel}>데이터 상태</Text>
-            <Text style={styles.reportMetaValue}>수신 정상 · 누락 없음</Text>
+            <Text style={styles.reportMetaValue}>{analysisError ?? (analysisLatest ? 'InfluxDB 수신 정상' : '수신 대기 중')}</Text>
           </View>
         </View>
         <View style={[styles.reportSummaryGrid, compact && styles.stack]}>
           <View style={styles.reportScoreBlock}>
             <Text style={styles.reportSummaryLabel}>종합 적합도</Text>
-            <View style={styles.bigScoreRow}><Text style={styles.bigScore}>82</Text><Text style={styles.bigScoreUnit}>/ 100</Text></View>
-            <Text style={styles.reportAssessment}>스마트팜 전환 권장</Text>
+            <View style={styles.bigScoreRow}><Text style={styles.bigScore}>{analysisScore?.total ?? '--'}</Text><Text style={styles.bigScoreUnit}>/ 100</Text></View>
+            <Text style={styles.reportAssessment}>{analysisScore?.grade === 'GOOD' ? '스마트팜 전환 적합' : analysisScore?.grade === 'NORMAL' ? '일부 환경 보완 필요' : analysisScore ? '환경 개선 필요' : '계산 대기 중'}</Text>
           </View>
-          <View style={styles.reportSummaryBlock}>
+          <View style={[styles.reportSummaryBlock, styles.reportSummaryBlockWithFormula]}>
             <Text style={styles.reportSummaryLabel}>핵심 진단</Text>
-            <Text style={styles.reportSummaryTitle}>조도와 습도를 먼저 보완하세요</Text>
-            <Text style={styles.reportSummaryBody}>온도와 토양수분은 안정적입니다. 광량 보충과 습도 조절을 함께 적용하면 7일 내 환경 점수가 83점까지 상승할 것으로 예상됩니다.</Text>
+            <Text style={styles.reportSummaryTitle}>{issueFactors.length ? `${issueFactors.map((factor) => factor.label).join('·')} 환경을 확인하세요` : '온도·습도·광량이 모두 적정합니다'}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setAnalysisFormulaOpen(true)}
+              style={({ pressed }) => [styles.formulaLink, styles.formulaLinkBottom, pressed && styles.pressed]}
+            >
+              <Text style={styles.formulaLinkText}>적합도 계산식</Text>
+              <Text style={styles.formulaLinkArrow}>→</Text>
+            </Pressable>
           </View>
           <View style={styles.reportSummaryBlock}>
             <Text style={styles.reportSummaryLabel}>관리 우선순위</Text>
-            <Text style={styles.reportPriority}>1. 조도 보완</Text>
-            <Text style={styles.reportPriority}>2. 오후 습도 유지</Text>
-            <Text style={styles.reportPriority}>3. 현재 관수 주기 유지</Text>
+            {issueFactors.length ? issueFactors.map((factor, index) => (
+              <Text key={factor.key} style={styles.reportPriority}>{index + 1}. {factor.label} {factor.status === 'LOW' ? '보완' : '완화'}</Text>
+            )) : <Text style={styles.reportPriority}>현재 환경 설정 유지</Text>}
+            <Text style={styles.reportPriority}>{issueFactors.length + 1}. 토양수분 모니터링</Text>
           </View>
         </View>
         <ActionButton label="실시간 센서 확인" onPress={() => onNavigate('live')} quiet />
       </Surface>
+
+      <SuitabilityFormulaModal
+        onClose={() => setAnalysisFormulaOpen(false)}
+        scoreData={analysisScore}
+        visible={analysisFormulaOpen}
+      />
 
       <Surface style={styles.reportSection}>
         <View style={styles.reportSectionHeading}>
@@ -1111,7 +1276,7 @@ function Analysis({ compact, onNavigate, selectedCrop, setSelectedCrop }: { comp
                     <Text style={styles.reportFactorName}>{factor.label}</Text>
                     <Text style={styles.reportFactorValue}>{factor.avg24h.toLocaleString('ko-KR')}{factor.unit}</Text>
                   </View>
-                  <Text style={[styles.reportStatus, factor.status !== 'OK' && styles.reportStatusWarn]}>{factor.status === 'OK' ? '안정' : '보완 필요'}</Text>
+                  <Text style={[styles.reportStatus, factor.status !== 'OK' && factor.status !== 'REFERENCE' && styles.reportStatusWarn]}>{factor.status === 'OK' ? '안정' : factor.status === 'REFERENCE' ? '참고 지표' : '보완 필요'}</Text>
                 </View>
                 <View style={styles.factorTrack}><View style={[styles.factorFill, factor.status !== 'OK' && styles.factorFillWarn, { width: `${width}%` } as any]} /></View>
                 <View style={[styles.reportFindingGrid, compact && styles.stack]}>
@@ -1252,17 +1417,49 @@ function Sparkline({ color, values }: { color: string; values: number[] }) {
   );
 }
 
-function Live({ compact }: { compact: boolean }) {
+function Live({ compact, deviceId }: { compact: boolean; deviceId?: number }) {
   const [tick, setTick] = useState(0);
   const [deviceOpen, setDeviceOpen] = useState(false);
+  const [measurement, setMeasurement] = useState<LatestMeasurements | null>(null);
   const sensorDevices = [
     ['온·습도 센서', 'DHT22'], ['조도 센서', 'BH1750'], ['토양수분 센서', 'EF04027'],
     ['토양 온도 센서', 'DS18B20'], ['소음 센서', 'SEN0232'], ['미세먼지 센서', 'PMS5003'], ['CO₂ 센서', 'SCD40'],
   ];
   useEffect(() => {
-    const interval = setInterval(() => setTick((current) => current + 1), 3000);
-    return () => clearInterval(interval);
-  }, []);
+    if (!deviceId) return undefined;
+    let active = true;
+    const refresh = async () => {
+      try {
+        const next = await getLatestMeasurements(deviceId);
+        if (active) {
+          setMeasurement(next);
+          setTick((current) => current + 1);
+        }
+      } catch {
+        // 직전 정상 측정값을 유지한다.
+      }
+    };
+    void refresh();
+    const interval = setInterval(() => void refresh(), 3000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [deviceId]);
+
+  const values = measurement?.measurements;
+  const liveMetrics = latest.slice(0, 4).map((metric) => {
+    const current = metric.label === '온도' ? values?.airTemperatureC
+      : metric.label === '습도' ? values?.airHumidityPct
+      : metric.label === '조도' ? values?.plantLightPpfdUmolM2S
+      : values?.soilMoisturePct;
+    const unit = metric.label === '조도' ? ' PPFD' : metric.unit;
+    return {
+      ...metric,
+      sub: metric.label === '조도' ? 'PPFD · μmol/m²/s' : metric.sub,
+      value: current == null ? '--' : `${current.toLocaleString('ko-KR')}${unit}`,
+    };
+  });
 
   return (
     <View style={styles.pageBody}>
@@ -1277,7 +1474,7 @@ function Live({ compact }: { compact: boolean }) {
         </View>
       </Pressable>
       <View style={[styles.liveGrid, compact && styles.stack]}>
-        {latest.map((metric) => (
+        {liveMetrics.map((metric) => (
           <Surface key={metric.label} style={styles.liveCard}>
             <View style={styles.liveCardHeader}>
               <Text style={styles.liveLabel}>{metric.label}</Text>
@@ -1627,10 +1824,12 @@ export default function RedesignedApp() {
   const [restoringSession, setRestoringSession] = useState(true);
   const [page, setPage] = useState<Page>('dashboard');
   const [selectedCrop, setSelectedCrop] = useState(0);
+  const [deviceId, setDeviceId] = useState<number | undefined>();
   const { width } = useWindowDimensions();
   const compact = width < 900;
 
   const applyAuthenticatedFlow = (me: MeResponse) => {
+    setDeviceId(me.device?.id);
     if (!me.hasDevice) {
       setFlow('device');
     } else if (!me.hasCrop) {
@@ -1695,6 +1894,7 @@ export default function RedesignedApp() {
         <GlassBackdrop />
         <SetupFlow
           onBack={() => setFlow(previousStage[flow])}
+          onDeviceRegistered={setDeviceId}
           onNext={() => setFlow(nextStage[flow])}
           selectedCrop={selectedCrop}
           setSelectedCrop={setSelectedCrop}
@@ -1724,14 +1924,15 @@ export default function RedesignedApp() {
           {page === 'dashboard' ? (
             <Dashboard
               compact={compact}
+              deviceId={deviceId}
               onNavigate={setPage}
               selectedCrop={selectedCrop}
             />
           ) : null}
           {page === 'analysis' ? (
-            <Analysis compact={compact} onNavigate={setPage} selectedCrop={selectedCrop} setSelectedCrop={setSelectedCrop} />
+            <Analysis compact={compact} deviceId={deviceId} onNavigate={setPage} selectedCrop={selectedCrop} setSelectedCrop={setSelectedCrop} />
           ) : null}
-          {page === 'live' ? <Live compact={compact} /> : null}
+          {page === 'live' ? <Live compact={compact} deviceId={deviceId} /> : null}
           {page === 'history' ? <History compact={compact} onNavigate={setPage} /> : null}
           {page === 'guide' ? <Guide compact={compact} onNavigate={setPage} /> : null}
           {page === 'shop' ? <Shop compact={compact} /> : null}
@@ -1935,7 +2136,7 @@ const styles = StyleSheet.create(scaleTypography({
   serviceFlowLabel: { color: palette.text, fontFamily: font, fontSize: 17, fontWeight: '900' },
   serviceFlowState: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '700' },
   serviceFlowStateActive: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '900' },
-  scoreHero: { alignItems: 'center', flexDirection: 'row', gap: 44, justifyContent: 'space-between', padding: 38 },
+  scoreHero: { alignItems: 'center', flexDirection: 'row', gap: 44, justifyContent: 'space-between', padding: 38, position: 'relative' },
   scoreHeroCompact: { alignItems: 'flex-start', flexDirection: 'column' },
   scoreHeroCopy: { flex: 1, gap: 12 },
   scoreHeroEyebrow: { color: palette.greenDark, fontFamily: font, fontSize: 17, fontWeight: '900', letterSpacing: 0.5 },
@@ -1943,6 +2144,11 @@ const styles = StyleSheet.create(scaleTypography({
   scoreHeroValue: { color: palette.text, fontFamily: font, fontSize: 62, fontWeight: '900', letterSpacing: -2.2, lineHeight: 70 },
   scoreHeroUnit: { color: palette.muted, fontFamily: font, fontSize: 16, marginBottom: 11 },
   scoreHeroGrade: { color: palette.secondary, fontFamily: font, fontSize: 18, fontWeight: '700', lineHeight: 27 },
+  formulaLink: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 10, paddingVertical: 10 },
+  formulaLinkTop: { position: 'absolute', right: 28, top: 22 },
+  formulaLinkBottom: { bottom: 16, position: 'absolute', right: 16 },
+  formulaLinkText: { color: palette.greenDark, fontFamily: font, fontSize: 16, fontWeight: '500' },
+  formulaLinkArrow: { color: palette.green, fontFamily: font, fontSize: 20, fontWeight: '500' },
   scoreHeroSummary: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 14, borderWidth: 1, gap: 14, maxWidth: 430, padding: 26, width: '100%' },
   scoreHeroSummaryTitle: { color: palette.text, fontFamily: font, fontSize: 21, fontWeight: '900' },
   scoreHeroSummaryBody: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 25 },
@@ -2061,6 +2267,7 @@ const styles = StyleSheet.create(scaleTypography({
   reportSummaryGrid: { alignItems: 'stretch', flexDirection: 'row', gap: 14 },
   reportScoreBlock: { backgroundColor: palette.greenSoft, borderColor: '#c9dfd1', borderRadius: 14, borderWidth: 1, gap: 8, justifyContent: 'center', minWidth: 240, padding: 26 },
   reportSummaryBlock: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 14, borderWidth: 1, flex: 1, gap: 9, padding: 26 },
+  reportSummaryBlockWithFormula: { paddingBottom: 68, position: 'relative' },
   reportSummaryLabel: { color: palette.muted, fontFamily: font, fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
   reportAssessment: { color: palette.greenDark, fontFamily: font, fontSize: 18, fontWeight: '900' },
   reportSummaryTitle: { color: palette.text, fontFamily: font, fontSize: 21, fontWeight: '900', lineHeight: 29 },
@@ -2243,6 +2450,20 @@ const styles = StyleSheet.create(scaleTypography({
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
   detailModal: { gap: 24, maxWidth: 560, padding: 28, width: '100%' },
   infoModal: { gap: 22, maxHeight: '84%', maxWidth: 580, padding: 28, width: '100%' },
+  formulaModal: { gap: 22, maxHeight: '86%', maxWidth: 680, padding: 30, width: '100%' },
+  formulaContent: { gap: 18, paddingBottom: 4 },
+  formulaSection: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 14, borderWidth: 1, gap: 14, padding: 20 },
+  formulaSectionTitle: { color: palette.text, fontFamily: font, fontSize: 18, fontWeight: '900' },
+  formulaBody: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 24 },
+  formulaFactorRow: { alignItems: 'center', borderTopColor: palette.line, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12 },
+  formulaFactorName: { color: palette.text, fontFamily: font, fontSize: 15, fontWeight: '900' },
+  formulaFactorRange: { color: palette.muted, fontFamily: font, fontSize: 13, marginTop: 3 },
+  formulaFactorScore: { color: palette.greenDark, fontFamily: font, fontSize: 18, fontWeight: '900' },
+  formulaExpressionBox: { alignItems: 'center', backgroundColor: palette.greenSoft, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 20 },
+  formulaExpression: { color: palette.greenDark, fontFamily: font, fontSize: 18, fontWeight: '900', textAlign: 'center' },
+  formulaEquivalentExpression: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '500', marginTop: 8, textAlign: 'center' },
+  formulaNotice: { backgroundColor: palette.amberSoft, borderColor: 'rgba(201,139,47,0.24)', borderRadius: 14, borderWidth: 1, gap: 6, padding: 18 },
+  formulaNoticeTitle: { color: palette.text, fontFamily: font, fontSize: 15, fontWeight: '900' },
   alertModal: { gap: 24, maxHeight: '84%', maxWidth: 680, padding: 30, width: '100%' },
   cartModal: { gap: 20, maxHeight: '82%', maxWidth: 620, padding: 28, width: '100%' },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },

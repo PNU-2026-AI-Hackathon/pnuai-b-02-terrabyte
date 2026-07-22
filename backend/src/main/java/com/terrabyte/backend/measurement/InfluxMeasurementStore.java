@@ -1,0 +1,136 @@
+package com.terrabyte.backend.measurement;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import com.influxdb.client.InfluxDBClient;
+import com.influxdb.client.domain.WritePrecision;
+import com.influxdb.client.write.Point;
+import com.influxdb.query.FluxRecord;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class InfluxMeasurementStore implements MeasurementStore {
+
+    private static final String MEASUREMENT = "telemetry_sample";
+
+    private final InfluxDBClient client;
+    private final InfluxProperties properties;
+
+    public InfluxMeasurementStore(InfluxDBClient client, InfluxProperties properties) {
+        this.client = client;
+        this.properties = properties;
+    }
+
+    @Override
+    public void write(TelemetrySample sample) {
+        Point point = Point.measurement(MEASUREMENT)
+                .addTag("hardware_device_id", sample.hardwareDeviceId())
+                .addTag("site_id", sample.siteId())
+                .addTag("zone_id", sample.zoneId())
+                .addTag("soil_type", sample.soilType())
+                .addTag("crop_type", sample.cropType())
+                .addTag("calibration_version", sample.calibrationVersion())
+                .addField("sequence", sample.sequence())
+                .addField("soil_moisture_pct", sample.soilMoisturePct())
+                .addField("soil_moisture_raw_adc", sample.soilMoistureRawAdc())
+                .addField("air_temperature_c", sample.airTemperatureC())
+                .addField("air_humidity_pct", sample.airHumidityPct())
+                .addField("plant_light_ppfd_umol_m2_s", sample.plantLightPpfdUmolM2S())
+                .addField("soil_sensor_valid", sample.soilSensorValid())
+                .addField("air_sensor_valid", sample.airSensorValid())
+                .addField("light_sensor_valid", sample.lightSensorValid())
+                .time(sample.observedAt(), WritePrecision.NS);
+        client.getWriteApiBlocking().writePoint(point);
+    }
+
+    @Override
+    public Optional<TelemetrySample> findLatest(String hardwareDeviceId) {
+        String flux = """
+                from(bucket: "%s")
+                  |> range(start: 1970-01-01T00:00:00Z)
+                  |> filter(fn: (r) => r._measurement == "%s" and r.hardware_device_id == "%s")
+                  |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+                  |> sort(columns: ["_time"], desc: true)
+                  |> limit(n: 1)
+                """.formatted(
+                escape(properties.bucket()),
+                MEASUREMENT,
+                escape(hardwareDeviceId));
+
+        return records(flux).stream().findFirst().map(this::toSample);
+    }
+
+    @Override
+    public List<MeasurementPoint> findPoints(
+            String hardwareDeviceId,
+            MeasurementMetric metric,
+            Instant start) {
+        String flux = """
+                from(bucket: "%s")
+                  |> range(start: time(v: "%s"))
+                  |> filter(fn: (r) => r._measurement == "%s" and r.hardware_device_id == "%s")
+                  |> filter(fn: (r) => r._field == "%s")
+                  |> sort(columns: ["_time"])
+                """.formatted(
+                escape(properties.bucket()),
+                start,
+                MEASUREMENT,
+                escape(hardwareDeviceId),
+                metric.field());
+
+        return records(flux).stream()
+                .map(record -> new MeasurementPoint(
+                        record.getTime(),
+                        number(record.getValue()).doubleValue()))
+                .toList();
+    }
+
+    private List<FluxRecord> records(String flux) {
+        return client.getQueryApi().query(flux).stream()
+                .flatMap(table -> table.getRecords().stream())
+                .toList();
+    }
+
+    private TelemetrySample toSample(FluxRecord record) {
+        Map<String, Object> values = record.getValues();
+        return new TelemetrySample(
+                string(values, "hardware_device_id"),
+                record.getTime(),
+                number(values.get("sequence")).longValue(),
+                string(values, "site_id"),
+                string(values, "zone_id"),
+                string(values, "soil_type"),
+                string(values, "crop_type"),
+                string(values, "calibration_version"),
+                number(values.get("soil_moisture_pct")).doubleValue(),
+                number(values.get("soil_moisture_raw_adc")).longValue(),
+                number(values.get("air_temperature_c")).doubleValue(),
+                number(values.get("air_humidity_pct")).doubleValue(),
+                number(values.get("plant_light_ppfd_umol_m2_s")).doubleValue(),
+                Boolean.TRUE.equals(values.get("soil_sensor_valid")),
+                Boolean.TRUE.equals(values.get("air_sensor_valid")),
+                Boolean.TRUE.equals(values.get("light_sensor_valid")));
+    }
+
+    private Number number(Object value) {
+        if (value instanceof Number number) {
+            return number;
+        }
+        throw new IllegalStateException("InfluxDB numeric field is missing or invalid");
+    }
+
+    private String string(Map<String, Object> values, String key) {
+        Object value = values.get(key);
+        if (value == null) {
+            throw new IllegalStateException("InfluxDB tag is missing: " + key);
+        }
+        return value.toString();
+    }
+
+    private String escape(String value) {
+        return value.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+}
