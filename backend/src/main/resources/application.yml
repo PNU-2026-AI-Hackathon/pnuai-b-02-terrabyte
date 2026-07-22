@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: terrabyte-backend
+
+server:
+  port: ${SERVER_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+app:
+  datasource:
+    postgres:
+      url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/terrabyte}
+      username: ${POSTGRES_USER:terrabyte}
+      password: ${POSTGRES_PASSWORD:terrabyte}
+      driver-class-name: org.postgresql.Driver
+      configuration:
+        maximum-pool-size: ${POSTGRES_POOL_SIZE:10}
+    sqlite:
+      url: ${SQLITE_URL:jdbc:sqlite:./db/terrabyte-score.db}
+      driver-class-name: org.sqlite.JDBC
+      configuration:
+        maximum-pool-size: ${SQLITE_POOL_SIZE:2}
