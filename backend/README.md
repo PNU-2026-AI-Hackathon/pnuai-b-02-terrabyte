@@ -27,6 +27,7 @@ export POSTGRES_URL='jdbc:postgresql://localhost:5432/terrabyte'
 export POSTGRES_USER='terrabyte'
 export POSTGRES_PASSWORD='terrabyte'
 export SQLITE_URL='jdbc:sqlite:./db/terrabyte-score.db'
+export JWT_SECRET='32바이트 이상의 운영용 비밀키로 변경하세요'
 ```
 
 기존 SQLite 점수 스키마를 최초 한 번 적용합니다.
@@ -42,6 +43,32 @@ sqlite3 db/terrabyte-score.db < db/schema.sql
 ```
 
 상태 확인 주소는 `http://localhost:8080/actuator/health`입니다.
+
+## 인증 API
+
+```text
+POST /api/auth/signup  회원가입 및 액세스 토큰 발급
+POST /api/auth/login   로그인 및 액세스 토큰 발급
+GET  /api/me           현재 사용자 조회
+```
+
+회원가입 요청 예시:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "password1",
+  "nickname": "테라바이트"
+}
+```
+
+보호된 API에는 로그인 또는 회원가입 응답의 토큰을 전달합니다.
+
+```text
+Authorization: Bearer {accessToken}
+```
+
+개발용 JWT 비밀키는 기본값이 있지만 운영 환경에서는 반드시 `JWT_SECRET` 환경 변수로 교체해야 합니다.
 
 ## 테스트
 

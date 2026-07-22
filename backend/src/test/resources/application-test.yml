@@ -1,4 +1,7 @@
 app:
+  security:
+    jwt:
+      secret: terrabyte-test-secret-must-be-at-least-32-bytes
   datasource:
     postgres:
       url: jdbc:h2:mem:terrabyte;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
