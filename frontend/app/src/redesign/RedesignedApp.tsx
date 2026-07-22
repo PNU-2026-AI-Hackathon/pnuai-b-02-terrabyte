@@ -14,6 +14,15 @@ import {
 } from 'react-native';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 
+import {
+  clearAccessToken,
+  getMe,
+  loadAccessToken,
+  login,
+  saveAccessToken,
+  signup,
+  type MeResponse,
+} from '../auth/authApi';
 import { BrandMark } from '../components/BrandMark';
 import { crops, factors, latest, score, shopProducts, type ShopCategory, type ShopProduct } from '../data';
 
@@ -94,22 +103,86 @@ function GlassBackdrop() {
   );
 }
 
-function ActionButton({ label, onPress, quiet = false }: { label: string; onPress: () => void; quiet?: boolean }) {
+function ActionButton({
+  disabled = false,
+  label,
+  onPress,
+  quiet = false,
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+  quiet?: boolean;
+}) {
   return (
     <Pressable
       accessibilityRole="button"
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.actionButton, quiet && styles.quietButton, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.actionButton,
+        quiet && styles.quietButton,
+        disabled && styles.disabledButton,
+        pressed && styles.pressed,
+      ]}
     >
       <Text style={[styles.actionButtonText, quiet && styles.quietButtonText]}>{label}</Text>
     </Pressable>
   );
 }
 
-function Login({ onLogin }: { onLogin: () => void }) {
+function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void }) {
   const { width } = useWindowDimensions();
   const compact = width < 760;
   const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [nickname, setNickname] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const changeMode = (nextMode: 'login' | 'signup') => {
+    setMode(nextMode);
+    setError(null);
+  };
+
+  const submit = async () => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedNickname = nickname.trim();
+
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setError('올바른 이메일을 입력해 주세요.');
+      return;
+    }
+    if (!password) {
+      setError('비밀번호를 입력해 주세요.');
+      return;
+    }
+    if (mode === 'signup' && (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password))) {
+      setError('비밀번호는 8자 이상이며 영문과 숫자를 포함해야 합니다.');
+      return;
+    }
+    if (mode === 'signup' && (normalizedNickname.length < 2 || normalizedNickname.length > 20)) {
+      setError('닉네임은 2자 이상 20자 이하로 입력해 주세요.');
+      return;
+    }
+
+    setError(null);
+    setSubmitting(true);
+    try {
+      const auth = mode === 'login'
+        ? await login(normalizedEmail, password)
+        : await signup(normalizedEmail, password, normalizedNickname);
+      await saveAccessToken(auth.accessToken);
+      const me = await getMe(auth.accessToken);
+      onAuthenticated(me);
+    } catch (requestError) {
+      await clearAccessToken();
+      setError(requestError instanceof Error ? requestError.message : '요청을 처리하지 못했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.loginPage}>
@@ -141,10 +214,10 @@ function Login({ onLogin }: { onLogin: () => void }) {
         <Surface style={styles.loginPanel}>
           <View style={styles.loginPanelHeader}>
             <View style={styles.authTabs}>
-              <Pressable onPress={() => setMode('login')} style={[styles.authTab, mode === 'login' && styles.authTabActive]}>
+              <Pressable disabled={submitting} onPress={() => changeMode('login')} style={[styles.authTab, mode === 'login' && styles.authTabActive]}>
                 <Text style={[styles.authTabText, mode === 'login' && styles.authTabTextActive]}>로그인</Text>
               </Pressable>
-              <Pressable onPress={() => setMode('signup')} style={[styles.authTab, mode === 'signup' && styles.authTabActive]}>
+              <Pressable disabled={submitting} onPress={() => changeMode('signup')} style={[styles.authTab, mode === 'signup' && styles.authTabActive]}>
                 <Text style={[styles.authTabText, mode === 'signup' && styles.authTabTextActive]}>회원가입</Text>
               </Pressable>
             </View>
@@ -158,27 +231,45 @@ function Login({ onLogin }: { onLogin: () => void }) {
             <TextInput
               autoCapitalize="none"
               keyboardType="email-address"
+              editable={!submitting}
+              onChangeText={setEmail}
               placeholder="name@example.com"
               placeholderTextColor={palette.muted}
               style={styles.input}
+              value={email}
             />
           </View>
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>비밀번호</Text>
             <TextInput
+              editable={!submitting}
+              onChangeText={setPassword}
               placeholder="비밀번호를 입력하세요"
               placeholderTextColor={palette.muted}
               secureTextEntry
               style={styles.input}
+              value={password}
             />
           </View>
           {mode === 'signup' ? (
             <View style={styles.field}>
               <Text style={styles.fieldLabel}>닉네임</Text>
-              <TextInput placeholder="사용할 이름을 입력하세요" placeholderTextColor={palette.muted} style={styles.input} />
+              <TextInput
+                editable={!submitting}
+                onChangeText={setNickname}
+                placeholder="사용할 이름을 입력하세요"
+                placeholderTextColor={palette.muted}
+                style={styles.input}
+                value={nickname}
+              />
             </View>
           ) : null}
-          <ActionButton label={mode === 'login' ? '로그인' : '계정 만들기'} onPress={onLogin} />
+          {error ? <Text accessibilityRole="alert" style={styles.authError}>{error}</Text> : null}
+          <ActionButton
+            disabled={submitting}
+            label={submitting ? '처리 중…' : mode === 'login' ? '로그인' : '계정 만들기'}
+            onPress={() => void submit()}
+          />
         </Surface>
       </View>
     </ScrollView>
@@ -1315,16 +1406,56 @@ function Shop({ compact }: { compact: boolean }) {
 
 export default function RedesignedApp() {
   const [flow, setFlow] = useState<FlowStage>('auth');
+  const [restoringSession, setRestoringSession] = useState(true);
   const [page, setPage] = useState<Page>('dashboard');
   const [selectedCrop, setSelectedCrop] = useState(0);
   const { width } = useWindowDimensions();
   const compact = width < 900;
 
+  const applyAuthenticatedFlow = (me: MeResponse) => {
+    if (!me.hasDevice) {
+      setFlow('device');
+    } else if (!me.hasCrop) {
+      setFlow('crop');
+    } else {
+      setFlow('app');
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+    const restoreSession = async () => {
+      try {
+        const accessToken = await loadAccessToken();
+        if (!accessToken) return;
+        const me = await getMe(accessToken);
+        if (active) applyAuthenticatedFlow(me);
+      } catch {
+        await clearAccessToken();
+      } finally {
+        if (active) setRestoringSession(false);
+      }
+    };
+    void restoreSession();
+    return () => { active = false; };
+  }, []);
+
+  if (restoringSession) {
+    return (
+      <View style={[styles.root, styles.sessionLoading]}>
+        <GlassBackdrop />
+        <BrandMark />
+        <Text style={styles.sessionLoadingText}>로그인 상태를 확인하고 있어요…</Text>
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
   if (flow === 'auth') {
     return (
       <View style={styles.root}>
         <GlassBackdrop />
-        <Login onLogin={() => setFlow('device')} />
+        <Login onAuthenticated={applyAuthenticatedFlow} />
         <StatusBar style="dark" />
       </View>
     );
@@ -1362,7 +1493,10 @@ export default function RedesignedApp() {
       <Sidebar
         compact={compact}
         cropName={(crops[selectedCrop] ?? crops[0]).name}
-        onLogout={() => setFlow('auth')}
+        onLogout={() => {
+          void clearAccessToken();
+          setFlow('auth');
+        }}
         onNavigate={setPage}
         page={page}
       />
@@ -1414,6 +1548,9 @@ const styles = StyleSheet.create(scaleTypography({
   backdropOrbThree: { backgroundColor: 'rgba(235,207,111,0.20)', height: 340, right: '28%', top: '32%', width: 340 },
   backdropWash: { backgroundColor: 'rgba(255,255,255,0.12)', bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   pressed: { opacity: 0.78 },
+  disabledButton: { opacity: 0.5 },
+  sessionLoading: { alignItems: 'center', gap: 18, justifyContent: 'center' },
+  sessionLoadingText: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '700' },
   surface: {
     backgroundColor: palette.panel,
     borderColor: palette.line,
@@ -1448,6 +1585,7 @@ const styles = StyleSheet.create(scaleTypography({
   authTabTextActive: { color: palette.greenDark, fontWeight: '900' },
   loginPanelTitle: { color: palette.text, fontFamily: font, fontSize: 24, fontWeight: '900' },
   loginPanelDescription: { color: palette.secondary, fontFamily: font, fontSize: 16, lineHeight: 25 },
+  authError: { color: palette.red, fontFamily: font, fontSize: 14, fontWeight: '700', lineHeight: 21 },
   field: { gap: 7 },
   fieldLabel: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '700' },
   input: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, color: palette.text, fontFamily: font, fontSize: 17, minHeight: 54, outlineStyle: 'none', paddingHorizontal: 16 } as any,
