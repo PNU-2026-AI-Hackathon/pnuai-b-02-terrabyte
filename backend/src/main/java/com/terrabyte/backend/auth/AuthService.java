@@ -3,6 +3,9 @@ package com.terrabyte.backend.auth;
 import java.util.Locale;
 
 import com.terrabyte.backend.api.ApiException;
+import com.terrabyte.backend.device.DeviceRepository;
+import com.terrabyte.backend.device.DeviceResponse;
+import com.terrabyte.backend.space.CultivationSpaceRepository;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,14 +17,20 @@ public class AuthService {
     private final UserAccountRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final DeviceRepository deviceRepository;
+    private final CultivationSpaceRepository spaceRepository;
 
     public AuthService(
             UserAccountRepository userRepository,
             PasswordEncoder passwordEncoder,
-            TokenService tokenService) {
+            TokenService tokenService,
+            DeviceRepository deviceRepository,
+            CultivationSpaceRepository spaceRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
+        this.deviceRepository = deviceRepository;
+        this.spaceRepository = spaceRepository;
     }
 
     public AuthResponse signup(SignupRequest request) {
@@ -57,7 +66,12 @@ public class AuthService {
                         HttpStatus.NOT_FOUND,
                         "USER_NOT_FOUND",
                         "사용자를 찾을 수 없습니다."));
-        return new MeResponse(UserResponse.from(user), false, false, null);
+        DeviceResponse device = deviceRepository.findByUserId(userId)
+                .map(foundDevice -> DeviceResponse.from(
+                        foundDevice,
+                        spaceRepository.findByUserId(userId).orElse(null)))
+                .orElse(null);
+        return new MeResponse(UserResponse.from(user), device != null, false, device);
     }
 
     private AuthResponse createAuthResponse(UserAccount user) {

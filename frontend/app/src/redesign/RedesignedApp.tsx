@@ -1,6 +1,6 @@
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -25,6 +25,7 @@ import {
 } from '../auth/authApi';
 import { BrandMark } from '../components/BrandMark';
 import { crops, factors, latest, score, shopProducts, type ShopCategory, type ShopProduct } from '../data';
+import { registerDevice } from '../device/deviceApi';
 
 const FONT_URL =
   'https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css';
@@ -81,6 +82,22 @@ const navItems: Array<{ key: Page; label: string }> = [
   { key: 'shop', label: '제품 추천' },
 ];
 
+type AreaUnit = 'SQUARE_METERS' | 'PYEONG';
+
+const spaceTypeOptions = [
+  { label: '건물 옥상', value: '건물 옥상' },
+  { label: '실내 유휴공간', value: '실내 유휴공간' },
+  { label: '지하 공간', value: '지하 공간' },
+  { label: '공실', value: '공실' },
+  { label: '베란다·테라스', value: '베란다·테라스' },
+  { label: '기타', value: '기타' },
+] as const;
+
+const areaUnitOptions: Array<{ label: string; value: AreaUnit }> = [
+  { label: 'm²', value: 'SQUARE_METERS' },
+  { label: '평', value: 'PYEONG' },
+];
+
 
 function Surface({ children, style }: { children: React.ReactNode; style?: any }) {
   return <View style={[styles.surface, glassWebStyle, style]}>{children}</View>;
@@ -129,6 +146,68 @@ function ActionButton({
       <Text style={[styles.actionButtonText, quiet && styles.quietButtonText]}>{label}</Text>
     </Pressable>
   );
+}
+
+function SelectField<T extends string>({
+  disabled = false,
+  onChange,
+  options,
+  placeholder,
+  style,
+  value,
+}: {
+  disabled?: boolean;
+  onChange: (value: T) => void;
+  options: ReadonlyArray<{ label: string; value: T }>;
+  placeholder: string;
+  style?: any;
+  value: T | '';
+}) {
+  const [open, setOpen] = useState(false);
+  const selectedLabel = options.find((option) => option.value === value)?.label;
+
+  return (
+    <View style={[styles.selectContainer, style]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled, expanded: open }}
+        disabled={disabled}
+        onPress={() => setOpen((current) => !current)}
+        style={[styles.input, styles.selectTrigger, disabled && styles.disabledButton]}
+      >
+        <Text style={[styles.selectValue, !selectedLabel && styles.selectPlaceholder]}>
+          {selectedLabel ?? placeholder}
+        </Text>
+        <Text style={styles.selectArrow}>{open ? '▴' : '▾'}</Text>
+      </Pressable>
+      {open ? (
+        <View style={styles.selectMenu}>
+          {options.map((option) => {
+            const selected = option.value === value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => {
+                  onChange(option.value);
+                  setOpen(false);
+                }}
+                style={[styles.selectOption, selected && styles.selectOptionSelected]}
+              >
+                <Text style={[styles.selectOptionText, selected && styles.selectOptionTextSelected]}>
+                  {option.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function convertToSquareMeters(value: number, unit: AreaUnit) {
+  const squareMeters = unit === 'PYEONG' ? value * 3.305785 : value;
+  return Math.round(squareMeters * 100) / 100;
 }
 
 function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void }) {
@@ -292,7 +371,65 @@ function SetupFlow({
   const { width } = useWindowDimensions();
   const compact = width < 780;
   const [connected, setConnected] = useState(false);
+  const [serialCode, setSerialCode] = useState('');
+  const [spaceName, setSpaceName] = useState('');
+  const [spaceType, setSpaceType] = useState<(typeof spaceTypeOptions)[number]['value'] | ''>('');
+  const [areaSquareMeters, setAreaSquareMeters] = useState('');
+  const [areaUnit, setAreaUnit] = useState<AreaUnit>('SQUARE_METERS');
+  const [deviceError, setDeviceError] = useState<string | null>(null);
+  const [registeringDevice, setRegisteringDevice] = useState(false);
+  const codeInputRef = useRef<TextInput>(null);
   const step = stage === 'device' ? 1 : stage === 'crop' ? 2 : 3;
+  const enteredArea = Number(areaSquareMeters);
+  const parsedAreaSquareMeters = convertToSquareMeters(enteredArea, areaUnit);
+  const canRegisterDevice = serialCode.length === 6
+    && spaceName.trim().length > 0
+    && spaceType.trim().length > 0
+    && Number.isFinite(enteredArea)
+    && Number.isFinite(parsedAreaSquareMeters)
+    && parsedAreaSquareMeters > 0;
+
+  const updateSerialCode = (value: string) => {
+    setSerialCode(value.replace(/\D/g, '').slice(0, 6));
+    setDeviceError(null);
+  };
+
+  const submitDevice = async () => {
+    if (serialCode.length !== 6) {
+      setDeviceError('기기 코드 숫자 6자리를 입력해 주세요.');
+      codeInputRef.current?.focus();
+      return;
+    }
+    const parsedArea = convertToSquareMeters(Number(areaSquareMeters), areaUnit);
+    if (!spaceName.trim()) {
+      setDeviceError('공간 이름을 입력해 주세요.');
+      return;
+    }
+    if (!spaceType.trim()) {
+      setDeviceError('공간 유형을 입력해 주세요.');
+      return;
+    }
+    if (!Number.isFinite(parsedArea) || parsedArea <= 0) {
+      setDeviceError('공간 면적은 0보다 큰 숫자로 입력해 주세요.');
+      return;
+    }
+
+    setDeviceError(null);
+    setRegisteringDevice(true);
+    try {
+      await registerDevice({
+        serialCode,
+        spaceName: spaceName.trim(),
+        spaceType: spaceType.trim(),
+        areaSquareMeters: parsedArea,
+      });
+      onNext();
+    } catch (requestError) {
+      setDeviceError(requestError instanceof Error ? requestError.message : '기기를 등록하지 못했습니다.');
+    } finally {
+      setRegisteringDevice(false);
+    }
+  };
 
   useEffect(() => {
     if (stage !== 'setup') {
@@ -338,22 +475,103 @@ function SetupFlow({
           {stage === 'device' ? (
             <View style={styles.deviceSetupContent}>
               <View style={styles.setupFieldGrid}>
-                <View style={styles.field}><Text style={styles.fieldLabel}>공간 이름</Text><TextInput defaultValue="부산 도심 옥상 A" placeholderTextColor={palette.muted} style={styles.input} /></View>
-                <View style={styles.field}><Text style={styles.fieldLabel}>공간 유형</Text><TextInput defaultValue="건물 옥상" placeholderTextColor={palette.muted} style={styles.input} /></View>
-                <View style={styles.field}><Text style={styles.fieldLabel}>공간 면적</Text><TextInput defaultValue="42m²" placeholderTextColor={palette.muted} style={styles.input} /></View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>공간 이름</Text>
+                  <TextInput
+                    editable={!registeringDevice}
+                    maxLength={100}
+                    onChangeText={(value) => { setSpaceName(value); setDeviceError(null); }}
+                    placeholder="예: 부산 도심 옥상 A"
+                    placeholderTextColor={palette.muted}
+                    style={styles.input}
+                    value={spaceName}
+                  />
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>공간 유형</Text>
+                  <SelectField
+                    disabled={registeringDevice}
+                    onChange={(value) => { setSpaceType(value); setDeviceError(null); }}
+                    options={spaceTypeOptions}
+                    placeholder="공간 유형을 선택하세요"
+                    value={spaceType}
+                  />
+                </View>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>공간 면적</Text>
+                  <View style={styles.areaInputRow}>
+                    <TextInput
+                      editable={!registeringDevice}
+                      inputMode="decimal"
+                      keyboardType="decimal-pad"
+                      onChangeText={(value) => {
+                        setAreaSquareMeters(value.replace(/[^0-9.]/g, ''));
+                        setDeviceError(null);
+                      }}
+                      placeholder="예: 42"
+                      placeholderTextColor={palette.muted}
+                      style={[styles.input, styles.areaValueInput]}
+                      value={areaSquareMeters}
+                    />
+                    <SelectField
+                      disabled={registeringDevice}
+                      onChange={(value) => { setAreaUnit(value); setDeviceError(null); }}
+                      options={areaUnitOptions}
+                      placeholder="단위"
+                      style={styles.areaUnitSelect}
+                      value={areaUnit}
+                    />
+                  </View>
+                  {areaUnit === 'PYEONG' && enteredArea > 0 ? (
+                    <Text style={styles.areaConversionText}>
+                      {enteredArea}평 = {parsedAreaSquareMeters}m²로 저장됩니다.
+                    </Text>
+                  ) : null}
+                </View>
               </View>
               <View style={styles.registrationGuide}>
                 <Text style={styles.registrationGuideTitle}>공간분석 세트 등록 번호</Text>
                 <Text style={styles.registrationGuideBody}>키트 하단 라벨에 표시된 숫자 여섯 자리를 입력하면 이 공간과 측정 데이터가 연결됩니다.</Text>
+                <Text style={styles.registrationTestCode}>개발 테스트 코드: 123456</Text>
               </View>
-              <View style={styles.codeInputRow}>
-                {'483920'.split('').map((digit, index) => (
-                  <View key={`${digit}-${index}`} style={styles.codeCell}>
-                    <Text style={styles.codeDigit}>{digit}</Text>
-                  </View>
-                ))}
-              </View>
-              <ActionButton label="공간 등록 완료" onPress={onNext} />
+              <Pressable
+                accessibilityLabel="6자리 기기 코드 입력"
+                accessibilityRole="button"
+                onPress={() => codeInputRef.current?.focus()}
+                style={styles.codeInputContainer}
+              >
+                <TextInput
+                  autoFocus
+                  caretHidden
+                  editable={!registeringDevice}
+                  inputMode="numeric"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  onChangeText={updateSerialCode}
+                  ref={codeInputRef}
+                  style={styles.hiddenCodeInput}
+                  value={serialCode}
+                />
+                <View pointerEvents="none" style={styles.codeInputRow}>
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.codeCell,
+                        index === serialCode.length && serialCode.length < 6 && styles.codeCellActive,
+                      ]}
+                    >
+                      <Text style={styles.codeDigit}>{serialCode[index] ?? ''}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Pressable>
+              {deviceError ? <Text accessibilityRole="alert" style={styles.authError}>{deviceError}</Text> : null}
+              <ActionButton
+                disabled={registeringDevice || !canRegisterDevice}
+                label={registeringDevice ? '등록 중…' : '공간 등록 완료'}
+                onPress={() => void submitDevice()}
+              />
             </View>
           ) : null}
 
@@ -1589,6 +1807,20 @@ const styles = StyleSheet.create(scaleTypography({
   field: { gap: 7 },
   fieldLabel: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '700' },
   input: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, color: palette.text, fontFamily: font, fontSize: 17, minHeight: 54, outlineStyle: 'none', paddingHorizontal: 16 } as any,
+  selectContainer: { position: 'relative' },
+  selectTrigger: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  selectValue: { color: palette.text, flex: 1, fontFamily: font, fontSize: 17 },
+  selectPlaceholder: { color: palette.muted },
+  selectArrow: { color: palette.greenDark, fontFamily: font, fontSize: 14, marginLeft: 10 },
+  selectMenu: { backgroundColor: '#f4f8f5', borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, marginTop: 4, overflow: 'hidden' },
+  selectOption: { borderBottomColor: palette.line, borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 13 },
+  selectOptionSelected: { backgroundColor: palette.greenSoft },
+  selectOptionText: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '700' },
+  selectOptionTextSelected: { color: palette.greenDark, fontWeight: '900' },
+  areaInputRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
+  areaValueInput: { flex: 1 },
+  areaUnitSelect: { width: 110 },
+  areaConversionText: { color: palette.greenDark, fontFamily: font, fontSize: 13, fontWeight: '700' },
   actionButton: { alignItems: 'center', alignSelf: 'flex-end', backgroundColor: palette.green, borderRadius: 9, justifyContent: 'center', minHeight: 48, minWidth: 154, paddingHorizontal: 24 },
   quietButton: { backgroundColor: palette.greenSoft, borderColor: '#c9dfd1', borderWidth: 1 },
   actionButtonText: { color: '#ffffff', fontFamily: font, fontSize: 16, fontWeight: '800' },
@@ -1617,8 +1849,12 @@ const styles = StyleSheet.create(scaleTypography({
   registrationGuide: { backgroundColor: palette.greenSoft, borderRadius: 9, gap: 7, padding: 18 },
   registrationGuideTitle: { color: palette.greenDark, fontFamily: font, fontSize: 17, fontWeight: '900' },
   registrationGuideBody: { color: palette.secondary, fontFamily: font, fontSize: 15, lineHeight: 24 },
+  registrationTestCode: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '900', marginTop: 4 },
   codeInputRow: { flexDirection: 'row', gap: 8, justifyContent: 'center' },
+  codeInputContainer: { position: 'relative' },
+  hiddenCodeInput: { height: 1, opacity: 0, position: 'absolute', width: 1 },
   codeCell: { alignItems: 'center', backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 8, borderWidth: 1, flex: 1, height: 58, justifyContent: 'center', maxWidth: 56 },
+  codeCellActive: { borderColor: palette.green, borderWidth: 2 },
   codeDigit: { color: palette.text, fontFamily: font, fontSize: 23, fontWeight: '900' },
   cropSetupContent: { gap: 18 },
   cropChoiceGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, maxHeight: 380, overflow: 'scroll' } as any,

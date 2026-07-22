@@ -50,6 +50,7 @@ sqlite3 db/terrabyte-score.db < db/schema.sql
 POST /api/auth/signup  회원가입 및 액세스 토큰 발급
 POST /api/auth/login   로그인 및 액세스 토큰 발급
 GET  /api/me           현재 사용자 조회
+POST /api/devices      6자리 기기 코드 등록
 ```
 
 회원가입 요청 예시:
@@ -67,6 +68,19 @@ GET  /api/me           현재 사용자 조회
 ```text
 Authorization: Bearer {accessToken}
 ```
+
+기기 등록 요청 예시:
+
+```json
+{
+  "serialCode": "483920",
+  "spaceName": "부산 도심 옥상 A",
+  "spaceType": "건물 옥상",
+  "areaSquareMeters": 42
+}
+```
+
+공간 정보와 기기는 하나의 요청에서 함께 등록됩니다. 로컬 개발용 기기 코드로 `483920`, `123456`이 등록되며, 기기 등록 API에는 Bearer 토큰이 필요합니다.
 
 개발용 JWT 비밀키는 기본값이 있지만 운영 환경에서는 반드시 `JWT_SECRET` 환경 변수로 교체해야 합니다.
 

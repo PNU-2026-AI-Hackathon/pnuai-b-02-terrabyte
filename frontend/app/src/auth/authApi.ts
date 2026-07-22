@@ -45,7 +45,7 @@ export class ApiRequestError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
 
   try {
@@ -78,21 +78,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function login(email: string, password: string) {
-  return request<AuthResponse>('/api/auth/login', {
+  return apiRequest<AuthResponse>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
   });
 }
 
 export function signup(email: string, password: string, nickname: string) {
-  return request<AuthResponse>('/api/auth/signup', {
+  return apiRequest<AuthResponse>('/api/auth/signup', {
     method: 'POST',
     body: JSON.stringify({ email, password, nickname }),
   });
 }
 
 export function getMe(accessToken: string) {
-  return request<MeResponse>('/api/me', {
+  return apiRequest<MeResponse>('/api/me', {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
