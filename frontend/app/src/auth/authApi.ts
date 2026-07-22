@@ -27,7 +27,12 @@ export type MeResponse = {
   user: User;
   hasDevice: boolean;
   hasCrop: boolean;
-  device?: unknown;
+  device?: {
+    id: number;
+    serialCode: string;
+    status: 'ONLINE' | 'OFFLINE';
+    lastSeenAt?: string;
+  };
 };
 
 type ApiErrorBody = {

@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository;
 public class DeviceRepository {
 
     private static final String SELECT_COLUMNS = """
-            SELECT id, serial_code, user_id, status, last_seen_at, created_at
+            SELECT id, serial_code, hardware_id, user_id, status, last_seen_at, created_at
             FROM device
             """;
 
@@ -41,10 +41,36 @@ public class DeviceRepository {
                 .findFirst();
     }
 
+    public Optional<Device> findByIdAndUserId(long deviceId, long userId) {
+        return jdbcTemplate.query(
+                        SELECT_COLUMNS + " WHERE id = ? AND user_id = ?",
+                        this::mapDevice,
+                        deviceId,
+                        userId)
+                .stream()
+                .findFirst();
+    }
+
+    public Optional<Device> findByHardwareId(String hardwareId) {
+        return jdbcTemplate.query(
+                        SELECT_COLUMNS + " WHERE hardware_id = ?",
+                        this::mapDevice,
+                        hardwareId)
+                .stream()
+                .findFirst();
+    }
+
     public int claim(long deviceId, long userId) {
         return jdbcTemplate.update(
                 "UPDATE device SET user_id = ? WHERE id = ? AND user_id IS NULL",
                 userId,
+                deviceId);
+    }
+
+    public void markOnline(long deviceId, java.time.Instant lastSeenAt) {
+        jdbcTemplate.update(
+                "UPDATE device SET status = 'ONLINE', last_seen_at = ? WHERE id = ?",
+                java.sql.Timestamp.from(lastSeenAt),
                 deviceId);
     }
 
@@ -54,6 +80,7 @@ public class DeviceRepository {
         return new Device(
                 resultSet.getLong("id"),
                 resultSet.getString("serial_code"),
+                resultSet.getString("hardware_id"),
                 userId == null ? null : userId.longValue(),
                 DeviceStatus.valueOf(resultSet.getString("status")),
                 lastSeenAt == null ? null : lastSeenAt.toInstant(),

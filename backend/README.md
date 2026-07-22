@@ -1,4 +1,4 @@
-# TerraByte Backend
+이거 # TerraByte Backend
 
 TerraByte의 REST API, 사용자·기기 데이터, 센서 수집 및 환경 점수 조회를 담당하는 Spring Boot 서비스입니다.
 
@@ -9,6 +9,7 @@ TerraByte의 REST API, 사용자·기기 데이터, 센서 수집 및 환경 점
 - Gradle 8.14.3 Wrapper
 - PostgreSQL: 사용자, 기기 등 업무 데이터
 - SQLite: 작물별 환경 점수 프로필 및 계산 결과
+- InfluxDB 2.x: 하드웨어 센서 시계열 데이터
 
 ## 로컬 실행
 
@@ -28,6 +29,11 @@ export POSTGRES_USER='terrabyte'
 export POSTGRES_PASSWORD='terrabyte'
 export SQLITE_URL='jdbc:sqlite:./db/terrabyte-score.db'
 export JWT_SECRET='32바이트 이상의 운영용 비밀키로 변경하세요'
+export INFLUX_URL='http://localhost:8086'
+export INFLUX_TOKEN='InfluxDB API 토큰'
+export INFLUX_ORG='terrabyte'
+export INFLUX_BUCKET='telemetry'
+export TELEMETRY_DEVICE_KEY='하드웨어가 X-Device-Key로 보낼 공유 키'
 ```
 
 기존 SQLite 점수 스키마를 최초 한 번 적용합니다.
@@ -44,6 +50,157 @@ sqlite3 db/terrabyte-score.db < db/schema.sql
 
 상태 확인 주소는 `http://localhost:8080/actuator/health`입니다.
 
+## 로컬 통합 테스트 가이드
+
+아래 계정과 키는 **로컬 개발 환경 전용**입니다. 운영·배포 환경에서는 같은 값을 사용하지 마세요.
+
+### 1. 테스트 계정 및 기기
+
+현재 팀 로컬 DB에 만들어 둔 프론트엔드 테스트 계정은 다음과 같습니다.
+
+| 항목 | 값 |
+| --- | --- |
+| 이메일 | `demo@terrabyte.local` |
+| 비밀번호 | `password1` |
+| 등록 기기 코드 | `483920` |
+| 하드웨어 ID | `orangepi-pro-01` |
+
+이 계정은 Flyway가 자동 생성하는 계정이 아니므로 PostgreSQL을 새로 만든 경우에는 프론트엔드 회원가입 화면에서
+같은 이메일과 비밀번호로 가입한 뒤 기기 코드 `483920`을 등록합니다. 기기 등록 화면에서는 공간명, 공간 유형,
+면적도 함께 입력합니다. 이미 다른 사용자에게 등록된 기기라는 메시지가 나오면 기존 데모 계정으로 로그인하거나
+아직 사용되지 않은 개발용 코드 `123456`을 사용합니다. `123456`의 하드웨어 ID는 `orangepi-pro-02`입니다.
+
+### 2. InfluxDB 실행 및 로그인
+
+로컬 InfluxDB 접속 정보는 다음과 같습니다.
+
+| 항목 | 값 |
+| --- | --- |
+| 웹 UI | `http://localhost:8086` |
+| 사용자명 | `terrabyte` |
+| 비밀번호 | `terrabyte-admin-password` |
+| Organization | `terrabyte` |
+| Bucket | `telemetry` |
+| API Token | `terrabyte-local-token` |
+| 하드웨어 요청 키 | `terrabyte-local-device-key` |
+
+기존 컨테이너가 있다면 다음 명령으로 실행합니다.
+
+```bash
+docker start terrabyte-influxdb
+```
+
+컨테이너가 아직 없다면 최초 한 번 다음과 같이 생성합니다.
+
+```bash
+docker run -d \
+  --name terrabyte-influxdb \
+  -p 8086:8086 \
+  -v terrabyte-influxdb-data:/var/lib/influxdb2 \
+  -e DOCKER_INFLUXDB_INIT_MODE=setup \
+  -e DOCKER_INFLUXDB_INIT_USERNAME=terrabyte \
+  -e DOCKER_INFLUXDB_INIT_PASSWORD=terrabyte-admin-password \
+  -e DOCKER_INFLUXDB_INIT_ORG=terrabyte \
+  -e DOCKER_INFLUXDB_INIT_BUCKET=telemetry \
+  -e DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=terrabyte-local-token \
+  influxdb:2.7
+```
+
+컨테이너와 서버 상태를 확인합니다.
+
+```bash
+docker ps --filter name=terrabyte-influxdb
+curl http://localhost:8086/health
+```
+
+브라우저에서 `http://localhost:8086`을 연 뒤 위 사용자명과 비밀번호로 로그인하면
+Data Explorer에서 `telemetry` 버킷에 저장된 센서 데이터를 확인할 수 있습니다.
+
+### 3. 백엔드와 프론트엔드 실행
+
+터미널 1에서 백엔드를 실행합니다.
+
+```bash
+cd backend
+./gradlew bootRun
+```
+
+터미널 2에서 프론트엔드를 실행합니다.
+
+```bash
+cd frontend/app
+npm install
+npm run web
+```
+
+| 서비스 | 주소 |
+| --- | --- |
+| 프론트엔드 | `http://localhost:8081` |
+| 백엔드 상태 확인 | `http://localhost:8080/actuator/health` |
+| InfluxDB UI | `http://localhost:8086` |
+
+Expo가 8081이 아닌 다른 포트를 안내하면 터미널에 출력된 주소로 접속합니다. 프론트엔드는 기본적으로
+`.env.example`과 같이 `http://localhost:8080`의 백엔드 API를 사용합니다.
+
+### 4. 테스트 센서 데이터 전송
+
+백엔드와 InfluxDB가 실행 중인 상태에서 아래 요청을 보냅니다. 온도·습도·PPFD는 적합도 계산에 사용되고,
+토양수분은 저장 및 모니터링만 됩니다.
+
+```bash
+observed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+curl -X POST http://localhost:8080/api/telemetry \
+  -H 'Content-Type: application/json' \
+  -H 'X-Device-Key: terrabyte-local-device-key' \
+  --data-binary @- <<JSON
+  {
+    "schema_version": 1,
+    "event_type": "telemetry.sample",
+    "device_id": "orangepi-pro-01",
+    "observed_at": "$observed_at",
+    "sequence": 1042,
+    "context": {
+      "site_id": "pnu-lab",
+      "zone_id": "pot-01",
+      "soil_type": "loam",
+      "crop_type": "basil",
+      "calibration_version": "soil-v2"
+    },
+    "measurements": {
+      "soil_moisture_pct": 31.2,
+      "soil_moisture_raw_adc": 1847,
+      "air_temperature_c": 27.1,
+      "air_humidity_pct": 58.0,
+      "plant_light_ppfd_umol_m2_s": 230.5
+    },
+    "quality": {
+      "soil_sensor_valid": true,
+      "air_sensor_valid": true,
+      "light_sensor_valid": true
+    }
+  }
+JSON
+```
+
+성공하면 HTTP `202 Accepted`가 반환됩니다. 여러 건을 연속 전송할 때는 `sequence`도 새 값으로 변경하는 것이 좋습니다.
+
+### 5. 화면에서 확인
+
+1. `http://localhost:8081`에 접속합니다.
+2. `demo@terrabyte.local` / `password1`로 로그인합니다.
+3. 대시보드에서 온도·습도·PPFD·토양수분 최신값을 확인합니다.
+4. 공간 진단 화면에서 온도·습도·PPFD 기반 종합 적합도를 확인합니다.
+5. `적합도 계산식`을 누르면 항목별 사다리꼴 점수 기준과 기하평균 산식을 확인할 수 있습니다.
+6. InfluxDB의 Data Explorer에서도 같은 측정값이 `telemetry` 버킷에 저장됐는지 확인합니다.
+
+백엔드 자동 테스트는 외부 InfluxDB 없이 실행할 수 있습니다.
+
+```bash
+cd backend
+./gradlew test
+```
+
 ## 인증 API
 
 ```text
@@ -51,6 +208,10 @@ POST /api/auth/signup  회원가입 및 액세스 토큰 발급
 POST /api/auth/login   로그인 및 액세스 토큰 발급
 GET  /api/me           현재 사용자 조회
 POST /api/devices      6자리 기기 코드 등록
+POST /api/telemetry    하드웨어 센서 데이터 수신
+GET  /api/devices/{id}/measurements/latest  최신 측정값 조회
+GET  /api/devices/{id}/measurements         기간별 측정값 조회
+GET  /api/devices/{id}/score                최신 환경 적합도 조회
 ```
 
 회원가입 요청 예시:
@@ -83,6 +244,37 @@ Authorization: Bearer {accessToken}
 공간 정보와 기기는 하나의 요청에서 함께 등록됩니다. 로컬 개발용 기기 코드로 `483920`, `123456`이 등록되며, 기기 등록 API에는 Bearer 토큰이 필요합니다.
 
 개발용 JWT 비밀키는 기본값이 있지만 운영 환경에서는 반드시 `JWT_SECRET` 환경 변수로 교체해야 합니다.
+
+## 센서 데이터 API
+
+하드웨어는 다음 헤더와 함께 JSON을 전송합니다.
+
+```text
+POST /api/telemetry
+Content-Type: application/json
+X-Device-Key: {TELEMETRY_DEVICE_KEY}
+```
+
+`device_id`는 등록용 6자리 코드와 다른 하드웨어 식별자입니다. 개발용 등록 코드 `483920`은
+`orangepi-pro-01`과 연결되어 있습니다. 수신 성공 시 기기 상태와 마지막 수신 시각도 갱신됩니다.
+전체 요청 예시는 위의 `로컬 통합 테스트 가이드`를 참고합니다.
+
+시계열 조회의 `metric`은 `soil_moisture_pct`, `soil_moisture_raw_adc`,
+`air_temperature_c`, `air_humidity_pct`, `plant_light_ppfd_umol_m2_s`를 지원하고,
+`range`는 `1h`, `24h`, `7d`, `30d`를 지원합니다.
+
+## 환경 적합도
+
+SQLite의 활성 작물 프로필에서 온도·습도·PPFD의 `[0점 하한, 적정 하한, 적정 상한, 0점 상한]`을
+읽고 각 축을 사다리꼴 함수로 0~100점화합니다. 종합점수는 팀 합의 산식인 아래 기하평균을 사용합니다.
+
+```text
+total = 100 × (temperatureScore/100 × humidityScore/100 × lightScore/100)^(1/3)
+```
+
+오염도, CO₂, 토양수분은 종합점수에 포함하지 않습니다. 토양수분은 모니터링 값으로만 저장·조회합니다.
+기존 SQLite의 `crop_environment_score` 뷰는 가중 조화평균을 사용하는 이전 계약이므로 현재 점수 API에서는
+해당 뷰의 종합값을 사용하지 않고 작물별 경계값만 사용합니다.
 
 ## 테스트
 
