@@ -1,4 +1,4 @@
-이거 # TerraByte Backend
+# TerraByte Backend
 
 TerraByte의 REST API, 사용자·기기 데이터, 센서 수집 및 환경 점수 조회를 담당하는 Spring Boot 서비스입니다.
 
