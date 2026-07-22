@@ -1,8 +1,5 @@
-# TerraByte Backend
-
-TerraByte의 REST API, 사용자·기기 데이터, 센서 수집 및 환경 점수 조회를 담당하는 Spring Boot 서비스입니다.
-
-## 기술 기준
+# 백엔드 가이드
+## 기술 스택
 
 - Java 17
 - Spring Boot 3.5.16
