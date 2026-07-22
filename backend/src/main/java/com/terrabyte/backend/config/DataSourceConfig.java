@@ -1,6 +1,7 @@
 package com.terrabyte.backend.config;
 
 import javax.sql.DataSource;
+import java.nio.file.Path;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -48,6 +49,9 @@ public class DataSourceConfig {
     @ConfigurationProperties("app.datasource.sqlite.configuration")
     public HikariDataSource scoreDataSource(
             @Qualifier("scoreDataSourceProperties") DataSourceProperties properties) {
+        properties.setUrl(SqliteJdbcUrlResolver.resolve(
+                properties.getUrl(),
+                Path.of(System.getProperty("user.dir"))));
         return properties.initializeDataSourceBuilder()
                 .type(HikariDataSource.class)
                 .build();
