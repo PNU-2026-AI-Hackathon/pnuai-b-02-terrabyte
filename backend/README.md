@@ -47,6 +47,7 @@ sqlite3 db/terrabyte-score.db < db/schema.sql
 
 상태 확인 주소는 `http://localhost:8080/actuator/health`입니다.
 
+
 ## 로컬 통합 테스트 가이드
 
 아래 계정과 키는 **로컬 개발 환경 전용**입니다. 운영·배포 환경에서는 같은 값을 사용하지 마세요.
