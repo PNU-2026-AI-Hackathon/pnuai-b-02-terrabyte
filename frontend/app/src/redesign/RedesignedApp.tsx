@@ -104,7 +104,6 @@ const areaUnitOptions: Array<{ label: string; value: AreaUnit }> = [
   { label: '평', value: 'PYEONG' },
 ];
 
-
 function Surface({ children, style }: { children: React.ReactNode; style?: any }) {
   return <View style={[styles.surface, glassWebStyle, style]}>{children}</View>;
 }
@@ -1026,7 +1025,6 @@ function Dashboard({
       </Surface>
 
       <SuitabilityFormulaModal onClose={() => setFormulaOpen(false)} scoreData={scoreData} visible={formulaOpen} />
-
       <Surface style={styles.dashboardAlertPanel}>
         <View style={[styles.dashboardAlertHeader, compact && styles.stack]}>
           <View style={styles.dashboardAlertCopy}>
@@ -1260,7 +1258,7 @@ function Analysis({ compact, deviceId, onNavigate, selectedCrop, setSelectedCrop
         scoreData={analysisScore}
         visible={analysisFormulaOpen}
       />
-
+      
       <Surface style={styles.reportSection}>
         <View style={styles.reportSectionHeading}>
           <Text style={styles.reportSectionNumber}>01</Text>
@@ -1867,7 +1865,7 @@ export default function RedesignedApp() {
       </View>
     );
   }
-
+  
   if (flow === 'auth') {
     return (
       <View style={styles.root}>

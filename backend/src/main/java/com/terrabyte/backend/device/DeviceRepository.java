@@ -59,7 +59,7 @@ public class DeviceRepository {
                 .stream()
                 .findFirst();
     }
-
+  
     public int claim(long deviceId, long userId) {
         return jdbcTemplate.update(
                 "UPDATE device SET user_id = ? WHERE id = ? AND user_id IS NULL",
