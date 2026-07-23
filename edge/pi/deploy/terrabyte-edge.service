@@ -1,0 +1,30 @@
+[Unit]
+Description=TerraByte Arduino telemetry bridge
+After=network-online.target time-sync.target
+Wants=network-online.target time-sync.target
+
+[Service]
+Type=simple
+User=terrabyte-edge
+Group=terrabyte-edge
+SupplementaryGroups=dialout
+WorkingDirectory=/opt/terrabyte-edge
+EnvironmentFile=/etc/terrabyte-edge.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/terrabyte-edge/.venv/bin/python -m terrabyte_edge
+Restart=on-failure
+RestartSec=5
+StateDirectory=terrabyte-edge
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

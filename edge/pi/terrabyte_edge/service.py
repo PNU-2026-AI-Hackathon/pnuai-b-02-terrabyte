@@ -1,0 +1,149 @@
+"""Long-running serial ingestion and outbox upload service."""
+
+from __future__ import annotations
+
+import logging
+from threading import Event, Thread
+
+from .backend import BackendClient, Delivery
+from .config import Settings
+from .outbox import Outbox, OutboxFullError
+from .protocol import NonTelemetryMessage, ProtocolError, parse_line
+from .serial_reader import SerialLineReader
+
+
+LOGGER = logging.getLogger(__name__)
+
+
+class BridgeService:
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        outbox: Outbox | None = None,
+        backend: BackendClient | None = None,
+        serial_reader: SerialLineReader | None = None,
+    ) -> None:
+        self.settings = settings
+        self.stop_event = Event()
+        self.outbox = outbox or Outbox(
+            settings.database_path,
+            retry_base_seconds=settings.retry_base_seconds,
+            retry_max_seconds=settings.retry_max_seconds,
+            max_rows=settings.outbox_max_rows,
+        )
+        self.backend = backend or BackendClient(
+            url_for_context=settings.observations_url,
+            device_id=settings.device_id,
+            token=settings.device_token,
+            timeout_seconds=settings.http_timeout_seconds,
+        )
+        self.serial_reader = serial_reader or SerialLineReader(
+            port=settings.serial_port,
+            baudrate=settings.serial_baud,
+            timeout_seconds=settings.serial_timeout_seconds,
+            reconnect_seconds=settings.serial_reconnect_seconds,
+            max_line_bytes=settings.serial_max_line_bytes,
+        )
+        self._threads: list[Thread] = []
+
+    def start(self) -> None:
+        self.outbox.initialize()
+        pending, dead = self.outbox.counts()
+        LOGGER.info("outbox ready pending=%d dead=%d", pending, dead)
+        self._threads = [
+            Thread(target=self._ingest_loop, name="serial-ingest", daemon=True),
+            Thread(target=self._upload_loop, name="backend-upload", daemon=True),
+        ]
+        for thread in self._threads:
+            thread.start()
+
+    def stop(self) -> None:
+        self.stop_event.set()
+
+    def join(self) -> None:
+        for thread in self._threads:
+            thread.join(self.settings.http_timeout_seconds + 2.0)
+            if thread.is_alive():
+                LOGGER.warning("worker did not stop in time name=%s", thread.name)
+
+    def worker_failed(self) -> bool:
+        return bool(self._threads) and any(
+            not thread.is_alive() for thread in self._threads
+        )
+
+    def _ingest_loop(self) -> None:
+        for line in self.serial_reader.lines(self.stop_event):
+            self._ingest_line(line)
+
+    def _ingest_line(self, line: bytes) -> None:
+        try:
+            event = parse_line(
+                line,
+                context_id=self.settings.crop_context_id,
+                expected_node_id=self.settings.expected_node_id,
+                clock_minimum_utc=self.settings.clock_minimum_utc,
+            )
+        except NonTelemetryMessage as exc:
+            LOGGER.info("arduino status message type=%s", exc)
+            return
+        except ProtocolError as exc:
+            LOGGER.warning("discarding invalid telemetry reason=%s", exc)
+            return
+        try:
+            enqueued = self.outbox.enqueue(event)
+        except OutboxFullError as exc:
+            LOGGER.critical(
+                "telemetry dropped because durable outbox is full reason=%s", exc
+            )
+            return
+        if enqueued:
+            LOGGER.info(
+                "telemetry persisted event_id=%s node_id=%s sequence=%d",
+                event.event_id,
+                event.node_id,
+                event.sequence,
+            )
+
+    def _upload_loop(self) -> None:
+        while not self.stop_event.is_set():
+            uploaded = self._upload_once()
+            if uploaded == 0:
+                self.stop_event.wait(self.settings.upload_interval_seconds)
+
+    def _upload_once(self) -> int:
+        items = self.outbox.due(self.settings.upload_batch_size)
+        processed = 0
+        for item in items:
+            if self.stop_event.is_set():
+                break
+            result = self.backend.send(item.event)
+            processed += 1
+            event_id = item.event.event_id
+            if result.outcome is Delivery.DELIVERED:
+                self.outbox.mark_delivered(event_id)
+                LOGGER.info("telemetry delivered event_id=%s", event_id)
+            elif result.outcome is Delivery.RETRY:
+                delay = self.outbox.mark_retry(
+                    event_id,
+                    item.attempts,
+                    result.reason,
+                    result.retry_after_seconds,
+                )
+                LOGGER.warning(
+                    "telemetry retry event_id=%s reason=%s delay_seconds=%.1f",
+                    event_id,
+                    result.reason,
+                    delay,
+                )
+                # Preserve capture order and avoid multiplying requests while
+                # the backend or its provisioning state is unavailable.
+                break
+            else:
+                self.outbox.mark_dead(event_id, result.reason)
+                LOGGER.error(
+                    "telemetry quarantined event_id=%s reason=%s",
+                    event_id,
+                    result.reason,
+                )
+        return processed
