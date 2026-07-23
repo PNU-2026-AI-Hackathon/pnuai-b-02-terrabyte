@@ -12,7 +12,8 @@ import org.springframework.stereotype.Repository;
 public class DeviceRepository {
 
     private static final String SELECT_COLUMNS = """
-            SELECT id, serial_code, hardware_id, user_id, status, last_seen_at, created_at
+            SELECT id, serial_code, hardware_id, user_id, crop_code, crop_selected_at,
+                   status, last_seen_at, created_at
             FROM device
             """;
 
@@ -74,14 +75,26 @@ public class DeviceRepository {
                 deviceId);
     }
 
+    public int selectCrop(long deviceId, long userId, String cropCode, java.time.Instant selectedAt) {
+        return jdbcTemplate.update(
+                "UPDATE device SET crop_code = ?, crop_selected_at = ? WHERE id = ? AND user_id = ?",
+                cropCode,
+                java.sql.Timestamp.from(selectedAt),
+                deviceId,
+                userId);
+    }
+
     private Device mapDevice(ResultSet resultSet, int rowNumber) throws SQLException {
         Number userId = (Number) resultSet.getObject("user_id");
         java.sql.Timestamp lastSeenAt = resultSet.getTimestamp("last_seen_at");
+        java.sql.Timestamp cropSelectedAt = resultSet.getTimestamp("crop_selected_at");
         return new Device(
                 resultSet.getLong("id"),
                 resultSet.getString("serial_code"),
                 resultSet.getString("hardware_id"),
                 userId == null ? null : userId.longValue(),
+                resultSet.getString("crop_code"),
+                cropSelectedAt == null ? null : cropSelectedAt.toInstant(),
                 DeviceStatus.valueOf(resultSet.getString("status")),
                 lastSeenAt == null ? null : lastSeenAt.toInstant(),
                 resultSet.getTimestamp("created_at").toInstant());

@@ -1,4 +1,5 @@
 export type Crop = {
+  code: string;
   name: string;
   emoji: string;
   desc: string;
@@ -36,14 +37,14 @@ export type ShopProduct = {
 };
 
 export const crops: Crop[] = [
-  { name: '방울토마토', emoji: '🍅', desc: '초보자에게 인기 있는 실내 작물' },
-  { name: '상추', emoji: '🥬', desc: '빠르게 자라고 관리가 쉬워요' },
-  { name: '바질', emoji: '🌿', desc: '햇빛을 좋아하는 허브' },
-  { name: '페퍼민트', emoji: '🌱', desc: '상쾌한 향이 특징인 허브' },
-  { name: '대파', emoji: '🧅', desc: '잎과 줄기를 활용하는 향신 채소' },
-  { name: '루꼴라', emoji: '🥗', desc: '톡 쏘는 풍미가 특징인 잎채소' },
-  { name: '와사비', emoji: '🌿', desc: '알싸한 맛이 특징인 향신 작물' },
-  { name: '고수', emoji: '☘️', desc: '독특한 향을 지닌 향신 허브' },
+  { code: 'cherry_tomato', name: '방울토마토', emoji: '🍅', desc: '초보자에게 인기 있는 실내 작물' },
+  { code: 'lettuce', name: '상추', emoji: '🥬', desc: '빠르게 자라고 관리가 쉬워요' },
+  { code: 'basil', name: '바질', emoji: '🌿', desc: '햇빛을 좋아하는 허브' },
+  { code: 'peppermint', name: '페퍼민트', emoji: '🌱', desc: '상쾌한 향이 특징인 허브' },
+  { code: 'welsh_onion', name: '대파', emoji: '🧅', desc: '잎과 줄기를 활용하는 향신 채소' },
+  { code: 'arugula', name: '루꼴라', emoji: '🥗', desc: '톡 쏘는 풍미가 특징인 잎채소' },
+  { code: 'wasabi', name: '와사비', emoji: '🌿', desc: '알싸한 맛이 특징인 향신 작물' },
+  { code: 'coriander', name: '고수', emoji: '☘️', desc: '독특한 향을 지닌 향신 허브' },
 ];
 
 export const factors: Factor[] = [

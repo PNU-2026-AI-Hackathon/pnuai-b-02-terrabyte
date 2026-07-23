@@ -66,12 +66,14 @@ public class AuthService {
                         HttpStatus.NOT_FOUND,
                         "USER_NOT_FOUND",
                         "사용자를 찾을 수 없습니다."));
-        DeviceResponse device = deviceRepository.findByUserId(userId)
-                .map(foundDevice -> DeviceResponse.from(
-                        foundDevice,
+        var foundDevice = deviceRepository.findByUserId(userId);
+        DeviceResponse device = foundDevice
+                .map(value -> DeviceResponse.from(
+                        value,
                         spaceRepository.findByUserId(userId).orElse(null)))
                 .orElse(null);
-        return new MeResponse(UserResponse.from(user), device != null, false, device);
+        boolean hasCrop = foundDevice.map(value -> value.cropCode() != null).orElse(false);
+        return new MeResponse(UserResponse.from(user), device != null, hasCrop, device);
     }
 
     private AuthResponse createAuthResponse(UserAccount user) {

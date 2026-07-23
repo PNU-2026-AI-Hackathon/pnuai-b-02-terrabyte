@@ -31,6 +31,7 @@ export type MeResponse = {
     id: number;
     serialCode: string;
     status: 'ONLINE' | 'OFFLINE';
+    cropCode?: string;
     lastSeenAt?: string;
   };
 };

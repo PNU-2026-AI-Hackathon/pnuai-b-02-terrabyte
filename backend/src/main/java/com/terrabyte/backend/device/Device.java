@@ -7,6 +7,8 @@ public record Device(
         String serialCode,
         String hardwareId,
         Long userId,
+        String cropCode,
+        Instant cropSelectedAt,
         DeviceStatus status,
         Instant lastSeenAt,
         Instant createdAt) {

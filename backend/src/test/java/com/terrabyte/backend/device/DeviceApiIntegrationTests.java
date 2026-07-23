@@ -46,7 +46,11 @@ class DeviceApiIntegrationTests {
     void resetData() {
         jdbcTemplate.update("DELETE FROM device WHERE serial_code <> ?", DEMO_SERIAL_CODE);
         jdbcTemplate.update(
-                "UPDATE device SET user_id = NULL, status = 'OFFLINE', last_seen_at = NULL");
+                """
+                UPDATE device
+                SET user_id = NULL, crop_code = NULL, crop_selected_at = NULL,
+                    status = 'OFFLINE', last_seen_at = NULL
+                """);
         jdbcTemplate.update("DELETE FROM app_user");
     }
 

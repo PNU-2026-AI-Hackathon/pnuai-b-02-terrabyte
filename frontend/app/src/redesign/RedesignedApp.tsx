@@ -24,6 +24,7 @@ import {
   type MeResponse,
 } from '../auth/authApi';
 import { BrandMark } from '../components/BrandMark';
+import { getCrops, selectDeviceCrop, type CropResponse } from '../crop/cropApi';
 import { crops, factors, latest, score, shopProducts, type ShopCategory, type ShopProduct } from '../data';
 import { registerDevice } from '../device/deviceApi';
 import {
@@ -362,18 +363,20 @@ function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void 
 }
 
 function SetupFlow({
+  deviceId,
   onBack,
+  onCropSelected,
   onDeviceRegistered,
   onNext,
-  selectedCrop,
-  setSelectedCrop,
+  selectedCropCode,
   stage,
 }: {
+  deviceId?: number;
   onBack: () => void;
+  onCropSelected: (cropCode: string) => void;
   onDeviceRegistered: (deviceId: number) => void;
   onNext: () => void;
-  selectedCrop: number;
-  setSelectedCrop: (index: number) => void;
+  selectedCropCode: string;
   stage: Exclude<FlowStage, 'auth' | 'app'>;
 }) {
   const { width } = useWindowDimensions();
@@ -386,6 +389,11 @@ function SetupFlow({
   const [areaUnit, setAreaUnit] = useState<AreaUnit>('SQUARE_METERS');
   const [deviceError, setDeviceError] = useState<string | null>(null);
   const [registeringDevice, setRegisteringDevice] = useState(false);
+  const [availableCrops, setAvailableCrops] = useState<CropResponse[]>([]);
+  const [cropQuery, setCropQuery] = useState('');
+  const [cropError, setCropError] = useState<string | null>(null);
+  const [cropLoading, setCropLoading] = useState(false);
+  const [selectingCrop, setSelectingCrop] = useState(false);
   const codeInputRef = useRef<TextInput>(null);
   const step = stage === 'device' ? 1 : stage === 'crop' ? 2 : 3;
   const enteredArea = Number(areaSquareMeters);
@@ -448,6 +456,47 @@ function SetupFlow({
     const timer = setTimeout(() => setConnected(true), 1800);
     return () => clearTimeout(timer);
   }, [stage]);
+
+  useEffect(() => {
+    if (stage !== 'crop') return undefined;
+    let active = true;
+    setCropLoading(true);
+    setCropError(null);
+    const timer = setTimeout(() => {
+      void getCrops(cropQuery)
+        .then((nextCrops) => {
+          if (active) setAvailableCrops(nextCrops);
+        })
+        .catch((error) => {
+          if (active) setCropError(error instanceof Error ? error.message : '작물 목록을 불러오지 못했습니다.');
+        })
+        .finally(() => {
+          if (active) setCropLoading(false);
+        });
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [cropQuery, stage]);
+
+  const submitCrop = async () => {
+    if (!deviceId) {
+      setCropError('작물을 선택할 기기 정보를 찾을 수 없습니다.');
+      return;
+    }
+    setCropError(null);
+    setSelectingCrop(true);
+    try {
+      const selection = await selectDeviceCrop(deviceId, selectedCropCode);
+      onCropSelected(selection.crop.code);
+      onNext();
+    } catch (error) {
+      setCropError(error instanceof Error ? error.message : '작물을 선택하지 못했습니다.');
+    } finally {
+      setSelectingCrop(false);
+    }
+  };
 
   const copy = {
     device: { kicker: 'STEP 01', title: '진단할 공간을 등록하세요', description: '공간 기본 정보와 공간분석 세트의 등록 번호를 입력하세요.' },
@@ -586,22 +635,43 @@ function SetupFlow({
 
           {stage === 'crop' ? (
             <View style={styles.cropSetupContent}>
-              <TextInput placeholder="작물 이름 검색" placeholderTextColor={palette.muted} style={styles.input} />
+              <TextInput
+                editable={!selectingCrop}
+                onChangeText={setCropQuery}
+                placeholder="작물 이름 검색"
+                placeholderTextColor={palette.muted}
+                style={styles.input}
+                value={cropQuery}
+              />
               <View style={styles.cropChoiceGrid}>
-                {crops.map((crop, index) => {
-                  const selected = selectedCrop === index;
+                {availableCrops.map((crop) => {
+                  const selected = selectedCropCode === crop.code;
                   return (
-                    <Pressable key={crop.name} onPress={() => setSelectedCrop(index)} style={[styles.cropChoice, selected && styles.cropChoiceSelected]}>
+                    <Pressable
+                      disabled={selectingCrop}
+                      key={crop.code}
+                      onPress={() => onCropSelected(crop.code)}
+                      style={[styles.cropChoice, selected && styles.cropChoiceSelected]}
+                    >
                       <View style={styles.cropChoiceCopy}>
                         <Text style={styles.cropChoiceName}>{crop.name}</Text>
-                        <Text style={styles.cropChoiceDescription}>{crop.desc}</Text>
+                        <Text style={styles.cropChoiceDescription}>{crop.description}</Text>
                       </View>
                       <View style={[styles.cropRadio, selected && styles.cropRadioSelected]} />
                     </Pressable>
                   );
                 })}
               </View>
-              <ActionButton label={`${crops[selectedCrop]?.name ?? crops[0].name} 선택`} onPress={onNext} />
+              {cropLoading ? <Text style={styles.cropChoiceDescription}>작물 목록을 불러오는 중…</Text> : null}
+              {!cropLoading && !cropError && availableCrops.length === 0 ? (
+                <Text style={styles.cropChoiceDescription}>검색 결과가 없습니다.</Text>
+              ) : null}
+              {cropError ? <Text accessibilityRole="alert" style={styles.authError}>{cropError}</Text> : null}
+              <ActionButton
+                disabled={selectingCrop || cropLoading || !selectedCropCode}
+                label={selectingCrop ? '선택 저장 중…' : `${crops.find((crop) => crop.code === selectedCropCode)?.name ?? '작물'} 선택`}
+                onPress={() => void submitCrop()}
+              />
             </View>
           ) : null}
 
@@ -953,7 +1023,7 @@ function Dashboard({
       active = false;
       clearInterval(interval);
     };
-  }, [deviceId]);
+  }, [deviceId, selectedCrop]);
 
   const factorDetail = (key: string) => {
     const factor = scoreData?.factors.find((item) => item.key === key);
@@ -1141,12 +1211,20 @@ function Dashboard({
   );
 }
 
-function Analysis({ compact, deviceId, onNavigate, selectedCrop, setSelectedCrop }: { compact: boolean; deviceId?: number; onNavigate: (page: Page) => void; selectedCrop: number; setSelectedCrop: (index: number) => void }) {
+function Analysis({ compact, deviceId, onNavigate, onSelectCrop, selectedCrop }: {
+  compact: boolean;
+  deviceId?: number;
+  onNavigate: (page: Page) => void;
+  onSelectCrop: (cropCode: string) => Promise<void>;
+  selectedCrop: number;
+}) {
   const currentCrop = crops[selectedCrop] ?? crops[0];
   const [analysisScore, setAnalysisScore] = useState<EnvironmentScore | null>(null);
   const [analysisLatest, setAnalysisLatest] = useState<LatestMeasurements | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [analysisFormulaOpen, setAnalysisFormulaOpen] = useState(false);
+  const [cropSelectionError, setCropSelectionError] = useState<string | null>(null);
+  const [selectingCropCode, setSelectingCropCode] = useState<string | null>(null);
 
   useEffect(() => {
     if (!deviceId) return undefined;
@@ -1172,7 +1250,21 @@ function Analysis({ compact, deviceId, onNavigate, selectedCrop, setSelectedCrop
       active = false;
       clearInterval(interval);
     };
-  }, [deviceId]);
+  }, [deviceId, selectedCrop]);
+
+  const selectRecommendedCrop = async (index: number) => {
+    const crop = crops[index];
+    if (!crop || crop.code === currentCrop.code) return;
+    setCropSelectionError(null);
+    setSelectingCropCode(crop.code);
+    try {
+      await onSelectCrop(crop.code);
+    } catch (error) {
+      setCropSelectionError(error instanceof Error ? error.message : '작물 선택을 변경하지 못했습니다.');
+    } finally {
+      setSelectingCropCode(null);
+    }
+  };
 
   const recommendationByKey: Record<string, string> = {
     temperature: '온도가 적정 범위를 벗어나면 환기 또는 히팅 장치를 조절하세요.',
@@ -1341,16 +1433,24 @@ function Analysis({ compact, deviceId, onNavigate, selectedCrop, setSelectedCrop
         </View>
         <View style={styles.reportCropList}>
           {cropReports.map((crop) => (
-            <Pressable key={crop.name} onPress={() => setSelectedCrop(crop.index)} style={[styles.reportCropRow, compact && styles.stack, selectedCrop === crop.index && styles.reportCropRowSelected]}>
+            <Pressable
+              disabled={selectingCropCode !== null}
+              key={crop.name}
+              onPress={() => void selectRecommendedCrop(crop.index)}
+              style={[styles.reportCropRow, compact && styles.stack, selectedCrop === crop.index && styles.reportCropRowSelected]}
+            >
               <View style={styles.reportCropScore}><Text style={styles.reportCropScoreValue}>{crop.score}</Text><Text style={styles.reportCropScoreUnit}>점</Text></View>
               <View style={styles.reportCropCopy}>
                 <Text style={styles.reportCropName}>{crop.name}{selectedCrop === crop.index ? ' · 현재 분석 기준' : ''}</Text>
                 <Text style={styles.reportCropReason}>{crop.reason}</Text>
                 <Text style={styles.reportCropCaution}>{crop.caution}</Text>
               </View>
-              <Text style={styles.reportCropAction}>분석 기준으로 선택</Text>
+              <Text style={styles.reportCropAction}>
+                {selectingCropCode === crops[crop.index]?.code ? '변경 중…' : '분석 기준으로 선택'}
+              </Text>
             </Pressable>
           ))}
+          {cropSelectionError ? <Text accessibilityRole="alert" style={styles.authError}>{cropSelectionError}</Text> : null}
         </View>
       </Surface>
 
@@ -1823,13 +1923,15 @@ export default function RedesignedApp() {
   const [flow, setFlow] = useState<FlowStage>('auth');
   const [restoringSession, setRestoringSession] = useState(true);
   const [page, setPage] = useState<Page>('dashboard');
-  const [selectedCrop, setSelectedCrop] = useState(0);
+  const [selectedCropCode, setSelectedCropCode] = useState(crops[0].code);
   const [deviceId, setDeviceId] = useState<number | undefined>();
   const { width } = useWindowDimensions();
   const compact = width < 900;
+  const selectedCrop = Math.max(0, crops.findIndex((crop) => crop.code === selectedCropCode));
 
   const applyAuthenticatedFlow = (me: MeResponse) => {
     setDeviceId(me.device?.id);
+    if (me.device?.cropCode) setSelectedCropCode(me.device.cropCode);
     if (!me.hasDevice) {
       setFlow('device');
     } else if (!me.hasCrop) {
@@ -1837,6 +1939,12 @@ export default function RedesignedApp() {
     } else {
       setFlow('app');
     }
+  };
+
+  const changeSelectedCrop = async (cropCode: string) => {
+    if (!deviceId) throw new Error('작물을 선택할 기기 정보를 찾을 수 없습니다.');
+    const selection = await selectDeviceCrop(deviceId, cropCode);
+    setSelectedCropCode(selection.crop.code);
   };
 
   useEffect(() => {
@@ -1893,11 +2001,12 @@ export default function RedesignedApp() {
       <View style={styles.root}>
         <GlassBackdrop />
         <SetupFlow
+          deviceId={deviceId}
           onBack={() => setFlow(previousStage[flow])}
+          onCropSelected={setSelectedCropCode}
           onDeviceRegistered={setDeviceId}
           onNext={() => setFlow(nextStage[flow])}
-          selectedCrop={selectedCrop}
-          setSelectedCrop={setSelectedCrop}
+          selectedCropCode={selectedCropCode}
           stage={flow}
         />
         <StatusBar style="dark" />
@@ -1913,6 +2022,8 @@ export default function RedesignedApp() {
         cropName={(crops[selectedCrop] ?? crops[0]).name}
         onLogout={() => {
           void clearAccessToken();
+          setDeviceId(undefined);
+          setSelectedCropCode(crops[0].code);
           setFlow('auth');
         }}
         onNavigate={setPage}
@@ -1930,7 +2041,13 @@ export default function RedesignedApp() {
             />
           ) : null}
           {page === 'analysis' ? (
-            <Analysis compact={compact} deviceId={deviceId} onNavigate={setPage} selectedCrop={selectedCrop} setSelectedCrop={setSelectedCrop} />
+            <Analysis
+              compact={compact}
+              deviceId={deviceId}
+              onNavigate={setPage}
+              onSelectCrop={changeSelectedCrop}
+              selectedCrop={selectedCrop}
+            />
           ) : null}
           {page === 'live' ? <Live compact={compact} deviceId={deviceId} /> : null}
           {page === 'history' ? <History compact={compact} onNavigate={setPage} /> : null}

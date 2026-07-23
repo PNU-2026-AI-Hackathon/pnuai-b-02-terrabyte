@@ -206,6 +206,8 @@ POST /api/auth/signup  회원가입 및 액세스 토큰 발급
 POST /api/auth/login   로그인 및 액세스 토큰 발급
 GET  /api/me           현재 사용자 조회
 POST /api/devices      6자리 기기 코드 등록
+GET  /api/crops        선택 가능한 작물 목록 및 검색
+PATCH /api/devices/{id}/crop  기기의 재배 작물 선택 또는 변경
 POST /api/telemetry    하드웨어 센서 데이터 수신
 GET  /api/devices/{id}/measurements/latest  최신 측정값 조회
 GET  /api/devices/{id}/measurements         기간별 측정값 조회
@@ -242,6 +244,34 @@ Authorization: Bearer {accessToken}
 공간 정보와 기기는 하나의 요청에서 함께 등록됩니다. 로컬 개발용 기기 코드로 `483920`, `123456`이 등록되며, 기기 등록 API에는 Bearer 토큰이 필요합니다.
 
 개발용 JWT 비밀키는 기본값이 있지만 운영 환경에서는 반드시 `JWT_SECRET` 환경 변수로 교체해야 합니다.
+
+## 작물 선택 API
+
+작물 목록은 SQLite 점수 프로필과 같은 작물 코드를 사용하는 PostgreSQL 마스터 데이터에서 조회합니다.
+Bearer 토큰이 필요하며 `q`를 전달하면 작물 코드 또는 한글 이름을 부분 검색합니다.
+
+```text
+GET /api/crops
+GET /api/crops?q=바질
+```
+
+기기에 작물을 선택하거나 기존 선택을 변경할 때는 작물 목록에서 받은 `code`를 전달합니다.
+
+```text
+PATCH /api/devices/{deviceId}/crop
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+```
+
+```json
+{
+  "cropCode": "basil"
+}
+```
+
+선택 결과는 PostgreSQL의 기기에 저장됩니다. 이후 `/api/me`의 `hasCrop`과 `device.cropCode`, 환경 적합도 계산의
+작물 기준은 저장된 선택값을 사용합니다. 텔레메트리의 `context.crop_type`은 측정 당시 컨텍스트로 계속 저장되지만
+사용자 환경 적합도의 작물 기준을 덮어쓰지 않습니다.
 
 ## 센서 데이터 API
 

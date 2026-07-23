@@ -54,7 +54,7 @@ git switch -c feature/작업명
 - 센서 수집 및 환경 적합도 PR #5가 개인 레포 `develop`에 병합됐다.
 - 원격 `origin/develop` 최신 커밋은 `8dccf7a`다.
 - 병합 커밋은 `3e4c220 feat: 센서 데이터 수집 및 환경 적합도 계산 연동 (#5)`이다.
-- 현재 로컬 체크아웃은 `feature/measurement-api`다.
+- 현재 로컬 체크아웃은 `feature/crop-selection-api`다.
 - 다음 작업 전 로컬 `develop`을 반드시 `origin/develop`과 동기화한다.
 - 이 문서 작성 이후에는 실제 `git status`, `git fetch origin`, `git log`로 상태를 다시 확인한다.
 
@@ -242,21 +242,21 @@ npx tsc --noEmit
 - `POST /api/telemetry`: `202 Accepted` 확인
 - Frontend `http://localhost:8081`: HTTP 200 확인
 
-## 7. 아직 구현되지 않은 핵심 기능
+## 7. 핵심 기능 우선순위
 
-### 우선순위 1: 작물 선택
+### 완료: 작물 선택
 
-현재 점수 계산은 텔레메트리 JSON의 `context.crop_type`을 사용한다. 사용자가 선택한 작물을 PostgreSQL에 저장하고
-그 작물을 기준으로 점수를 계산하는 흐름은 아직 없다.
+사용자가 선택한 작물을 PostgreSQL에 저장하고 해당 작물의 SQLite 활성 점수 프로필을 기준으로 적합도를 계산한다.
+텔레메트리 JSON의 `context.crop_type`은 측정 당시 컨텍스트로만 저장한다.
 
-- [ ] PostgreSQL 작물 마스터 테이블
-- [ ] `GET /api/crops`
-- [ ] 작물 검색 `GET /api/crops?q=...`
-- [ ] `PATCH /api/devices/{deviceId}/crop`
-- [ ] `/api/me`의 `hasCrop` 실제 계산
-- [ ] 선택 작물과 SQLite 점수 프로필 연결
-- [ ] 작물 API 통합 테스트
-- [ ] 프론트엔드 작물 선택 화면 연동
+- [x] PostgreSQL 작물 마스터 테이블
+- [x] `GET /api/crops`
+- [x] 작물 검색 `GET /api/crops?q=...`
+- [x] `PATCH /api/devices/{deviceId}/crop`
+- [x] `/api/me`의 `hasCrop` 실제 계산
+- [x] 선택 작물과 SQLite 점수 프로필 연결
+- [x] 작물 API 통합 테스트
+- [x] 프론트엔드 작물 선택 화면 연동
 
 추천 브랜치: `feature/crop-selection-api`
 

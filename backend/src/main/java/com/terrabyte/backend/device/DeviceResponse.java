@@ -10,6 +10,7 @@ public record DeviceResponse(
         long id,
         String serialCode,
         DeviceStatus status,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String cropCode,
         @JsonInclude(JsonInclude.Include.NON_NULL) Instant lastSeenAt,
         @JsonInclude(JsonInclude.Include.NON_NULL) CultivationSpaceResponse space) {
 
@@ -22,6 +23,7 @@ public record DeviceResponse(
                 device.id(),
                 device.serialCode(),
                 device.status(),
+                device.cropCode(),
                 device.lastSeenAt(),
                 space == null ? null : CultivationSpaceResponse.from(space));
     }

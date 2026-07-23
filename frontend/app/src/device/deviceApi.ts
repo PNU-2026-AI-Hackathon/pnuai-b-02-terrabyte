@@ -8,6 +8,7 @@ export type DeviceResponse = {
   id: number;
   serialCode: string;
   status: 'ONLINE' | 'OFFLINE';
+  cropCode?: string;
   lastSeenAt?: string;
   space?: {
     id: number;

@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -63,7 +64,11 @@ class MeasurementApiIntegrationTests {
 
     @BeforeEach
     void resetData() {
-        jdbcTemplate.update("UPDATE device SET user_id = NULL, status = 'OFFLINE', last_seen_at = NULL");
+        jdbcTemplate.update("""
+                UPDATE device
+                SET user_id = NULL, crop_code = NULL, crop_selected_at = NULL,
+                    status = 'OFFLINE', last_seen_at = NULL
+                """);
         jdbcTemplate.update("DELETE FROM app_user");
     }
 
@@ -121,6 +126,7 @@ class MeasurementApiIntegrationTests {
     void returnsLatestAndTimeSeriesForDeviceOwner() throws Exception {
         String token = signupAndGetToken();
         long deviceId = registerAndGetDeviceId(token);
+        selectCrop(token, deviceId, "lettuce");
         TelemetrySample sample = sample(Instant.now().minusSeconds(5));
         when(measurementStore.findLatest(HARDWARE_ID)).thenReturn(java.util.Optional.of(sample));
         when(measurementStore.findPoints(
@@ -128,8 +134,8 @@ class MeasurementApiIntegrationTests {
                 eq(MeasurementMetric.AIR_TEMPERATURE_C),
                 any(Instant.class)))
                 .thenReturn(List.of(new MeasurementPoint(sample.observedAt(), 27.1)));
-        when(profileRepository.findActiveByCropCode("basil"))
-                .thenReturn(java.util.Optional.of(basilProfile()));
+        when(profileRepository.findActiveByCropCode("lettuce"))
+                .thenReturn(java.util.Optional.of(profile("lettuce", "상추")));
 
         mockMvc.perform(get("/api/devices/{deviceId}/measurements/latest", deviceId)
                         .header("Authorization", bearer(token)))
@@ -151,7 +157,8 @@ class MeasurementApiIntegrationTests {
         mockMvc.perform(get("/api/devices/{deviceId}/score", deviceId)
                         .header("Authorization", bearer(token)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.cropCode").value("basil"))
+                .andExpect(jsonPath("$.cropCode").value("lettuce"))
+                .andExpect(jsonPath("$.cropName").value("상추"))
                 .andExpect(jsonPath("$.total").value(96.1))
                 .andExpect(jsonPath("$.grade").value("GOOD"))
                 .andExpect(jsonPath("$.factors[0].key").value("temperature"))
@@ -210,9 +217,9 @@ class MeasurementApiIntegrationTests {
                 true);
     }
 
-    private CropScoreProfile basilProfile() {
+    private CropScoreProfile profile(String cropCode, String cropName) {
         return new CropScoreProfile(
-                "basil", "바질",
+                cropCode, cropName,
                 15, 24, 30, 36,
                 30, 50, 70, 90,
                 0, 260, 500, 750);
@@ -250,5 +257,13 @@ class MeasurementApiIntegrationTests {
 
     private String bearer(String token) {
         return "Bearer " + token;
+    }
+
+    private void selectCrop(String token, long deviceId, String cropCode) throws Exception {
+        mockMvc.perform(patch("/api/devices/{deviceId}/crop", deviceId)
+                        .header("Authorization", bearer(token))
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"cropCode\":\"" + cropCode + "\"}"))
+                .andExpect(status().isOk());
     }
 }
