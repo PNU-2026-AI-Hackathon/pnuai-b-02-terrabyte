@@ -48,6 +48,40 @@
 - PR 병합 후에는 로컬 `develop`을 조직 저장소의 `develop`과 다시 동기화합니다.
 - 작업 중 다른 사람의 변경사항은 PR에서 충돌이 발생하거나 꼭 필요한 경우에만 작업 브랜치에 반영합니다.
 
+## 적층(Stacked) PR 규칙
+
+적층 PR이란 병합되지 않은 다른 작업 브랜치 위에서 분기해 만든 PR을 말합니다. <br>
+`Squash and merge`는 PR 커밋들을 develop에 **해시가 다른 새 커밋 하나**로 만들기 때문에, 부모 PR이 병합된 뒤 자식 브랜치에서 일반 `rebase`/`merge`를 하면 같은 변경을 두 번 적용하려다 충돌이 발생합니다.
+
+### 기본 원칙: 적층하지 않기
+- PR이 병합되기 전에는 그 브랜치 위에서 새 작업 브랜치를 만들지 않습니다.
+- PR을 작게 나누고 리뷰·병합 주기를 짧게 가져가는 것을 우선합니다.
+
+### 불가피하게 적층한 경우
+1. 자식 PR은 base를 `develop`이 아닌 **부모 브랜치**로 지정합니다.
+   - diff에 부모 커밋이 섞이지 않고, 부모가 병합되어 브랜치가 삭제되면 GitHub이 base를 자동으로 develop으로 전환합니다.
+   - 규칙을 모르는 팀원이 자식 PR을 실수로 병합해도 develop이 아닌 부모 브랜치로 병합되므로, **develop 오염이 구조적으로 차단**됩니다.
+2. 부모 PR이 병합되기 전까지 자식 PR은 **Draft** 상태로 둡니다.
+   - Draft 상태에서는 GitHub이 머지 버튼을 비활성화하므로 병합 순서 사고가 UI 차원에서 막힙니다.
+   - 부모 병합 + 아래 rebase 완료 후에 "Ready for review"로 전환합니다.
+3. 부모 PR이 squash 병합된 직후, 자식 브랜치는 일반 rebase 대신 아래 명령을 사용합니다.
+
+```bash
+git fetch upstream
+git rebase --onto upstream/develop <부모브랜치> <자식브랜치>
+git push --force-with-lease origin <자식브랜치>
+```
+
+`--onto`는 부모 브랜치 구간의 커밋을 건너뛰고 자식의 순수 커밋만 develop 위로 옮기므로, squash로 인한 중복 적용 충돌이 발생하지 않습니다.
+
+### 충돌 발생 시 대응 순서
+- 병합 순서가 꼬여 충돌이 나면 **revert보다 위 rebase 절차를 먼저** 시도합니다.
+- Revert는 develop 이력에 노이즈를 남기고, revert된 변경이 다른 PR에 실려 다시 들어오면 커밋 단위 추적(blame/bisect)이 어려워지므로 최후 수단으로만 사용합니다.
+
+### 추후 강화 옵션 (필요 시 도입)
+- 적층 PR 사용이 잦아지면 PR 본문에 `Depends-on: #번호`를 표기하고, 해당 PR이 병합되기 전까지 required status check를 실패시키는 GitHub Actions를 추가해 머지 버튼을 잠글 수 있습니다.
+- Branch protection의 "Require branches to be up to date before merging"을 켜면 오래된 base 기준 PR의 병합이 차단되어, rebase를 건너뛰는 실수가 강제로 드러납니다.
+
 ## 📌 작업 흐름 예시
 
 ### 1. PR 생성

@@ -103,6 +103,7 @@ function GlassBackdrop() {
   );
 }
 
+
 function ActionButton({
   disabled = false,
   label,
@@ -125,11 +126,13 @@ function ActionButton({
         disabled && styles.disabledButton,
         pressed && styles.pressed,
       ]}
+
     >
       <Text style={[styles.actionButtonText, quiet && styles.quietButtonText]}>{label}</Text>
     </Pressable>
   );
 }
+
 
 function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void }) {
   const { width } = useWindowDimensions();
@@ -183,6 +186,7 @@ function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void 
       setSubmitting(false);
     }
   };
+
 
   return (
     <ScrollView contentContainerStyle={styles.loginPage}>
@@ -1411,7 +1415,6 @@ export default function RedesignedApp() {
   const [selectedCrop, setSelectedCrop] = useState(0);
   const { width } = useWindowDimensions();
   const compact = width < 900;
-
   const applyAuthenticatedFlow = (me: MeResponse) => {
     if (!me.hasDevice) {
       setFlow('device');
@@ -1450,7 +1453,6 @@ export default function RedesignedApp() {
       </View>
     );
   }
-
   if (flow === 'auth') {
     return (
       <View style={styles.root}>

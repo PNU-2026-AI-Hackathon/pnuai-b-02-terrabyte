@@ -28,6 +28,7 @@ export POSTGRES_USER='terrabyte'
 export POSTGRES_PASSWORD='terrabyte'
 export SQLITE_URL='jdbc:sqlite:./db/terrabyte-score.db'
 export JWT_SECRET='32바이트 이상의 운영용 비밀키로 변경하세요'
+
 ```
 
 기존 SQLite 점수 스키마를 최초 한 번 적용합니다.
