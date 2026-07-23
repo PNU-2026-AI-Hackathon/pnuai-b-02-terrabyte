@@ -69,6 +69,7 @@ POST /api/devices      6자리 기기 코드 등록
 Authorization: Bearer {accessToken}
 ```
 
+
 기기 등록 요청 예시:
 
 ```json
@@ -81,7 +82,6 @@ Authorization: Bearer {accessToken}
 ```
 
 공간 정보와 기기는 하나의 요청에서 함께 등록됩니다. 로컬 개발용 기기 코드로 `483920`, `123456`이 등록되며, 기기 등록 API에는 Bearer 토큰이 필요합니다.
-
 개발용 JWT 비밀키는 기본값이 있지만 운영 환경에서는 반드시 `JWT_SECRET` 환경 변수로 교체해야 합니다.
 
 ## 테스트

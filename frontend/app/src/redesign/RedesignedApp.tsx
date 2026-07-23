@@ -98,7 +98,6 @@ const areaUnitOptions: Array<{ label: string; value: AreaUnit }> = [
   { label: '평', value: 'PYEONG' },
 ];
 
-
 function Surface({ children, style }: { children: React.ReactNode; style?: any }) {
   return <View style={[styles.surface, glassWebStyle, style]}>{children}</View>;
 }
@@ -1629,7 +1628,6 @@ export default function RedesignedApp() {
   const [selectedCrop, setSelectedCrop] = useState(0);
   const { width } = useWindowDimensions();
   const compact = width < 900;
-
   const applyAuthenticatedFlow = (me: MeResponse) => {
     if (!me.hasDevice) {
       setFlow('device');
@@ -1668,7 +1666,7 @@ export default function RedesignedApp() {
       </View>
     );
   }
-
+        
   if (flow === 'auth') {
     return (
       <View style={styles.root}>
