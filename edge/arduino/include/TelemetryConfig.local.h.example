@@ -1,0 +1,39 @@
+#pragma once
+
+// Use a stable, unique ID assigned during provisioning. USB-connected Arduino
+// boards do not need a MAC address for this protocol.
+#define TB_NODE_ID "terrabyte-node-001"
+
+// Explicit E2E-only mode for a board with no sensors connected. It emits
+// deterministic, slowly changing values in the normal telemetry schema.
+// Leave disabled for provisioned/production devices.
+// #define TB_MOCK_SENSOR_ENABLED 1
+
+// Change this only if the DHT22 data wire is connected to another pin.
+#define TB_DHT22_PIN 2
+
+// GY-30/BH1750 I2C illuminance sensor. On Nano boards SDA=A4 and SCL=A5.
+// Connect ADD to GND for 0x23, or to VCC for 0x5C.
+#define TB_GY30_ENABLED 1
+#define TB_GY30_I2C_ADDRESS 0x23
+
+// Optional lux-to-PPFD conversion. Do not enable this with guessed constants;
+// calibrate against a PAR/PPFD meter using the final light source and geometry.
+// #define TB_GY30_PPFD_CALIBRATION_ENABLED 1
+// #define TB_PPFD_PER_LUX 0.01f
+// #define TB_PPFD_OFFSET 0.0f
+// #define TB_PPFD_CALIBRATED_MIN_LUX 100.0f
+// #define TB_PPFD_CALIBRATED_MAX_LUX 50000.0f
+
+// Optional waterproof DS18B20 soil-temperature probe. Connect its DATA wire
+// to D3 and add a 4.7 kohm pull-up from DATA to VCC.
+// #define TB_SOIL_TEMPERATURE_ENABLED 1
+// #define TB_SOIL_TEMPERATURE_PIN 3
+
+// Optional analog capacitive soil-moisture sensor. Measure the raw ADC value in
+// representative dry and wet soil; do not copy guessed calibration values.
+// Either ADC direction is supported as long as the two endpoints differ.
+// #define TB_SOIL_MOISTURE_ENABLED 1
+// #define TB_SOIL_MOISTURE_ADC_PIN A1
+// #define TB_SOIL_MOISTURE_DRY_ADC 800
+// #define TB_SOIL_MOISTURE_WET_ADC 350
