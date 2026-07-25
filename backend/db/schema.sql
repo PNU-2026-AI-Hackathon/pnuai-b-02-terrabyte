@@ -306,6 +306,53 @@ INSERT INTO crop_score_profile VALUES
    '고수 200 PPFD·16h 직접시험과 cilantro DLI 15-20 일반지침, 온도·RH 대분류 기본값',
    '1.0.0','2026-07-16T00:00:00Z');
 
+-- 2026-07-25 웹 재검증 프로필.
+-- 온도는 FAO EcoCrop의 absolute/optimal 경계를 기본으로 작물별 CEA 비교시험을
+-- 보완했다. RH의 0점 경계와 직접시험 상한 밖 PPFD 0점 경계는 생물학적
+-- 고사 한계가 아니라 제품용 감점 앵커이며, 상세 근거와 제한은
+-- backend/docs/score_boundary_validation_2026-07-25.md에 기록한다.
+INSERT INTO crop_score_profile VALUES
+  ('basil-general-v2','basil','바질','warm_herb','general_vegetative',
+   7,18,29,36, 30,50,80,95, 0,260,600,1000,16,
+   40,25,35,'A','C','A','hybrid',
+   'FAO 7/18-27/36°C와 바질 29°C 생육시험; DLI 15-25 및 500-600 PPFD 시험; RH 50-80 CEA 일반범위와 85% 이상 노균병 위험',
+   '2.0.0','2026-07-25T00:00:00Z'),
+  ('peppermint-general-v2','peppermint','페퍼민트','moderate_light_herb','general_vegetative',
+   4,15,25,35, 30,50,80,95, 0,150,200,250,14,
+   40,25,35,'B','C','A','hybrid',
+   'FAO 4/15-25/35°C; Mentha 150-200 PPFD 적합 및 250 PPFD 스트레스 시험; RH는 CEA 일반범위',
+   '2.0.0','2026-07-25T00:00:00Z'),
+  ('cherry-tomato-general-v2','cherry_tomato','방울토마토','warm_fruiting','general_fruiting',
+   7,18.5,26.5,35, 30,65,75,90, 0,300,521,800,16,
+   40,25,35,'B','B','B','general_reference',
+   'FAO 절대 7-35°C와 온실 토마토 18.5-26.5°C·RH 65-75%; 토마토 DLI 20-30 및 300 PPFD 효율 시험',
+   '2.0.0','2026-07-25T00:00:00Z'),
+  ('welsh-onion-general-v2','welsh_onion','대파','cool_leafy_herb','general_vegetative',
+   6,12,25,30, 30,50,80,95, 0,208,347,600,16,
+   40,25,35,'B','C','C','category_fallback',
+   'FAO 대파 절대 6-30°C·최적 12-25°C; RH와 PPFD는 직접 구배시험 부재로 CEA·엽채류 휴리스틱 유지',
+   '2.0.0','2026-07-25T00:00:00Z'),
+  ('arugula-general-v2','arugula','아루굴라','cool_leafy_herb','general_vegetative',
+   8,15,25,29, 30,50,80,95, 0,200,250,600,16,
+   40,25,35,'B','C','A','hybrid',
+   'FAO 아루굴라 절대 8-29°C·최적 15-25°C; 성숙 로켓 250 PPFD·DLI 14.4 비교시험; RH는 CEA 일반범위',
+   '2.0.0','2026-07-25T00:00:00Z'),
+  ('wasabi-general-v2','wasabi','와사비','cool_shade','general_vegetative',
+   5,12,18,26, 40,60,80,95, 0,90,140,250,12,
+   40,25,35,'B','C','A','hybrid',
+   '와사비 5°C 야간 생육정체·12-18°C 적온·고온 민감성; Daruma 90-140 PPFD 고광합성·140 PPFD 최고 생체중; RH 68% 시험조건',
+   '2.0.0','2026-07-25T00:00:00Z'),
+  ('lettuce-general-v2','lettuce','상추','cool_leafy_herb','general_vegetative',
+   5,12,24,30, 30,60,75,90, 0,200,295,500,16,
+   40,25,35,'B','B','A','hybrid',
+   'FAO 절대 5-30°C·최적 12-21°C와 CEA 24°C 효율시험; RH 70-75% 연구; 상추 DLI 12-17을 16h PPFD로 환산',
+   '2.0.0','2026-07-25T00:00:00Z'),
+  ('coriander-general-v2','coriander','고수','cool_leafy_herb','fresh_leaf',
+   4,15,26,32, 30,50,70,90, 0,200,200,400,16,
+   40,25,35,'B','C','A','hybrid',
+   'FAO 절대 4-32°C·최적 15-25°C와 표준 고수 약 26°C 생체중 최적; 200 PPFD·16h 직접 권고; RH는 CEA 일반범위',
+   '2.0.0','2026-07-25T00:00:00Z');
+
 -- 신규 재배 컨텍스트가 사용할 기본 버전. 기존 컨텍스트는 profile_id를 직접
 -- 참조하므로 활성 버전이 바뀌어도 과거 점수가 재해석되지 않는다.
 CREATE TABLE crop_score_profile_activation (
@@ -317,14 +364,66 @@ CREATE TABLE crop_score_profile_activation (
 ) STRICT, WITHOUT ROWID;
 
 INSERT INTO crop_score_profile_activation VALUES
-  ('basil','basil-general-v1','2026-07-16T00:00:00Z'),
-  ('peppermint','peppermint-general-v1','2026-07-16T00:00:00Z'),
-  ('cherry_tomato','cherry-tomato-general-v1','2026-07-16T00:00:00Z'),
-  ('welsh_onion','welsh-onion-general-v1','2026-07-16T00:00:00Z'),
-  ('arugula','arugula-general-v1','2026-07-16T00:00:00Z'),
-  ('wasabi','wasabi-general-v1','2026-07-16T00:00:00Z'),
-  ('lettuce','lettuce-general-v1','2026-07-16T00:00:00Z'),
-  ('coriander','coriander-general-v1','2026-07-16T00:00:00Z');
+  ('basil','basil-general-v2','2026-07-25T00:00:00Z'),
+  ('peppermint','peppermint-general-v2','2026-07-25T00:00:00Z'),
+  ('cherry_tomato','cherry-tomato-general-v2','2026-07-25T00:00:00Z'),
+  ('welsh_onion','welsh-onion-general-v2','2026-07-25T00:00:00Z'),
+  ('arugula','arugula-general-v2','2026-07-25T00:00:00Z'),
+  ('wasabi','wasabi-general-v2','2026-07-25T00:00:00Z'),
+  ('lettuce','lettuce-general-v2','2026-07-25T00:00:00Z'),
+  ('coriander','coriander-general-v2','2026-07-25T00:00:00Z');
+
+-- 종합점수 모델은 경계 프로필 버전에 1:1로 결합한다. 현재 활성 계약은
+-- equal_geometric_v1 + 1/1/1이며, 정규화된 실제 지수는 각각 1/3이다.
+-- 기존 crop_score_profile의 40/25/35 weight 열은 legacy 조화평균 계약의
+-- 데이터이므로 이 모델의 지수로 재해석하지 않는다.
+CREATE TABLE crop_score_model_config (
+  model_id TEXT PRIMARY KEY,
+  profile_id TEXT NOT NULL,
+  crop_code TEXT NOT NULL,
+  contract_version TEXT NOT NULL CHECK (contract_version='score-v1'),
+  aggregation_family TEXT NOT NULL CHECK (aggregation_family IN (
+    'equal_geometric_v1','weighted_geometric_v1')),
+  temperature_exponent REAL NOT NULL
+    CHECK (temperature_exponent > 0 AND temperature_exponent <= 100),
+  humidity_exponent REAL NOT NULL
+    CHECK (humidity_exponent > 0 AND humidity_exponent <= 100),
+  plant_light_exponent REAL NOT NULL
+    CHECK (plant_light_exponent > 0 AND plant_light_exponent <= 100),
+  curve_family TEXT NOT NULL CHECK (curve_family='trapezoid_v1'),
+  validation_status TEXT NOT NULL CHECK (validation_status IN ('draft','validated')),
+  evidence_revision TEXT NOT NULL,
+  change_reason TEXT NOT NULL,
+  created_at_utc TEXT NOT NULL,
+  FOREIGN KEY (profile_id, crop_code)
+    REFERENCES crop_score_profile(profile_id, crop_code),
+  UNIQUE (profile_id, contract_version),
+  UNIQUE (model_id, crop_code),
+  CHECK (aggregation_family <> 'equal_geometric_v1'
+    OR (temperature_exponent = humidity_exponent
+      AND humidity_exponent = plant_light_exponent))
+) STRICT, WITHOUT ROWID;
+
+CREATE TRIGGER crop_score_model_config_immutable_update
+BEFORE UPDATE ON crop_score_model_config BEGIN
+  SELECT RAISE(ABORT,'score model configs are immutable: insert a new profile version');
+END;
+
+CREATE TRIGGER crop_score_model_config_immutable_delete
+BEFORE DELETE ON crop_score_model_config BEGIN
+  SELECT RAISE(ABORT,'score model configs are immutable: insert a new profile version');
+END;
+
+INSERT INTO crop_score_model_config
+  (model_id,profile_id,crop_code,contract_version,aggregation_family,
+   temperature_exponent,humidity_exponent,plant_light_exponent,curve_family,
+   validation_status,evidence_revision,change_reason,created_at_utc)
+SELECT profile_id || '-score-v1', profile_id, crop_code, 'score-v1',
+       'equal_geometric_v1', 1.0, 1.0, 1.0, 'trapezoid_v1', 'validated',
+       'aggregation-baseline-2026-07-25',
+       '기존 1/3·1/3·1/3 기하평균과 사다리꼴 축 점수를 변경 없이 명시',
+       '2026-07-25T00:00:00Z'
+FROM crop_score_profile;
 
 -- ============================================================================
 -- 5. 배치 (deployment)
@@ -747,21 +846,40 @@ JOIN crop_score_profile AS p ON p.profile_id=c.score_profile_id
 WHERE o.captured_at_utc >= c.valid_from_utc
   AND (c.valid_to_utc IS NULL OR o.captured_at_utc < c.valid_to_utc);
 
--- 종합점수는 가중 조화평균이다. 어느 축이 0점이면 종합도 0점이며,
--- 낮은 축이 산술평균보다 강하게 반영된다.
+-- 종합점수는 프로필에 결합된 가중 기하평균이다. 1/1/1은 정규화 후
+-- 기존 1/3·1/3·1/3과 동일하다. 어느 축이 0점이면 종합도 0점이다.
 CREATE VIEW crop_environment_score AS
-WITH combined AS (
+WITH modeled AS (
   SELECT a.*,
-         CASE
-           WHEN min(a.temperature_score,a.humidity_score,a.plant_light_score) <= 0
-             THEN 0.0
-           ELSE 100.0 / (
-             1.0*a.temperature_weight/a.temperature_score
-             + 1.0*a.humidity_weight/a.humidity_score
-             + 1.0*a.plant_light_weight/a.plant_light_score
-           )
-         END AS overall_score_raw
+         m.model_id,
+         m.aggregation_family,
+         m.temperature_exponent,
+         m.humidity_exponent,
+         m.plant_light_exponent,
+         m.curve_family,
+         (m.temperature_exponent
+          + m.humidity_exponent
+          + m.plant_light_exponent) AS exponent_sum
   FROM crop_environment_axis_score AS a
+  JOIN crop_score_model_config AS m
+    ON m.profile_id=a.profile_id
+   AND m.crop_code=a.crop
+   AND m.contract_version='score-v1'
+   AND m.validation_status='validated'
+), combined AS (
+  SELECT m.*,
+         CASE
+           WHEN min(m.temperature_score,m.humidity_score,m.plant_light_score) <= 0
+             THEN 0.0
+           ELSE 100.0
+             * pow(m.temperature_score/100.0,
+                   m.temperature_exponent/m.exponent_sum)
+             * pow(m.humidity_score/100.0,
+                   m.humidity_exponent/m.exponent_sum)
+             * pow(m.plant_light_score/100.0,
+                   m.plant_light_exponent/m.exponent_sum)
+         END AS overall_score_raw
+  FROM modeled AS m
 )
 SELECT environment_observation_id,
        context_id,
@@ -777,12 +895,17 @@ SELECT environment_observation_id,
        temperature_score,
        humidity_score,
        plant_light_score,
+       model_id,
+       aggregation_family,
+       temperature_exponent,
+       humidity_exponent,
+       plant_light_exponent,
+       curve_family,
        round(overall_score_raw,1) AS overall_score,
        CASE
-         WHEN overall_score_raw >= 90 THEN 'excellent'
-         WHEN overall_score_raw >= 75 THEN 'good'
-         WHEN overall_score_raw >= 50 THEN 'fair'
-         ELSE 'poor'
+         WHEN overall_score_raw >= 80 THEN 'GOOD'
+         WHEN overall_score_raw >= 60 THEN 'NORMAL'
+         ELSE 'BAD'
        END AS score_grade,
        temperature_evidence_grade,
        humidity_evidence_grade,

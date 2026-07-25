@@ -32,4 +32,13 @@ class DataSourceConfigTests {
         assertThat(postgresResult).isEqualTo(1);
         assertThat(sqliteResult).isEqualTo(1);
     }
+
+    @Test
+    void sqliteSupportsThePowerFunctionUsedByTheGeometricScoreView() {
+        Double result = scoreJdbcTemplate.queryForObject(
+                "select round(pow(0.5, 1.0/3.0) * 100.0, 1)",
+                Double.class);
+
+        assertThat(result).isEqualTo(79.4);
+    }
 }

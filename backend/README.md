@@ -40,6 +40,14 @@ export TELEMETRY_DEVICE_KEY='하드웨어가 X-Device-Key로 보낼 공유 키'
 sqlite3 db/terrabyte-score.db < db/schema.sql
 ```
 
+이미 v2 경계 프로필까지 적용된 DB에는 점수 모델 마이그레이션을 추가로 실행합니다.
+
+```bash
+sqlite3 db/terrabyte-score.db < db/migrations/2026-07-25_score_model_config_v1.sql
+```
+
+이 마이그레이션은 반복 실행해도 동일한 상태를 유지합니다.
+
 애플리케이션을 실행합니다.
 
 ```bash
@@ -301,8 +309,10 @@ total = 100 × (temperatureScore/100 × humidityScore/100 × lightScore/100)^(1/
 ```
 
 오염도, CO₂, 토양수분은 종합점수에 포함하지 않습니다. 토양수분은 모니터링 값으로만 저장·조회합니다.
-기존 SQLite의 `crop_environment_score` 뷰는 가중 조화평균을 사용하는 이전 계약이므로 현재 점수 API에서는
-해당 뷰의 종합값을 사용하지 않고 작물별 경계값만 사용합니다.
+SQLite의 `crop_score_model_config`는 프로필별 집계 모델을 불변 버전으로 저장합니다. 현재 모든 프로필은
+`equal_geometric_v1`, 지수 `1/1/1`, `trapezoid_v1`이며 정규화 후 기존 `1/3·1/3·1/3`과 같습니다.
+`crop_environment_score` 뷰와 Java API는 이 설정을 읽어 같은 가중 기하평균과 `GOOD/NORMAL/BAD` 등급을
+계산합니다. 기존 `crop_score_profile`의 `40/25/35` 열은 legacy 조화평균 데이터이므로 새 지수로 사용하지 않습니다.
 
 ## 테스트
 

@@ -1,6 +1,7 @@
 package com.terrabyte.backend.score;
 
 import java.util.List;
+import java.util.Locale;
 
 import com.terrabyte.backend.api.ApiException;
 import com.terrabyte.backend.device.Device;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class EnvironmentScoreService {
 
-    private static final String FORMULA = "100 × (T/100 × H/100 × L/100)^(1/3)";
+    private static final String EQUAL_FORMULA = "100 × (T/100 × H/100 × L/100)^(1/3)";
 
     private final DeviceRepository deviceRepository;
     private final MeasurementStore measurementStore;
@@ -60,7 +61,13 @@ public class EnvironmentScoreService {
                 "plantLight", "광량", "μmol/m²/s", sample.plantLightPpfdUmolM2S(),
                 profile.ppfdZeroLow(), profile.ppfdOptimalLow(),
                 profile.ppfdOptimalHigh(), profile.ppfdZeroHigh());
-        double total = calculator.overall(temperature.score(), humidity.score(), light.score());
+        double total = calculator.overall(
+                temperature.score(),
+                humidity.score(),
+                light.score(),
+                profile.temperatureExponent(),
+                profile.humidityExponent(),
+                profile.plantLightExponent());
 
         return new EnvironmentScoreResponse(
                 device.id(),
@@ -69,8 +76,23 @@ public class EnvironmentScoreService {
                 total,
                 grade(total),
                 sample.observedAt(),
-                FORMULA,
+                formula(profile),
                 List.of(temperature, humidity, light));
+    }
+
+    private String formula(CropScoreProfile profile) {
+        if ("equal_geometric_v1".equals(profile.aggregationFamily())) {
+            return EQUAL_FORMULA;
+        }
+        double exponentSum = profile.temperatureExponent()
+                + profile.humidityExponent()
+                + profile.plantLightExponent();
+        return String.format(
+                Locale.ROOT,
+                "100 × (T/100)^%.6f × (H/100)^%.6f × (L/100)^%.6f",
+                profile.temperatureExponent() / exponentSum,
+                profile.humidityExponent() / exponentSum,
+                profile.plantLightExponent() / exponentSum);
     }
 
     private EnvironmentScoreResponse.Factor factor(

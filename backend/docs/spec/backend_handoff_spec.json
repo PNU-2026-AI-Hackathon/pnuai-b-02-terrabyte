@@ -2,7 +2,7 @@
   "schema_version": "2.0.0",
   "document_type": "backend_implementation_handoff",
   "created_at": "2026-07-16",
-  "updated_at": "2026-07-16",
+  "updated_at": "2026-07-25",
   "status": "ready_for_implementation",
   "authored_by": "Codex",
 
@@ -103,92 +103,92 @@
     },
     "profiles": [
       {
-        "profile_id": "basil-general-v1",
+        "profile_id": "basil-general-v2",
         "crop_code": "basil",
         "crop_name_ko": "바질",
         "group": "warm_herb",
-        "temperature_c": [15, 24, 30, 36],
-        "relative_humidity_pct": [30, 50, 70, 90],
-        "ppfd_umol_m2_s": [0, 260, 500, 750],
+        "temperature_c": [7, 18, 29, 36],
+        "relative_humidity_pct": [30, 50, 80, 95],
+        "ppfd_umol_m2_s": [0, 260, 600, 1000],
         "reference_photoperiod_h": 16,
         "evidence_grade": {"temperature": "A", "humidity": "C", "plant_light": "A"}
       },
       {
-        "profile_id": "peppermint-general-v1",
+        "profile_id": "peppermint-general-v2",
         "crop_code": "peppermint",
         "crop_name_ko": "페퍼민트",
         "group": "moderate_light_herb",
-        "temperature_c": [10, 18, 24, 30],
-        "relative_humidity_pct": [30, 50, 70, 90],
-        "ppfd_umol_m2_s": [0, 150, 200, 300],
+        "temperature_c": [4, 15, 25, 35],
+        "relative_humidity_pct": [30, 50, 80, 95],
+        "ppfd_umol_m2_s": [0, 150, 200, 250],
         "reference_photoperiod_h": 14,
-        "evidence_grade": {"temperature": "C", "humidity": "C", "plant_light": "A"}
+        "evidence_grade": {"temperature": "B", "humidity": "C", "plant_light": "A"}
       },
       {
-        "profile_id": "cherry-tomato-general-v1",
+        "profile_id": "cherry-tomato-general-v2",
         "crop_code": "cherry_tomato",
         "crop_name_ko": "방울토마토",
         "group": "warm_fruiting",
-        "temperature_c": [12, 18.5, 26.5, 32],
-        "relative_humidity_pct": [30, 50, 70, 90],
-        "ppfd_umol_m2_s": [0, 347, 521, 800],
+        "temperature_c": [7, 18.5, 26.5, 35],
+        "relative_humidity_pct": [30, 65, 75, 90],
+        "ppfd_umol_m2_s": [0, 300, 521, 800],
         "reference_photoperiod_h": 16,
         "evidence_grade": {"temperature": "B", "humidity": "B", "plant_light": "B"}
       },
       {
-        "profile_id": "welsh-onion-general-v1",
+        "profile_id": "welsh-onion-general-v2",
         "crop_code": "welsh_onion",
         "crop_name_ko": "대파",
         "group": "cool_leafy_herb",
-        "temperature_c": [10, 20, 24, 30],
-        "relative_humidity_pct": [30, 50, 70, 90],
+        "temperature_c": [6, 12, 25, 30],
+        "relative_humidity_pct": [30, 50, 80, 95],
         "ppfd_umol_m2_s": [0, 208, 347, 600],
         "reference_photoperiod_h": 16,
-        "evidence_grade": {"temperature": "C", "humidity": "C", "plant_light": "C"}
+        "evidence_grade": {"temperature": "B", "humidity": "C", "plant_light": "C"}
       },
       {
-        "profile_id": "arugula-general-v1",
+        "profile_id": "arugula-general-v2",
         "crop_code": "arugula",
         "crop_name_ko": "아루굴라",
         "group": "cool_leafy_herb",
-        "temperature_c": [10, 20, 24, 30],
-        "relative_humidity_pct": [30, 50, 70, 90],
-        "ppfd_umol_m2_s": [0, 208, 347, 600],
+        "temperature_c": [8, 15, 25, 29],
+        "relative_humidity_pct": [30, 50, 80, 95],
+        "ppfd_umol_m2_s": [0, 200, 250, 600],
         "reference_photoperiod_h": 16,
-        "evidence_grade": {"temperature": "C", "humidity": "C", "plant_light": "C"}
+        "evidence_grade": {"temperature": "B", "humidity": "C", "plant_light": "A"}
       },
       {
-        "profile_id": "wasabi-general-v1",
+        "profile_id": "wasabi-general-v2",
         "crop_code": "wasabi",
         "crop_name_ko": "와사비",
         "group": "cool_shade",
-        "temperature_c": [10, 16, 18, 26],
-        "relative_humidity_pct": [40, 60, 75, 95],
-        "ppfd_umol_m2_s": [0, 120, 140, 250],
+        "temperature_c": [5, 12, 18, 26],
+        "relative_humidity_pct": [40, 60, 80, 95],
+        "ppfd_umol_m2_s": [0, 90, 140, 250],
         "reference_photoperiod_h": 12,
         "evidence_grade": {"temperature": "B", "humidity": "C", "plant_light": "A"}
       },
       {
-        "profile_id": "lettuce-general-v1",
+        "profile_id": "lettuce-general-v2",
         "crop_code": "lettuce",
         "crop_name_ko": "상추",
         "group": "cool_leafy_herb",
-        "temperature_c": [10, 20, 24, 30],
-        "relative_humidity_pct": [30, 50, 70, 90],
-        "ppfd_umol_m2_s": [0, 208, 295, 500],
+        "temperature_c": [5, 12, 24, 30],
+        "relative_humidity_pct": [30, 60, 75, 90],
+        "ppfd_umol_m2_s": [0, 200, 295, 500],
         "reference_photoperiod_h": 16,
         "evidence_grade": {"temperature": "B", "humidity": "B", "plant_light": "A"}
       },
       {
-        "profile_id": "coriander-general-v1",
+        "profile_id": "coriander-general-v2",
         "crop_code": "coriander",
         "crop_name_ko": "고수",
         "group": "cool_leafy_herb",
-        "temperature_c": [10, 20, 24, 30],
+        "temperature_c": [4, 15, 26, 32],
         "relative_humidity_pct": [30, 50, 70, 90],
-        "ppfd_umol_m2_s": [0, 200, 347, 550],
+        "ppfd_umol_m2_s": [0, 200, 200, 400],
         "reference_photoperiod_h": 16,
-        "evidence_grade": {"temperature": "C", "humidity": "C", "plant_light": "A"}
+        "evidence_grade": {"temperature": "B", "humidity": "C", "plant_light": "A"}
       }
     ]
   },
@@ -213,27 +213,27 @@
 
   "overall_score_algorithm": {
     "database_view": "crop_environment_score",
-    "method": "weighted_harmonic_mean",
+    "method": "weighted_geometric_mean",
     "zero_rule": "세 축 중 하나가 0점이면 overall_score도 0점이다.",
-    "formula": "100 / (40/temperature_score + 25/humidity_score + 35/plant_light_score)",
+    "formula": "100 * product((axis_score/100)^(axis_exponent/sum_exponents)); 현재 지수 1/1/1은 각각 1/3으로 정규화",
     "rounding": "최종값을 소수점 첫째 자리로 반올림",
     "grade_bands": [
-      {"min_inclusive": 90, "max_inclusive": 100, "grade": "excellent"},
-      {"min_inclusive": 75, "max_exclusive": 90, "grade": "good"},
-      {"min_inclusive": 50, "max_exclusive": 75, "grade": "fair"},
-      {"min_inclusive": 0, "max_exclusive": 50, "grade": "poor"}
+      {"min_inclusive": 80, "max_inclusive": 100, "grade": "GOOD"},
+      {"min_inclusive": 60, "max_exclusive": 80, "grade": "NORMAL"},
+      {"min_inclusive": 0, "max_exclusive": 60, "grade": "BAD"}
     ],
-    "why_harmonic": "낮은 축이 산술평균보다 강하게 반영되고, 빛 0점을 좋은 온습도로 상쇄할 수 없다."
+    "model_policy": "현재는 equal_geometric_v1 + 1/1/1만 활성화한다. 작물별 지수는 결과 데이터 검증 후 새 프로필 버전으로만 배포한다."
   },
 
   "database_contract": {
     "objects": [
       {"name": "crop_score_profile", "kind": "table", "purpose": "버전형 점수 경계·가중치·근거 등급"},
       {"name": "crop_score_profile_activation", "kind": "table", "purpose": "작물별 신규 컨텍스트 기본 프로필"},
+      {"name": "crop_score_model_config", "kind": "table", "purpose": "프로필별 불변 집계 모델·지수·곡선 패밀리"},
       {"name": "crop_context.score_profile_id", "kind": "foreign_key", "purpose": "컨텍스트와 정확한 프로필 버전 고정"},
       {"name": "crop_environment_observation", "kind": "table", "purpose": "완전 보정 세 축 canonical 입력"},
       {"name": "crop_environment_axis_score", "kind": "view", "purpose": "사다리꼴 축별 점수"},
-      {"name": "crop_environment_score", "kind": "view", "purpose": "가중 조화평균 종합점수와 등급"},
+      {"name": "crop_environment_score", "kind": "view", "purpose": "프로필 설정 기반 가중 기하평균 종합점수와 등급"},
       {"name": "latest_crop_environment_score", "kind": "view", "purpose": "컨텍스트별 최신 점수"},
       {"name": "legacy_lux_ingestion_status", "kind": "view", "purpose": "기존 BH1750 교정 파이프라인 진단; 점수 가용성 판정에 사용 금지"}
     ],
@@ -280,7 +280,7 @@
           "contextId": "ctx-basil-01",
           "zoneId": "zone-01",
           "crop": "basil",
-          "profile": {"id": "basil-general-v1", "version": "1.0.0"},
+          "profile": {"id": "basil-general-v2", "version": "2.0.0"},
           "capturedAtUtc": "2026-07-16T05:00:00Z",
           "reading": {
             "airTemperatureC": 27.0,
@@ -293,7 +293,7 @@
             "humidity": 100.0,
             "plantLight": 100.0,
             "overall": 100.0,
-            "grade": "excellent"
+            "grade": "GOOD"
           },
           "evidenceGrade": {
             "temperature": "A",
@@ -333,28 +333,28 @@
       "input": {"temperatureC": 27, "humidityPct": 60, "ppfd": 400},
       "axisScores": {"temperature": 100, "humidity": 100, "plantLight": 100},
       "overallScore": 100,
-      "grade": "excellent"
+      "grade": "GOOD"
     },
     {
       "name": "basil_all_halfway_on_lower_ramps",
       "input": {"temperatureC": 19.5, "humidityPct": 40, "ppfd": 130},
       "axisScores": {"temperature": 50, "humidity": 50, "plantLight": 50},
       "overallScore": 50,
-      "grade": "fair"
+      "grade": "BAD"
     },
     {
       "name": "basil_one_axis_zero",
       "input": {"temperatureC": 15, "humidityPct": 60, "ppfd": 400},
       "axisScores": {"temperature": 0, "humidity": 100, "plantLight": 100},
       "overallScore": 0,
-      "grade": "poor"
+      "grade": "BAD"
     },
     {
-      "name": "basil_harmonic_weighting",
+      "name": "basil_equal_geometric_weighting",
       "input": {"temperatureC": 27, "humidityPct": 40, "ppfd": 400},
       "axisScores": {"temperature": 100, "humidity": 50, "plantLight": 100},
-      "overallScore": 80,
-      "grade": "good"
+      "overallScore": 79.4,
+      "grade": "NORMAL"
     }
   ],
 
@@ -368,10 +368,9 @@
       "점수가 생존율·수확량·병해 확률이 아니라는 고지"
     ],
     "grade_labels_ko": {
-      "excellent": "매우 적합",
-      "good": "적합",
-      "fair": "보통",
-      "poor": "부적합"
+      "GOOD": "적합",
+      "NORMAL": "보통",
+      "BAD": "부적합"
     },
     "c_grade_label_ko": "대분류 추정값"
   },
@@ -380,12 +379,12 @@
     {
       "step": 1,
       "task": "db/schema.sql을 빈 SQLite에 적용",
-      "done_when": "crop_score_profile 8행과 activation 8행이 존재"
+      "done_when": "crop_score_profile 16행, crop_score_model_config 동일가중 16행, activation v2 8행이 존재"
     },
     {
       "step": 2,
       "task": "python db/smoke_test.py 실행",
-      "done_when": "14/14 통과"
+      "done_when": "17/17 통과"
     },
     {
       "step": 3,
@@ -407,7 +406,8 @@
   "existing_database_migration": {
     "note": "schema.sql은 신규 DB 생성용 최종 DDL이다. 이미 생성된 SQLite 파일은 별도 트랜잭션 마이그레이션이 필요하다.",
     "order": [
-      "crop_score_profile과 crop_score_profile_activation 생성 및 8개 기본값 적재",
+      "crop_score_profile에 v1/v2 16개 이력값과 crop_score_profile_activation에 활성 v2 8개 적재",
+      "2026-07-25_score_model_config_v1.sql로 동일가중 모델 16개와 가중 기하평균 뷰 적용",
       "crop_context_new를 score_profile_id 포함 구조로 생성",
       "기존 crop_context 각 행의 crop_code로 활성 profile_id를 매핑해 복사",
       "admitted_* 외래키 의존 테이블을 포함해 SQLite table-rebuild 절차 수행",
@@ -420,7 +420,7 @@
 
   "verification_contract": {
     "command": "python backend/db/smoke_test.py",
-    "expected": "14 passed, 0 failed",
+    "expected": "17 passed, 0 failed",
     "covered_invariants": [
       "스키마 및 세 점수 뷰 로드",
       "8개 프로필과 활성 버전",
@@ -428,7 +428,7 @@
       "crop-profile 일치",
       "컨텍스트의 작물·프로필 결합 불변성",
       "사다리꼴 점수",
-      "가중 조화평균",
+      "동일가중 및 확장 가능한 가중 기하평균",
       "한 축 0점 전파",
       "최신 관측 선택",
       "canonical 범위와 inputContract",

@@ -14,5 +14,49 @@ public record CropScoreProfile(
         double ppfdZeroLow,
         double ppfdOptimalLow,
         double ppfdOptimalHigh,
-        double ppfdZeroHigh) {
+        double ppfdZeroHigh,
+        String scoreModelId,
+        String aggregationFamily,
+        double temperatureExponent,
+        double humidityExponent,
+        double plantLightExponent,
+        String curveFamily) {
+
+    public CropScoreProfile(
+            String cropCode,
+            String cropName,
+            double temperatureZeroLow,
+            double temperatureOptimalLow,
+            double temperatureOptimalHigh,
+            double temperatureZeroHigh,
+            double humidityZeroLow,
+            double humidityOptimalLow,
+            double humidityOptimalHigh,
+            double humidityZeroHigh,
+            double ppfdZeroLow,
+            double ppfdOptimalLow,
+            double ppfdOptimalHigh,
+            double ppfdZeroHigh) {
+        this(
+                cropCode,
+                cropName,
+                temperatureZeroLow,
+                temperatureOptimalLow,
+                temperatureOptimalHigh,
+                temperatureZeroHigh,
+                humidityZeroLow,
+                humidityOptimalLow,
+                humidityOptimalHigh,
+                humidityZeroHigh,
+                ppfdZeroLow,
+                ppfdOptimalLow,
+                ppfdOptimalHigh,
+                ppfdZeroHigh,
+                "implicit-equal-geometric-v1",
+                "equal_geometric_v1",
+                1.0,
+                1.0,
+                1.0,
+                "trapezoid_v1");
+    }
 }

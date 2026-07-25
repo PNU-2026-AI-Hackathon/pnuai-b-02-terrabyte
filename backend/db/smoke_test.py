@@ -83,13 +83,50 @@ def t_schema_loads():
     } <= views
 
 
-# 2. 8개 작물 프로필과 활성 버전이 모두 적재되는가
+# 2. 8개 작물의 v1/v2 프로필과 활성 v2가 모두 적재되는가
 def t_eight_profiles_seeded():
     db = fresh()
     profiles = db.execute("SELECT count(*) FROM crop_score_profile").fetchone()[0]
     active = db.execute("SELECT count(*) FROM crop_score_profile_activation").fetchone()[0]
-    assert profiles == 8, profiles
+    active_v2 = db.execute(
+        "SELECT count(*) FROM crop_score_profile_activation WHERE profile_id LIKE '%-v2'"
+    ).fetchone()[0]
+    assert profiles == 16, profiles
     assert active == 8, active
+    assert active_v2 == 8, active_v2
+
+
+# 3. 모든 프로필은 현재 동일가중 기하평균 + 사다리꼴 모델에 결합된다
+def t_equal_geometric_models_seeded():
+    db = fresh()
+    models = db.execute("SELECT count(*) FROM crop_score_model_config").fetchone()[0]
+    active_models = db.execute(
+        "SELECT count(*) FROM crop_score_profile_activation a "
+        "JOIN crop_score_model_config m "
+        "ON m.profile_id=a.profile_id AND m.crop_code=a.crop_code "
+        "WHERE m.contract_version='score-v1' AND m.validation_status='validated' "
+        "AND m.aggregation_family='equal_geometric_v1' "
+        "AND m.temperature_exponent=1 AND m.humidity_exponent=1 "
+        "AND m.plant_light_exponent=1 AND m.curve_family='trapezoid_v1'"
+    ).fetchone()[0]
+    assert models == 16, models
+    assert active_models == 8, active_models
+
+
+# 4. 모델 설정은 프로필과 함께 새 버전으로만 배포한다
+def t_score_model_config_immutable():
+    db = fresh()
+    for stmt in (
+        "UPDATE crop_score_model_config SET temperature_exponent=2 "
+        "WHERE model_id='basil-general-v2-score-v1'",
+        "DELETE FROM crop_score_model_config "
+        "WHERE model_id='basil-general-v2-score-v1'",
+    ):
+        try:
+            db.execute(stmt)
+            raise AssertionError(f"점수 모델 설정이 변경됐다: {stmt}")
+        except sqlite3.IntegrityError:
+            pass
 
 
 # 3. 프로필은 수정하지 않고 새 버전으로만 배포해야 한다
@@ -146,7 +183,7 @@ def t_optimal_basil_is_100():
         "SELECT temperature_score,humidity_score,plant_light_score,overall_score,score_grade "
         "FROM crop_environment_score"
     ).fetchone()
-    assert row == (100.0, 100.0, 100.0, 100.0, "excellent"), row
+    assert row == (100.0, 100.0, 100.0, 100.0, "GOOD"), row
 
 
 # 7. 각 축의 상승 경사 중간값은 정확히 50점이다
@@ -164,10 +201,10 @@ def t_trapezoid_linear_ramp():
         "SELECT temperature_score,humidity_score,plant_light_score,overall_score,score_grade "
         "FROM crop_environment_score"
     ).fetchone()
-    assert row == (50.0, 50.0, 50.0, 50.0, "fair"), row
+    assert row == (50.0, 50.0, 50.0, 50.0, "BAD"), row
 
 
-# 8. 어느 한 축이 0점이면 가중 조화평균도 0점이다
+# 8. 어느 한 축이 0점이면 가중 기하평균도 0점이다
 def t_zero_axis_forces_zero_overall():
     db = fresh()
     seed_context(db)
@@ -181,11 +218,11 @@ def t_zero_axis_forces_zero_overall():
     row = db.execute(
         "SELECT temperature_score,overall_score,score_grade FROM crop_environment_score"
     ).fetchone()
-    assert row == (0.0, 0.0, "poor"), row
+    assert row == (0.0, 0.0, "BAD"), row
 
 
-# 9. 종합점수는 40/25/35 가중 조화평균이다
-def t_weighted_harmonic_mean():
+# 9. 현재 1/1/1 설정은 기존 1/3 기하평균과 동일하다
+def t_equal_geometric_mean():
     db = fresh()
     seed_context(db)
     add_observation(
@@ -199,7 +236,7 @@ def t_weighted_harmonic_mean():
         "SELECT temperature_score,humidity_score,plant_light_score,overall_score,score_grade "
         "FROM crop_environment_score"
     ).fetchone()
-    assert row == (100.0, 50.0, 100.0, 80.0, "good"), row
+    assert row == (100.0, 50.0, 100.0, 79.4, "NORMAL"), row
 
 
 # 10. latest 뷰는 컨텍스트별 최신 관측 하나만 반환한다
@@ -298,13 +335,37 @@ def t_profile_reference_values():
     values = dict(
         db.execute(
             "SELECT crop_code,printf('%.1f/%.1f',ppfd_optimal_low_umol_m2_s,"
-            "ppfd_optimal_high_umol_m2_s) FROM crop_score_profile"
+            "ppfd_optimal_high_umol_m2_s) FROM crop_score_profile p "
+            "JOIN crop_score_profile_activation a USING (crop_code) "
+            "WHERE p.profile_id=a.profile_id"
         ).fetchall()
     )
-    assert values["lettuce"] == "208.0/295.0", values["lettuce"]
-    assert values["cherry_tomato"] == "347.0/521.0", values["cherry_tomato"]
+    assert values["lettuce"] == "200.0/295.0", values["lettuce"]
+    assert values["cherry_tomato"] == "300.0/521.0", values["cherry_tomato"]
     assert values["peppermint"] == "150.0/200.0", values["peppermint"]
-    assert values["wasabi"] == "120.0/140.0", values["wasabi"]
+    assert values["wasabi"] == "90.0/140.0", values["wasabi"]
+
+
+# 15. 활성 온도 프로필은 검증한 absolute/optimal 네 경계를 사용한다
+def t_active_temperature_boundaries():
+    db = fresh()
+    values = {
+        row[0]: row[1:]
+        for row in db.execute(
+            "SELECT p.crop_code,p.temperature_zero_low_c,p.temperature_optimal_low_c,"
+            "p.temperature_optimal_high_c,p.temperature_zero_high_c "
+            "FROM crop_score_profile p JOIN crop_score_profile_activation a "
+            "ON a.crop_code=p.crop_code AND a.profile_id=p.profile_id"
+        )
+    }
+    assert values["basil"] == (7.0, 18.0, 29.0, 36.0)
+    assert values["peppermint"] == (4.0, 15.0, 25.0, 35.0)
+    assert values["cherry_tomato"] == (7.0, 18.5, 26.5, 35.0)
+    assert values["welsh_onion"] == (6.0, 12.0, 25.0, 30.0)
+    assert values["arugula"] == (8.0, 15.0, 25.0, 29.0)
+    assert values["wasabi"] == (5.0, 12.0, 18.0, 26.0)
+    assert values["lettuce"] == (5.0, 12.0, 24.0, 30.0)
+    assert values["coriander"] == (4.0, 15.0, 26.0, 32.0)
 
 
 for name, fn in list(globals().items()):
