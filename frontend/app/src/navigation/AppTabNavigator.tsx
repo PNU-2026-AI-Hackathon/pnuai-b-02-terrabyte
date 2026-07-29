@@ -76,7 +76,7 @@ export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelec
       <View style={[styles.appShell, compact && styles.appShellCompact, appShellFill]}>
         {!compact && sidebarHidden ? (
           <Pressable accessibilityLabel="사이드바 펼치기" accessibilityRole="button" onPress={() => setSidebarHidden(false)} style={styles.showSidebarButton}>
-            <Text style={styles.showSidebarButtonText}>›</Text>
+            <Text style={styles.showSidebarButtonText}>☰</Text>
           </Pressable>
         ) : (
           <Sidebar

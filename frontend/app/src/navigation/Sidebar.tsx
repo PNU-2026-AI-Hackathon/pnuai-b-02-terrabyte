@@ -48,7 +48,7 @@ export function Sidebar({ compact, cropName, onHide, onLogout, onNavigate, page 
         <Text style={styles.brandName}>TerraByte</Text>
         {onHide ? (
           <Pressable accessibilityLabel="사이드바 숨기기" accessibilityRole="button" onPress={onHide} style={({ pressed }) => [styles.hideButton, pressed && styles.pressed]}>
-            <Text style={styles.hideButtonText}>‹</Text>
+            <Text style={styles.hideButtonText}>☰</Text>
           </Pressable>
         ) : null}
       </View>
