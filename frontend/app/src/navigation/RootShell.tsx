@@ -1,15 +1,22 @@
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
-import { Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { font } from '../appTheme/glass';
+import { palette } from '../appTheme/palette';
+import { scaleTypography } from '../appTheme/scaleTypography';
+import { ensureBrandFontLoaded } from '../appTheme/webFont';
 import { clearAccessToken, getMe, loadAccessToken, type MeResponse } from '../auth/authApi';
 import { BrandMark } from '../components/BrandMark';
 import { selectDeviceCrop } from '../crop/cropApi';
 import { crops } from '../data';
-import { Login, SetupFlow, styles } from '../redesign/RedesignedApp';
+import { Login } from '../onboarding/Login';
+import { SetupFlow } from '../onboarding/SetupFlow';
 import { AppTabNavigator } from './AppTabNavigator';
 import { GlassBackdrop } from './GlassBackdrop';
 import type { FlowStage } from './types';
+
+ensureBrandFontLoaded();
 
 export default function RootShell() {
   const [flow, setFlow] = useState<FlowStage>('auth');
@@ -127,3 +134,9 @@ export default function RootShell() {
     </View>
   );
 }
+
+const styles = StyleSheet.create(scaleTypography({
+  root: { backgroundColor: palette.background, flex: 1, minHeight: '100vh', overflow: 'hidden', position: 'relative' } as any,
+  sessionLoading: { alignItems: 'center', gap: 18, justifyContent: 'center' },
+  sessionLoadingText: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '700' },
+}));

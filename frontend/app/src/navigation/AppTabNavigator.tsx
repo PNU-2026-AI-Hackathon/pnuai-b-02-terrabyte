@@ -1,9 +1,9 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { useState, type ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { styles } from '../redesign/RedesignedApp';
+import { scaleTypography } from '../appTheme/scaleTypography';
 import { AnalysisScreen } from '../screens/analysis/AnalysisScreen';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { HistoryScreen } from '../screens/history/HistoryScreen';
@@ -122,3 +122,11 @@ export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelec
     </DeviceEnvironmentProvider>
   );
 }
+
+const styles = StyleSheet.create(scaleTypography({
+  appShell: { flexDirection: 'row' },
+  appShellCompact: { flexDirection: 'column' },
+  workspace: { flex: 1, minWidth: 0, zIndex: 1 },
+  workspaceScroll: { alignItems: 'center', paddingBottom: 88, paddingHorizontal: 48 },
+  workspaceScrollCompact: { paddingBottom: 56, paddingHorizontal: 20 },
+}));

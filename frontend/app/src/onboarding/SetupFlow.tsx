@@ -1,36 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
-import {
-  clearAccessToken,
-  getMe,
-  login,
-  saveAccessToken,
-  signup,
-  type MeResponse,
-} from '../auth/authApi';
-import { palette } from '../appTheme/palette';
 import { font } from '../appTheme/glass';
+import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
-import { ensureBrandFontLoaded } from '../appTheme/webFont';
 import { ActionButton } from '../components/ActionButton';
 import { BrandMark } from '../components/BrandMark';
-import { SectionHeader } from '../components/SectionHeader';
 import { Surface } from '../components/Surface';
 import { getCrops, selectDeviceCrop, type CropResponse } from '../crop/cropApi';
 import { crops } from '../data';
 import { registerDevice } from '../device/deviceApi';
 import type { FlowStage } from '../navigation/types';
-
-ensureBrandFontLoaded();
 
 type AreaUnit = 'SQUARE_METERS' | 'PYEONG';
 
@@ -47,7 +27,6 @@ const areaUnitOptions: Array<{ label: string; value: AreaUnit }> = [
   { label: 'm²', value: 'SQUARE_METERS' },
   { label: '평', value: 'PYEONG' },
 ];
-
 
 function SelectField<T extends string>({
   disabled = false,
@@ -109,151 +88,6 @@ function SelectField<T extends string>({
 function convertToSquareMeters(value: number, unit: AreaUnit) {
   const squareMeters = unit === 'PYEONG' ? value * 3.305785 : value;
   return Math.round(squareMeters * 100) / 100;
-}
-
-export function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void }) {
-  const { width } = useWindowDimensions();
-  const compact = width < 760;
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [nickname, setNickname] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const changeMode = (nextMode: 'login' | 'signup') => {
-    setMode(nextMode);
-    setError(null);
-  };
-
-  const submit = async () => {
-    const normalizedEmail = email.trim().toLowerCase();
-    const normalizedNickname = nickname.trim();
-
-    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
-      setError('올바른 이메일을 입력해 주세요.');
-      return;
-    }
-    if (!password) {
-      setError('비밀번호를 입력해 주세요.');
-      return;
-    }
-    if (mode === 'signup' && (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password))) {
-      setError('비밀번호는 8자 이상이며 영문과 숫자를 포함해야 합니다.');
-      return;
-    }
-    if (mode === 'signup' && (normalizedNickname.length < 2 || normalizedNickname.length > 20)) {
-      setError('닉네임은 2자 이상 20자 이하로 입력해 주세요.');
-      return;
-    }
-
-    setError(null);
-    setSubmitting(true);
-    try {
-      const auth = mode === 'login'
-        ? await login(normalizedEmail, password)
-        : await signup(normalizedEmail, password, normalizedNickname);
-      await saveAccessToken(auth.accessToken);
-      const me = await getMe(auth.accessToken);
-      onAuthenticated(me);
-    } catch (requestError) {
-      await clearAccessToken();
-      setError(requestError instanceof Error ? requestError.message : '요청을 처리하지 못했습니다.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <ScrollView contentContainerStyle={styles.loginPage}>
-      <View style={[styles.loginFrame, compact && styles.loginFrameCompact]}>
-        <View style={[styles.loginIntro, compact && styles.loginIntroCompact]}>
-          <BrandMark />
-          <Text style={styles.loginKicker}>TERRABYTE SMART FARM</Text>
-          <Text style={[styles.loginTitle, compact && styles.loginTitleCompact]}>
-            재배 환경을{compact ? ' ' : '\n'}한눈에 관리하세요.
-          </Text>
-          <Text style={[styles.loginDescription, compact && styles.centerText]}>
-            센서 데이터와 작물별 환경 분석을 바탕으로 필요한 관리 항목을 빠르게 확인할 수 있습니다.
-          </Text>
-          {!compact ? (
-            <View style={styles.loginFacts}>
-              <View style={styles.loginFact}>
-                <Text style={styles.loginFactValue}>8개</Text>
-                <Text style={styles.loginFactLabel}>공간·토양 측정 지표</Text>
-              </View>
-              <View style={styles.loginFactDivider} />
-              <View style={styles.loginFact}>
-                <Text style={styles.loginFactValue}>24시간</Text>
-                <Text style={styles.loginFactLabel}>연속 환경 분석</Text>
-              </View>
-            </View>
-          ) : null}
-        </View>
-
-        <Surface style={styles.loginPanel}>
-          <View style={styles.loginPanelHeader}>
-            <View style={styles.authTabs}>
-              <Pressable disabled={submitting} onPress={() => changeMode('login')} style={[styles.authTab, mode === 'login' && styles.authTabActive]}>
-                <Text style={[styles.authTabText, mode === 'login' && styles.authTabTextActive]}>로그인</Text>
-              </Pressable>
-              <Pressable disabled={submitting} onPress={() => changeMode('signup')} style={[styles.authTab, mode === 'signup' && styles.authTabActive]}>
-                <Text style={[styles.authTabText, mode === 'signup' && styles.authTabTextActive]}>회원가입</Text>
-              </Pressable>
-            </View>
-            <Text style={styles.loginPanelTitle}>{mode === 'login' ? '다시 만나 반가워요' : '농장을 시작해 볼까요?'}</Text>
-            <Text style={styles.loginPanelDescription}>
-              {mode === 'login' ? '등록한 계정으로 서비스를 시작하세요.' : '계정을 만들고 첫 번째 재배 공간을 등록하세요.'}
-            </Text>
-          </View>
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>이메일</Text>
-            <TextInput
-              autoCapitalize="none"
-              keyboardType="email-address"
-              editable={!submitting}
-              onChangeText={setEmail}
-              placeholder="name@example.com"
-              placeholderTextColor={palette.muted}
-              style={styles.input}
-              value={email}
-            />
-          </View>
-          <View style={styles.field}>
-            <Text style={styles.fieldLabel}>비밀번호</Text>
-            <TextInput
-              editable={!submitting}
-              onChangeText={setPassword}
-              placeholder="비밀번호를 입력하세요"
-              placeholderTextColor={palette.muted}
-              secureTextEntry
-              style={styles.input}
-              value={password}
-            />
-          </View>
-          {mode === 'signup' ? (
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>닉네임</Text>
-              <TextInput
-                editable={!submitting}
-                onChangeText={setNickname}
-                placeholder="사용할 이름을 입력하세요"
-                placeholderTextColor={palette.muted}
-                style={styles.input}
-                value={nickname}
-              />
-            </View>
-          ) : null}
-          {error ? <Text accessibilityRole="alert" style={styles.authError}>{error}</Text> : null}
-          <ActionButton
-            disabled={submitting}
-            label={submitting ? '처리 중…' : mode === 'login' ? '로그인' : '계정 만들기'}
-            onPress={() => void submit()}
-          />
-        </Surface>
-      </View>
-    </ScrollView>
-  );
 }
 
 export function SetupFlow({
@@ -599,39 +433,12 @@ export function SetupFlow({
   );
 }
 
-export const styles = StyleSheet.create(scaleTypography({
-  root: { backgroundColor: palette.background, flex: 1, minHeight: '100vh', overflow: 'hidden', position: 'relative' } as any,
+const styles = StyleSheet.create(scaleTypography({
   disabledButton: { opacity: 0.5 },
-  sessionLoading: { alignItems: 'center', gap: 18, justifyContent: 'center' },
-  sessionLoadingText: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '700' },
-  loginPage: { alignItems: 'center', flexGrow: 1, justifyContent: 'center', padding: 32 },
-  loginFrame: { alignItems: 'center', flexDirection: 'row', gap: 100, maxWidth: 980, width: '100%' },
-  loginFrameCompact: { flexDirection: 'column', gap: 38 },
-  loginIntro: { flex: 1, maxWidth: 460 },
-  loginIntroCompact: { alignItems: 'center' },
-  loginKicker: { color: palette.green, fontFamily: font, fontSize: 15, fontWeight: '800', letterSpacing: 1.5, marginTop: 30 },
-  loginTitle: { color: palette.text, fontFamily: font, fontSize: 42, fontWeight: '900', letterSpacing: -1.5, lineHeight: 56, marginTop: 10 },
-  loginTitleCompact: { fontSize: 31, lineHeight: 42, textAlign: 'center' },
-  loginDescription: { color: palette.secondary, fontFamily: font, fontSize: 18, lineHeight: 30, marginTop: 18, maxWidth: 460 },
-  centerText: { textAlign: 'center' },
-  loginFacts: { alignItems: 'center', flexDirection: 'row', gap: 28, marginTop: 38 },
-  loginFact: { gap: 4 },
-  loginFactValue: { color: palette.text, fontFamily: font, fontSize: 18, fontWeight: '800' },
-  loginFactLabel: { color: palette.muted, fontFamily: font, fontSize: 15 },
-  loginFactDivider: { backgroundColor: palette.lineStrong, height: 38, width: 1 },
-  loginPanel: { gap: 20, maxWidth: 410, padding: 32, width: '100%' },
-  loginPanelHeader: { gap: 6, marginBottom: 4 },
-  authTabs: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 9, borderWidth: 1, flexDirection: 'row', marginBottom: 18, padding: 4 },
-  authTab: { alignItems: 'center', borderRadius: 6, flex: 1, paddingVertical: 9 },
-  authTabActive: { backgroundColor: palette.panel, shadowColor: '#203329', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6 },
-  authTabText: { color: palette.muted, fontFamily: font, fontSize: 15, fontWeight: '700' },
-  authTabTextActive: { color: palette.greenDark, fontWeight: '900' },
-  loginPanelTitle: { color: palette.text, fontFamily: font, fontSize: 24, fontWeight: '900' },
-  loginPanelDescription: { color: palette.secondary, fontFamily: font, fontSize: 16, lineHeight: 25 },
-  authError: { color: palette.red, fontFamily: font, fontSize: 14, fontWeight: '700', lineHeight: 21 },
   field: { gap: 7 },
   fieldLabel: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '700' },
   input: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, color: palette.text, fontFamily: font, fontSize: 17, minHeight: 54, outlineStyle: 'none', paddingHorizontal: 16 } as any,
+  authError: { color: palette.red, fontFamily: font, fontSize: 14, fontWeight: '700', lineHeight: 21 },
   selectContainer: { position: 'relative' },
   selectTrigger: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   selectValue: { color: palette.text, flex: 1, fontFamily: font, fontSize: 17 },
@@ -646,8 +453,6 @@ export const styles = StyleSheet.create(scaleTypography({
   areaValueInput: { flex: 1 },
   areaUnitSelect: { width: 110 },
   areaConversionText: { color: palette.greenDark, fontFamily: font, fontSize: 13, fontWeight: '700' },
-  signupLink: { alignItems: 'center', paddingVertical: 4 },
-  signupText: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '600' },
   setupPage: { alignItems: 'center', flexGrow: 1, paddingBottom: 48, paddingHorizontal: 32 },
   setupTopbar: { alignItems: 'center', flexDirection: 'row', maxWidth: 1080, paddingVertical: 24, width: '100%' },
   setupBrand: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 9 },
@@ -696,50 +501,4 @@ export const styles = StyleSheet.create(scaleTypography({
   connectionDotReady: { backgroundColor: palette.green },
   connectionTitle: { color: palette.text, fontFamily: font, fontSize: 16, fontWeight: '900' },
   connectionDescription: { color: palette.secondary, fontFamily: font, fontSize: 14, marginTop: 4 },
-  appShell: { flexDirection: 'row' },
-  appShellCompact: { flexDirection: 'column' },
-  workspace: { flex: 1, minWidth: 0, zIndex: 1 },
-  workspaceScroll: { alignItems: 'center', paddingBottom: 88, paddingHorizontal: 48 },
-  workspaceScrollCompact: { paddingBottom: 56, paddingHorizontal: 20 },
-  scoreHeroSummary: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 14, borderWidth: 1, gap: 14, maxWidth: 430, padding: 26, width: '100%' },
-  scoreHeroSummaryTitle: { color: palette.text, fontFamily: font, fontSize: 21, fontWeight: '900' },
-  scoreHeroSummaryBody: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 25 },
-  summaryPanel: { flexBasis: 260, flexGrow: 0, gap: 18, padding: 23 },
-  summaryEyebrow: { color: palette.green, fontFamily: font, fontSize: 14, fontWeight: '900', letterSpacing: 1.2 },
-  summaryCrop: { color: palette.text, fontFamily: font, fontSize: 22, fontWeight: '900' },
-  summaryDescription: { color: palette.secondary, fontFamily: font, fontSize: 16, lineHeight: 25 },
-  scoreRow: { alignItems: 'center', flexDirection: 'row', gap: 13, marginTop: 4 },
-  scoreRing: { alignItems: 'center', borderColor: palette.amber, borderRadius: 999, borderWidth: 5, height: 58, justifyContent: 'center', width: 58 },
-  scoreNumber: { color: palette.text, fontFamily: font, fontSize: 19, fontWeight: '900' },
-  scoreLabel: { color: palette.muted, fontFamily: font, fontSize: 14 },
-  scoreGrade: { color: palette.text, fontFamily: font, fontSize: 15, fontWeight: '800', marginTop: 3 },
-  summaryDivider: { backgroundColor: palette.line, height: 1 },
-  summaryNotice: { color: palette.secondary, fontFamily: font, fontSize: 16, lineHeight: 25 },
-  analysisGrid: { alignItems: 'stretch', flexDirection: 'column', gap: 24 },
-  analysisScorePanel: { gap: 22, padding: 36 },
-  analysisCrop: { color: palette.text, fontFamily: font, fontSize: 19, fontWeight: '900' },
-  analysisDescription: { color: palette.secondary, fontFamily: font, fontSize: 16, lineHeight: 25 },
-  factorPanel: { flex: 1, gap: 30, padding: 36 },
-  factorList: { gap: 25 },
-  factorRow: { alignItems: 'center', flexDirection: 'row', gap: 14 },
-  factorCopy: { width: 104 },
-  factorName: { color: palette.text, fontFamily: font, fontSize: 16, fontWeight: '800' },
-  factorValue: { color: palette.muted, fontFamily: font, fontSize: 14, marginTop: 4 },
-  factorState: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800', textAlign: 'right', width: 78 },
-  factorStateWarn: { color: palette.amber },
-  recommendationPanel: { gap: 28, padding: 36 },
-  cropRecommendationGrid: { flexDirection: 'column', gap: 18 },
-  cropRecommendation: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 12, borderWidth: 1, gap: 12, padding: 28, width: '100%' },
-  cropRecommendationSelected: { backgroundColor: palette.greenSoft, borderColor: '#b8d7c3' },
-  cropRecommendationName: { color: palette.text, fontFamily: font, fontSize: 19, fontWeight: '900' },
-  cropRecommendationDescription: { color: palette.secondary, fontFamily: font, fontSize: 16, lineHeight: 25 },
-  cropRecommendationScore: { color: palette.greenDark, fontFamily: font, fontSize: 16, fontWeight: '800', marginTop: 6 },
-  actionGrid: { alignItems: 'stretch', flexDirection: 'column', gap: 24 },
-  actionPanel: { gap: 18, padding: 36, width: '100%' },
-  actionPanelTitle: { color: palette.text, fontFamily: font, fontSize: 21, fontWeight: '900' },
-  actionPanelBody: { color: palette.secondary, fontFamily: font, fontSize: 16, lineHeight: 26 },
-  actionImpact: { color: palette.greenDark, fontFamily: font, fontSize: 17, fontWeight: '800' },
-  actionMeta: { color: palette.muted, fontFamily: font, fontSize: 15, fontWeight: '700' },
-  reportSummaryBody: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 25 },
-  shopRecommendationReason: { color: palette.secondary, fontFamily: font, fontSize: 13, fontWeight: '800' },
 }));
