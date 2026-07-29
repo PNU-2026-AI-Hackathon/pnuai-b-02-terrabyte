@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -15,7 +14,6 @@ import {
 import {
   clearAccessToken,
   getMe,
-  loadAccessToken,
   login,
   saveAccessToken,
   signup,
@@ -43,7 +41,7 @@ import {
   type ShopProduct,
 } from '../data';
 import { registerDevice } from '../device/deviceApi';
-import { DeviceEnvironmentProvider, useDeviceEnvironment } from '../shared/device-environment/DeviceEnvironmentProvider';
+import { useDeviceEnvironment } from '../shared/device-environment/DeviceEnvironmentProvider';
 import { useDisclosure } from '../shared/hooks/useDisclosure';
 import {
   getFactorRecommendation,
@@ -54,8 +52,8 @@ import {
 
 ensureBrandFontLoaded();
 
-type Page = 'dashboard' | 'analysis' | 'live' | 'history' | 'guide' | 'shop';
-type FlowStage = 'auth' | 'device' | 'crop' | 'setup' | 'app';
+export type Page = 'dashboard' | 'analysis' | 'live' | 'history' | 'guide' | 'shop';
+export type FlowStage = 'auth' | 'device' | 'crop' | 'setup' | 'app';
 
 const pageCopy: Record<Page, { title: string; description: string }> = {
   dashboard: { title: '공간 개요', description: '스마트팜 전환 적합도와 운영 중인 재배 환경을 확인하세요.' },
@@ -92,7 +90,7 @@ const areaUnitOptions: Array<{ label: string; value: AreaUnit }> = [
 ];
 
 
-function GlassBackdrop() {
+export function GlassBackdrop() {
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>
       <LinearGradient
@@ -199,7 +197,7 @@ function convertToSquareMeters(value: number, unit: AreaUnit) {
   return Math.round(squareMeters * 100) / 100;
 }
 
-function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void }) {
+export function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void }) {
   const { width } = useWindowDimensions();
   const compact = width < 760;
   const [mode, setMode] = useState<'login' | 'signup'>('login');
@@ -344,7 +342,7 @@ function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) => void 
   );
 }
 
-function SetupFlow({
+export function SetupFlow({
   deviceId,
   onBack,
   onCropSelected,
@@ -687,7 +685,7 @@ function SetupFlow({
   );
 }
 
-function Sidebar({ compact, cropName, onLogout, onNavigate, page }: {
+export function Sidebar({ compact, cropName, onLogout, onNavigate, page }: {
   compact: boolean;
   cropName: string;
   onLogout: () => void;
@@ -783,7 +781,7 @@ function Sidebar({ compact, cropName, onLogout, onNavigate, page }: {
   );
 }
 
-function Header({ compact, page }: { compact: boolean; page: Page }) {
+export function Header({ compact, page }: { compact: boolean; page: Page }) {
   const copy = pageCopy[page];
   const [alertsOpen, setAlertsOpen] = useState(false);
   return (
@@ -861,7 +859,7 @@ const extendedMetricSensors: Array<[label: string, model: string]> = [
   ['소음', 'SEN0232'],
 ];
 
-function Dashboard({
+export function Dashboard({
   compact,
   onNavigate,
   selectedCrop,
@@ -1038,7 +1036,7 @@ function Dashboard({
   );
 }
 
-function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
+export function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
   compact: boolean;
   onNavigate: (page: Page) => void;
   onSelectCrop: (cropCode: string) => Promise<void>;
@@ -1297,7 +1295,7 @@ function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
   );
 }
 
-function Live({ compact }: { compact: boolean }) {
+export function Live({ compact }: { compact: boolean }) {
   const [deviceOpen, setDeviceOpen] = useState(false);
   const { measurements: measurement } = useDeviceEnvironment();
 
@@ -1364,7 +1362,7 @@ function Live({ compact }: { compact: boolean }) {
   );
 }
 
-function History({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
+export function History({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
   const records = [
     { date: '2026. 07. 22', type: '정기 진단', score: 82, change: '+7', summary: '조도 보완 후 전환 적합도 상승', issues: '습도 관리 필요' },
     { date: '2026. 07. 15', type: '설치 후 점검', score: 75, change: '+7', summary: '토양분석 세트 연결 및 관수 기준 설정', issues: '조도·습도 보완 필요' },
@@ -1404,7 +1402,7 @@ function History({ compact, onNavigate }: { compact: boolean; onNavigate: (page:
   );
 }
 
-function Guide({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
+export function Guide({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
   const { score } = useDeviceEnvironment();
   const recommendedProducts = getRecommendedProductIds(score?.factors ?? [])
     .map((id) => shopProducts.find((product) => product.id === id))
@@ -1460,7 +1458,7 @@ function Guide({ compact, onNavigate }: { compact: boolean; onNavigate: (page: P
   );
 }
 
-function Shop({ compact }: { compact: boolean }) {
+export function Shop({ compact }: { compact: boolean }) {
   const { score } = useDeviceEnvironment();
   const [category, setCategory] = useState<'all' | ShopCategory>('all');
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -1659,148 +1657,7 @@ function Shop({ compact }: { compact: boolean }) {
   );
 }
 
-export default function RedesignedApp() {
-  const [flow, setFlow] = useState<FlowStage>('auth');
-  const [restoringSession, setRestoringSession] = useState(true);
-  const [page, setPage] = useState<Page>('dashboard');
-  const [selectedCropCode, setSelectedCropCode] = useState(crops[0].code);
-  const [deviceId, setDeviceId] = useState<number | undefined>();
-  const { width } = useWindowDimensions();
-  const compact = width < 900;
-  const selectedCrop = Math.max(0, crops.findIndex((crop) => crop.code === selectedCropCode));
-
-  const applyAuthenticatedFlow = (me: MeResponse) => {
-    setDeviceId(me.device?.id);
-    if (me.device?.cropCode) setSelectedCropCode(me.device.cropCode);
-    if (!me.hasDevice) {
-      setFlow('device');
-    } else if (!me.hasCrop) {
-      setFlow('crop');
-    } else {
-      setFlow('app');
-    }
-  };
-
-  const changeSelectedCrop = async (cropCode: string) => {
-    if (!deviceId) throw new Error('작물을 선택할 기기 정보를 찾을 수 없습니다.');
-    const selection = await selectDeviceCrop(deviceId, cropCode);
-    setSelectedCropCode(selection.crop.code);
-  };
-
-  useEffect(() => {
-    let active = true;
-    const restoreSession = async () => {
-      try {
-        const accessToken = await loadAccessToken();
-        if (!accessToken) return;
-        const me = await getMe(accessToken);
-        if (active) applyAuthenticatedFlow(me);
-      } catch {
-        await clearAccessToken();
-      } finally {
-        if (active) setRestoringSession(false);
-      }
-    };
-    void restoreSession();
-    return () => { active = false; };
-  }, []);
-
-  if (restoringSession) {
-    return (
-      <View style={[styles.root, styles.sessionLoading]}>
-        <GlassBackdrop />
-        <BrandMark />
-        <Text style={styles.sessionLoadingText}>로그인 상태를 확인하고 있어요…</Text>
-        <StatusBar style="dark" />
-      </View>
-    );
-  }
-
-  if (flow === 'auth') {
-    return (
-      <View style={styles.root}>
-        <GlassBackdrop />
-        <Login onAuthenticated={applyAuthenticatedFlow} />
-        <StatusBar style="dark" />
-      </View>
-    );
-  }
-
-  if (flow !== 'app') {
-    const previousStage: Record<Exclude<FlowStage, 'auth' | 'app'>, FlowStage> = {
-      device: 'auth',
-      crop: 'device',
-      setup: 'crop',
-    };
-    const nextStage: Record<Exclude<FlowStage, 'auth' | 'app'>, FlowStage> = {
-      device: 'crop',
-      crop: 'setup',
-      setup: 'app',
-    };
-    return (
-      <View style={styles.root}>
-        <GlassBackdrop />
-        <SetupFlow
-          deviceId={deviceId}
-          onBack={() => setFlow(previousStage[flow])}
-          onCropSelected={setSelectedCropCode}
-          onDeviceRegistered={setDeviceId}
-          onNext={() => setFlow(nextStage[flow])}
-          selectedCropCode={selectedCropCode}
-          stage={flow}
-        />
-        <StatusBar style="dark" />
-      </View>
-    );
-  }
-
-  return (
-    <DeviceEnvironmentProvider deviceId={deviceId}>
-      <View style={[styles.root, styles.appShell, compact && styles.appShellCompact]}>
-        <GlassBackdrop />
-        <Sidebar
-          compact={compact}
-          cropName={(crops[selectedCrop] ?? crops[0]).name}
-          onLogout={() => {
-            void clearAccessToken();
-            setDeviceId(undefined);
-            setSelectedCropCode(crops[0].code);
-            setFlow('auth');
-          }}
-          onNavigate={setPage}
-          page={page}
-        />
-        <View style={styles.workspace}>
-          <Header compact={compact} page={page} />
-          <ScrollView contentContainerStyle={[styles.workspaceScroll, compact && styles.workspaceScrollCompact]}>
-            {page === 'dashboard' ? (
-              <Dashboard
-                compact={compact}
-                onNavigate={setPage}
-                selectedCrop={selectedCrop}
-              />
-            ) : null}
-            {page === 'analysis' ? (
-              <Analysis
-                compact={compact}
-                onNavigate={setPage}
-                onSelectCrop={changeSelectedCrop}
-                selectedCrop={selectedCrop}
-              />
-            ) : null}
-            {page === 'live' ? <Live compact={compact} /> : null}
-            {page === 'history' ? <History compact={compact} onNavigate={setPage} /> : null}
-            {page === 'guide' ? <Guide compact={compact} onNavigate={setPage} /> : null}
-            {page === 'shop' ? <Shop compact={compact} /> : null}
-          </ScrollView>
-        </View>
-        <StatusBar style="dark" />
-      </View>
-    </DeviceEnvironmentProvider>
-  );
-}
-
-const styles = StyleSheet.create(scaleTypography({
+export const styles = StyleSheet.create(scaleTypography({
   root: { backgroundColor: palette.background, flex: 1, minHeight: '100vh', overflow: 'hidden', position: 'relative' } as any,
   backdropOrb: { borderRadius: 9999, filter: 'blur(70px)', position: 'absolute' } as any,
   backdropOrbOne: { backgroundColor: 'rgba(88,186,127,0.34)', height: 500, left: -150, top: -170, width: 500 },

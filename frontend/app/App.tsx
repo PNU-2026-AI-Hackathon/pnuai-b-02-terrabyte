@@ -1,1 +1,1 @@
-export { default } from './src/redesign/RedesignedApp';
+export { default } from './src/navigation/RootShell';
