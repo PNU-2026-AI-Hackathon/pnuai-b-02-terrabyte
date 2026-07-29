@@ -1,5 +1,6 @@
 package com.terrabyte.backend.device;
 
+import java.security.SecureRandom;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Optional;
@@ -59,6 +60,27 @@ public class DeviceRepository {
                         hardwareId)
                 .stream()
                 .findFirst();
+    }
+
+    // 개발 테스트 코드(123456)로 등록하는 계정마다, 실제 하드웨어와 연결되지 않은
+    // 전용 device row를 새로 만들어 준다 — 미리 심어둔 단일 row를 여럿이 나눠 쓰지 않는다.
+    public Device createTestDevice(long userId) {
+        String serialCode = generateUnusedSerialCode();
+        jdbcTemplate.update(
+                "INSERT INTO device (serial_code, user_id, status) VALUES (?, ?, 'OFFLINE')",
+                serialCode,
+                userId);
+        return findByUserId(userId)
+                .orElseThrow(() -> new IllegalStateException("Test device could not be loaded"));
+    }
+
+    private String generateUnusedSerialCode() {
+        SecureRandom random = new SecureRandom();
+        String candidate;
+        do {
+            candidate = String.format("%06d", random.nextInt(1_000_000));
+        } while (findBySerialCode(candidate).isPresent());
+        return candidate;
     }
 
     public int claim(long deviceId, long userId) {

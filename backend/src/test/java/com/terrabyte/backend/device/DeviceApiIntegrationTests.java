@@ -2,6 +2,7 @@ package com.terrabyte.backend.device;
 
 import java.math.BigDecimal;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -27,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class DeviceApiIntegrationTests {
 
     private static final String DEMO_SERIAL_CODE = "483920";
+    private static final String DEV_TEST_SERIAL_CODE = "123456";
 
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;
@@ -122,6 +124,55 @@ class DeviceApiIntegrationTests {
                         .header("Authorization", bearer(token))
                         .contentType(APPLICATION_JSON)
                         .content(deviceBody("111111")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("USER_ALREADY_HAS_DEVICE"));
+    }
+
+    @Test
+    void allowsMultipleAccountsToRegisterWithTheDevTestCode() throws Exception {
+        String firstToken = signupAndGetToken("dev-tester-1@example.com", "테스터1");
+        String secondToken = signupAndGetToken("dev-tester-2@example.com", "테스터2");
+
+        String firstResponse = mockMvc.perform(post("/api/devices")
+                        .header("Authorization", bearer(firstToken))
+                        .contentType(APPLICATION_JSON)
+                        .content(deviceBody(DEV_TEST_SERIAL_CODE)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("OFFLINE"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String secondResponse = mockMvc.perform(post("/api/devices")
+                        .header("Authorization", bearer(secondToken))
+                        .contentType(APPLICATION_JSON)
+                        .content(deviceBody(DEV_TEST_SERIAL_CODE)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("OFFLINE"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long firstDeviceId = objectMapper.readTree(firstResponse).get("id").asLong();
+        long secondDeviceId = objectMapper.readTree(secondResponse).get("id").asLong();
+        assertThat(firstDeviceId).isNotEqualTo(secondDeviceId);
+
+        Integer deviceCountWithDevTestSerialCode = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM device WHERE serial_code = ?",
+                Integer.class,
+                DEV_TEST_SERIAL_CODE);
+        assertThat(deviceCountWithDevTestSerialCode).isZero();
+    }
+
+    @Test
+    void stillRejectsASecondDevTestDeviceForTheSameUser() throws Exception {
+        String token = signupAndGetToken("dev-tester@example.com", "테스터");
+        register(token, DEV_TEST_SERIAL_CODE);
+
+        mockMvc.perform(post("/api/devices")
+                        .header("Authorization", bearer(token))
+                        .contentType(APPLICATION_JSON)
+                        .content(deviceBody(DEV_TEST_SERIAL_CODE)))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("USER_ALREADY_HAS_DEVICE"));
     }
