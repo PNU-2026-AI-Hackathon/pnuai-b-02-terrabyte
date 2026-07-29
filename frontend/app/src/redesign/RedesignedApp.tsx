@@ -1257,73 +1257,6 @@ export function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
   );
 }
 
-export function Live({ compact }: { compact: boolean }) {
-  const [deviceOpen, setDeviceOpen] = useState(false);
-  const { measurements: measurement } = useDeviceEnvironment();
-
-  const values = measurement?.measurements;
-  const liveMetrics = latest.slice(0, 4).map((metric) => {
-    const current = metric.label === '온도' ? values?.airTemperatureC
-      : metric.label === '습도' ? values?.airHumidityPct
-      : metric.label === '조도' ? values?.plantLightPpfdUmolM2S
-      : values?.soilMoisturePct;
-    const unit = metric.label === '조도' ? ' PPFD' : metric.unit;
-    return {
-      ...metric,
-      sub: metric.label === '조도' ? 'PPFD · μmol/m²/s' : metric.sub,
-      value: current == null ? '--' : `${current.toLocaleString('ko-KR')}${unit}`,
-    };
-  });
-
-  return (
-    <View style={styles.pageBody}>
-      <Pressable accessibilityRole="button" onPress={() => setDeviceOpen(true)} style={({ pressed }) => [styles.liveToolbar, pressed && styles.pressed]}>
-        <View style={styles.deviceStatusRow}>
-          <View style={styles.onlineDot} />
-          <Text style={styles.liveStatus}>센서 정상 연결</Text>
-        </View>
-        <View style={styles.liveToolbarRight}>
-          <Text style={styles.liveRefresh}>3초마다 자동 갱신{measurement ? ` · 업데이트 #${measurement.sequence}` : ''}</Text>
-          <Text style={styles.liveDeviceAction}>디바이스 상태 보기</Text>
-        </View>
-      </Pressable>
-      <View style={[styles.liveGrid, compact && styles.stack]}>
-        {liveMetrics.map((metric) => (
-          <Surface key={metric.label} style={styles.liveCard}>
-            <View style={styles.liveCardHeader}>
-              <Text style={styles.liveLabel}>{metric.label}</Text>
-              <Text style={styles.liveRange}>{metric.sub}</Text>
-            </View>
-            <Text style={styles.liveValue}>{metric.value}</Text>
-            <Text style={styles.liveCaption}>현재 측정값</Text>
-            <LineChart gridLines={1} height={72} series={[{ color: metric.color, values: metric.sparkline }]} showLegend={false} />
-            <View style={styles.liveFooter}>
-              <Text style={styles.liveFooterText}>최저 {Math.min(...metric.sparkline).toLocaleString('ko-KR')}</Text>
-              <Text style={styles.liveFooterText}>최고 {Math.max(...metric.sparkline).toLocaleString('ko-KR')}</Text>
-            </View>
-          </Surface>
-        ))}
-      </View>
-      <Modal animationType="fade" onRequestClose={() => setDeviceOpen(false)} transparent visible={deviceOpen}>
-        <View style={styles.modalBackdrop}>
-          <Surface style={styles.infoModal}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderCopy}>
-                <Text style={styles.modalEyebrow}>DEVICE STATUS</Text>
-                <Text style={styles.modalTitle}>디바이스 상태</Text>
-              </View>
-              <Pressable onPress={() => setDeviceOpen(false)} style={styles.modalClose}>
-                <Text style={styles.modalCloseText}>닫기</Text>
-              </Pressable>
-            </View>
-            <SensorSummary sensors={sensors} statusLabel="정상 연결" />
-          </Surface>
-        </View>
-      </Modal>
-    </View>
-  );
-}
-
 export function History({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
   const records = [
     { date: '2026. 07. 22', type: '정기 진단', score: 82, change: '+7', summary: '조도 보완 후 전환 적합도 상승', issues: '습도 관리 필요' },
@@ -2019,20 +1952,6 @@ export const styles = StyleSheet.create(scaleTypography({
   guideProductName: { color: palette.text, fontFamily: font, fontSize: 21, fontWeight: '900', lineHeight: 28 },
   guideProductEffect: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 23 },
   guideProductPrice: { color: palette.greenDark, fontFamily: font, fontSize: 20, fontWeight: '900', marginTop: 'auto' },
-  liveToolbar: { alignItems: 'center', backgroundColor: palette.panel, borderColor: palette.line, borderRadius: 12, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
-  liveStatus: { color: palette.text, fontFamily: font, fontSize: 19, fontWeight: '900' },
-  liveRefresh: { color: palette.muted, fontFamily: font, fontSize: 15 },
-  liveToolbarRight: { alignItems: 'flex-end', gap: 3 },
-  liveDeviceAction: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800' },
-  liveGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 24 },
-  liveCard: { flexBasis: '47%', flexGrow: 1, gap: 14, minWidth: 280, padding: 34 },
-  liveCardHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
-  liveLabel: { color: palette.text, fontFamily: font, fontSize: 23, fontWeight: '900' },
-  liveRange: { color: palette.muted, fontFamily: font, fontSize: 15, textAlign: 'right' },
-  liveValue: { color: palette.text, fontFamily: font, fontSize: 38, fontWeight: '900', letterSpacing: -0.8 },
-  liveCaption: { color: palette.muted, fontFamily: font, fontSize: 16 },
-  liveFooter: { borderTopColor: palette.line, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 },
-  liveFooterText: { color: palette.muted, fontFamily: font, fontSize: 14 },
   shopToolbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
   shopToolbarCompact: { alignItems: 'flex-start', flexDirection: 'column', gap: 12 },
   shopTabs: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 11, borderWidth: 1, flexDirection: 'row', gap: 3, padding: 5 },

@@ -9,12 +9,12 @@ import {
   Guide,
   Header,
   History,
-  Live,
   Shop,
   Sidebar,
   styles,
   type Page,
 } from '../redesign/RedesignedApp';
+import { LiveScreen } from '../screens/live/LiveScreen';
 import { DeviceEnvironmentProvider } from '../shared/device-environment/DeviceEnvironmentProvider';
 import type { AppTabParamList } from './types';
 
@@ -94,7 +94,7 @@ export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelec
             <Tab.Screen name="Live">
               {() => (
                 <ScreenLayout compact={compact} page="live">
-                  <Live compact={compact} />
+                  <LiveScreen compact={compact} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
