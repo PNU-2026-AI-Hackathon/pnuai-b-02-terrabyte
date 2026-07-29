@@ -8,12 +8,12 @@ import {
   Dashboard,
   Guide,
   Header,
-  History,
   Shop,
   Sidebar,
   styles,
   type Page,
 } from '../redesign/RedesignedApp';
+import { HistoryScreen } from '../screens/history/HistoryScreen';
 import { LiveScreen } from '../screens/live/LiveScreen';
 import { DeviceEnvironmentProvider } from '../shared/device-environment/DeviceEnvironmentProvider';
 import type { AppTabParamList } from './types';
@@ -101,7 +101,7 @@ export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelec
             <Tab.Screen name="History">
               {() => (
                 <ScreenLayout compact={compact} page="history">
-                  <History compact={compact} onNavigate={goToPage} />
+                  <HistoryScreen compact={compact} onNavigate={goToPage} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
