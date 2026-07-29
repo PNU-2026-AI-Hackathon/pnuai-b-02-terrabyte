@@ -1,0 +1,16 @@
+export const palette = {
+  background: '#dcebe1',
+  panel: 'rgba(255,255,255,0.72)',
+  panelMuted: 'rgba(255,255,255,0.48)',
+  line: 'rgba(255,255,255,0.76)',
+  lineStrong: 'rgba(255,255,255,0.92)',
+  text: '#18241d',
+  secondary: '#465a4e',
+  muted: '#687a6f',
+  green: '#2b8058',
+  greenDark: '#1f6646',
+  greenSoft: '#e4f1e9',
+  amber: '#c98b2f',
+  amberSoft: '#fbf1df',
+  red: '#c45e55',
+};

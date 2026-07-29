@@ -2,7 +2,6 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Platform,
   Pressable,
   Modal,
   ScrollView,
@@ -23,6 +22,10 @@ import {
   signup,
   type MeResponse,
 } from '../auth/authApi';
+import { palette } from '../appTheme/palette';
+import { glassWebStyle, font } from '../appTheme/glass';
+import { scaleTypography } from '../appTheme/scaleTypography';
+import { ensureBrandFontLoaded } from '../appTheme/webFont';
 import { BrandMark } from '../components/BrandMark';
 import { getCrops, selectDeviceCrop, type CropResponse } from '../crop/cropApi';
 import { crops, factors, latest, score, shopProducts, type ShopCategory, type ShopProduct } from '../data';
@@ -34,39 +37,7 @@ import {
   type LatestMeasurements,
 } from '../measurement/measurementApi';
 
-const FONT_URL =
-  'https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-Variable.css';
-
-if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.querySelector(`link[href="${FONT_URL}"]`)) {
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = FONT_URL;
-  document.head.appendChild(link);
-}
-
-const palette = {
-  background: '#dcebe1',
-  panel: 'rgba(255,255,255,0.72)',
-  panelMuted: 'rgba(255,255,255,0.48)',
-  line: 'rgba(255,255,255,0.76)',
-  lineStrong: 'rgba(255,255,255,0.92)',
-  text: '#18241d',
-  secondary: '#465a4e',
-  muted: '#687a6f',
-  green: '#2b8058',
-  greenDark: '#1f6646',
-  greenSoft: '#e4f1e9',
-  amber: '#c98b2f',
-  amberSoft: '#fbf1df',
-  red: '#c45e55',
-};
-
-const glassWebStyle = {
-  backdropFilter: 'blur(24px)',
-  WebkitBackdropFilter: 'blur(24px)',
-} as any;
-
-const font = '"SUIT Variable", SUIT, "Noto Sans KR", sans-serif';
+ensureBrandFontLoaded();
 
 type Page = 'dashboard' | 'analysis' | 'live' | 'history' | 'guide' | 'shop';
 type FlowStage = 'auth' | 'device' | 'crop' | 'setup' | 'app';
@@ -2058,22 +2029,6 @@ export default function RedesignedApp() {
       <StatusBar style="dark" />
     </View>
   );
-}
-
-function scaleTypography<T extends Record<string, any>>(definitions: T): T {
-  const scaled: Record<string, any> = {};
-  Object.entries(definitions).forEach(([key, style]) => {
-    if (!style || typeof style !== 'object' || Array.isArray(style)) {
-      scaled[key] = style;
-      return;
-    }
-    scaled[key] = {
-      ...style,
-      ...(typeof style.fontSize === 'number' ? { fontSize: Math.round(style.fontSize * 0.84) } : {}),
-      ...(typeof style.lineHeight === 'number' ? { lineHeight: Math.round(style.lineHeight * 0.9) } : {}),
-    };
-  });
-  return scaled as T;
 }
 
 const styles = StyleSheet.create(scaleTypography({
