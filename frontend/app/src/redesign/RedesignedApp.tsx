@@ -23,8 +23,10 @@ import { palette } from '../appTheme/palette';
 import { glassWebStyle, font } from '../appTheme/glass';
 import { scaleTypography } from '../appTheme/scaleTypography';
 import { ensureBrandFontLoaded } from '../appTheme/webFont';
+import { ActionButton } from '../components/ActionButton';
 import { BrandMark } from '../components/BrandMark';
 import { LineChart } from '../components/LineChart';
+import { SectionHeader } from '../components/SectionHeader';
 import { SensorSummary } from '../components/SensorSummary';
 import { Surface } from '../components/Surface';
 import { SuitabilityFormulaModal } from '../components/SuitabilityFormulaModal';
@@ -104,34 +106,6 @@ export function GlassBackdrop() {
       <View style={[styles.backdropOrb, styles.backdropOrbThree]} />
       <View style={styles.backdropWash} />
     </View>
-  );
-}
-
-function ActionButton({
-  disabled = false,
-  label,
-  onPress,
-  quiet = false,
-}: {
-  disabled?: boolean;
-  label: string;
-  onPress: () => void;
-  quiet?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionButton,
-        quiet && styles.quietButton,
-        disabled && styles.disabledButton,
-        pressed && styles.pressed,
-      ]}
-    >
-      <Text style={[styles.actionButtonText, quiet && styles.quietButtonText]}>{label}</Text>
-    </Pressable>
   );
 }
 
@@ -837,18 +811,6 @@ function makeWavePoints(seed: number, amplitude: number, center: number): number
   return Array.from(
     { length: 36 },
     (_, index) => center + Math.sin(index * 0.42 + seed) * amplitude + Math.sin(index * 0.13) * 6,
-  );
-}
-
-function SectionHeader({ action, description, title }: { action?: React.ReactNode; description?: string; title: string }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <View style={styles.sectionHeaderCopy}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {description ? <Text style={styles.sectionDescription}>{description}</Text> : null}
-      </View>
-      {action}
-    </View>
   );
 }
 
@@ -1710,10 +1672,6 @@ export const styles = StyleSheet.create(scaleTypography({
   areaValueInput: { flex: 1 },
   areaUnitSelect: { width: 110 },
   areaConversionText: { color: palette.greenDark, fontFamily: font, fontSize: 13, fontWeight: '700' },
-  actionButton: { alignItems: 'center', alignSelf: 'flex-end', backgroundColor: palette.green, borderRadius: 9, justifyContent: 'center', minHeight: 48, minWidth: 154, paddingHorizontal: 24 },
-  quietButton: { backgroundColor: palette.greenSoft, borderColor: '#c9dfd1', borderWidth: 1 },
-  actionButtonText: { color: '#ffffff', fontFamily: font, fontSize: 16, fontWeight: '800' },
-  quietButtonText: { color: palette.greenDark },
   signupLink: { alignItems: 'center', paddingVertical: 4 },
   signupText: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '600' },
   setupPage: { alignItems: 'center', flexGrow: 1, paddingBottom: 48, paddingHorizontal: 32 },
@@ -1864,10 +1822,6 @@ export const styles = StyleSheet.create(scaleTypography({
   extendedMetricLabel: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '800' },
   extendedMetricValue: { color: palette.text, fontFamily: font, fontSize: 31, fontWeight: '900' },
   extendedMetricDetail: { color: palette.muted, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 24 },
-  sectionHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 16, justifyContent: 'space-between' },
-  sectionHeaderCopy: { flex: 1, gap: 8, maxWidth: 900 },
-  sectionTitle: { color: palette.text, fontFamily: font, fontSize: 26, fontWeight: '900', letterSpacing: -0.6, lineHeight: 34 },
-  sectionDescription: { color: palette.muted, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 24, maxWidth: 780 },
   rangeControl: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 7, borderWidth: 1, flexDirection: 'row', padding: 3 },
   rangeButton: { borderRadius: 5, paddingHorizontal: 9, paddingVertical: 6 },
   rangeButtonActive: { backgroundColor: palette.panel },
