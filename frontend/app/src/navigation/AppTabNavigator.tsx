@@ -7,7 +7,6 @@ import {
   Analysis,
   Dashboard,
   Header,
-  Shop,
   Sidebar,
   styles,
   type Page,
@@ -15,6 +14,7 @@ import {
 import { HistoryScreen } from '../screens/history/HistoryScreen';
 import { GuideScreen } from '../screens/guide/GuideScreen';
 import { LiveScreen } from '../screens/live/LiveScreen';
+import { ShopScreen } from '../screens/shop/ShopScreen';
 import { DeviceEnvironmentProvider } from '../shared/device-environment/DeviceEnvironmentProvider';
 import type { AppTabParamList } from './types';
 
@@ -115,7 +115,7 @@ export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelec
             <Tab.Screen name="Shop">
               {() => (
                 <ScreenLayout compact={compact} page="shop">
-                  <Shop compact={compact} />
+                  <ShopScreen compact={compact} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
