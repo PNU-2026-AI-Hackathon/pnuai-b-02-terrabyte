@@ -30,7 +30,6 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
           {[
             ['높음', '생장등 작동 상태 확인', '현재 조도가 8,000lux까지 낮아졌습니다. 조명 전원과 잎 사이 30cm 거리를 확인하세요.', '예상 5분'],
             ['보통', '오후 습도 유지', '관수 직후 환기를 10분 늦추고 습도가 50% 이상 회복되는지 확인하세요.', '예상 10분'],
-            ['정기', '토양수분 기록', '토양수분이 31% 아래로 내려가기 전까지 추가 관수 없이 현재 상태를 기록하세요.', '예상 2분'],
           ].map(([priority, title, body, time], index) => (
             <View key={title} style={[styles.guideTaskRow, compact && styles.stack]}>
               <View style={styles.guideTaskNumber}><Text style={styles.guideTaskNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
@@ -45,7 +44,7 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
         <SectionHeader title="재배 단계별 기준" description="현재는 정식 후 활착 단계로, 급격한 환경 변화를 피해야 합니다." />
         <View style={[styles.guideStageGrid, compact && styles.stack]}>
           <View style={styles.guideStageItem}><Text style={styles.guideStageLabel}>현재 단계</Text><Text style={styles.guideStageTitle}>활착기 · 4일차</Text><Text style={styles.guideStageBody}>뿌리가 새 배지에 자리 잡는 기간입니다. 과습과 강한 광량 변화를 피하세요.</Text></View>
-          <View style={styles.guideStageItem}><Text style={styles.guideStageLabel}>권장 환경</Text><Text style={styles.guideStageTitle}>20~26℃ · 55~70%</Text><Text style={styles.guideStageBody}>토양수분 32~40%, 보조 조명 4시간을 기준으로 관리합니다.</Text></View>
+          <View style={styles.guideStageItem}><Text style={styles.guideStageLabel}>권장 환경</Text><Text style={styles.guideStageTitle}>20~26℃ · 55~70%</Text><Text style={styles.guideStageBody}>보조 조명 4시간을 기준으로 관리합니다.</Text></View>
           <View style={styles.guideStageItem}><Text style={styles.guideStageLabel}>다음 점검</Text><Text style={styles.guideStageTitle}>3일 후</Text><Text style={styles.guideStageBody}>새잎, 잎 말림, 줄기 웃자람 여부를 확인하고 환경을 다시 분석합니다.</Text></View>
         </View>
       </Surface>

@@ -26,10 +26,6 @@ export function getFactorRecommendation(key: ScoreFactor['key']): string {
   return factorRecommendations[key];
 }
 
-// perlite는 특정 축 점수가 아니라 토양 배수 상태에 대한 상시 추천이라 factorProductMap 밖에서 항상 포함한다.
-const ALWAYS_RECOMMENDED_PRODUCT_IDS = ['perlite'];
-
 export function getRecommendedProductIds(factors: ScoreFactor[]): string[] {
-  const fromIssues = getIssueFactors(factors).flatMap((factor) => factorProductMap[factor.key] ?? []);
-  return Array.from(new Set([...fromIssues, ...ALWAYS_RECOMMENDED_PRODUCT_IDS]));
+  return Array.from(new Set(getIssueFactors(factors).flatMap((factor) => factorProductMap[factor.key] ?? [])));
 }
