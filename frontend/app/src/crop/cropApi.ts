@@ -1,4 +1,4 @@
-import { ApiRequestError, apiRequest, loadAccessToken } from '../auth/authApi';
+import { authenticatedRequest } from '../auth/authApi';
 
 export type CropResponse = {
   code: string;
@@ -12,21 +12,6 @@ export type CropSelectionResponse = {
   crop: CropResponse;
   selectedAt: string;
 };
-
-async function authenticatedRequest<T>(path: string, init?: RequestInit) {
-  const accessToken = await loadAccessToken();
-  if (!accessToken) {
-    throw new ApiRequestError('로그인이 필요합니다.', 401);
-  }
-
-  return apiRequest<T>(path, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...init?.headers,
-    },
-  });
-}
 
 export function getCrops(query = '') {
   const normalizedQuery = query.trim();

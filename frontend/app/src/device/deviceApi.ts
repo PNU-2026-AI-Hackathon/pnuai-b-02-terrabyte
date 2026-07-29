@@ -1,8 +1,4 @@
-import {
-  ApiRequestError,
-  apiRequest,
-  loadAccessToken,
-} from '../auth/authApi';
+import { authenticatedRequest } from '../auth/authApi';
 
 export type DeviceResponse = {
   id: number;
@@ -26,14 +22,8 @@ export type RegisterDeviceInput = {
 };
 
 export async function registerDevice(input: RegisterDeviceInput) {
-  const accessToken = await loadAccessToken();
-  if (!accessToken) {
-    throw new ApiRequestError('로그인이 필요합니다.', 401);
-  }
-
-  return apiRequest<DeviceResponse>('/api/devices', {
+  return authenticatedRequest<DeviceResponse>('/api/devices', {
     method: 'POST',
-    headers: { Authorization: `Bearer ${accessToken}` },
     body: JSON.stringify(input),
   });
 }

@@ -83,6 +83,24 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   return body as T;
 }
 
+export async function authenticatedRequest<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  const accessToken = await loadAccessToken();
+  if (!accessToken) {
+    throw new ApiRequestError('로그인이 필요합니다.', 401);
+  }
+
+  return apiRequest<T>(path, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...init?.headers,
+    },
+  });
+}
+
 export function login(email: string, password: string) {
   return apiRequest<AuthResponse>('/api/auth/login', {
     method: 'POST',

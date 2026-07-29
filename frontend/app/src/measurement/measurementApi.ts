@@ -1,4 +1,4 @@
-import { ApiRequestError, apiRequest, loadAccessToken } from '../auth/authApi';
+import { authenticatedRequest } from '../auth/authApi';
 
 export type LatestMeasurements = {
   deviceId: number;
@@ -41,14 +41,6 @@ export type EnvironmentScore = {
   formula: string;
   factors: ScoreFactor[];
 };
-
-async function authenticatedRequest<T>(path: string) {
-  const token = await loadAccessToken();
-  if (!token) throw new ApiRequestError('로그인이 필요합니다.', 401);
-  return apiRequest<T>(path, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
 
 export function getLatestMeasurements(deviceId: number) {
   return authenticatedRequest<LatestMeasurements>(`/api/devices/${deviceId}/measurements/latest`);
