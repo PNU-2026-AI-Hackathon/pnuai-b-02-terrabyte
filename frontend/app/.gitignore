@@ -9,6 +9,9 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Storybook
+storybook-static/
+
 # Native
 .kotlin/
 *.orig.*

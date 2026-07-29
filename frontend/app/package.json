@@ -14,14 +14,24 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "^10.5.5",
+    "@storybook/react-native-web-vite": "^10.5.5",
     "@types/react": "~19.2.2",
-    "typescript": "~6.0.3"
+    "storybook": "^10.5.5",
+    "typescript": "~6.0.3",
+    "vite": "^8.1.5"
   },
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
-  "private": true
+  "private": true,
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "fsevents@2.3.3": true
+  }
 }
