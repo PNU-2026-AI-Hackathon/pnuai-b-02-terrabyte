@@ -5,12 +5,12 @@ import { ScrollView, View } from 'react-native';
 
 import {
   Analysis,
-  Dashboard,
   Header,
   Sidebar,
   styles,
   type Page,
 } from '../redesign/RedesignedApp';
+import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { HistoryScreen } from '../screens/history/HistoryScreen';
 import { GuideScreen } from '../screens/guide/GuideScreen';
 import { LiveScreen } from '../screens/live/LiveScreen';
@@ -80,7 +80,7 @@ export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelec
             <Tab.Screen name="Dashboard">
               {() => (
                 <ScreenLayout compact={compact} page="dashboard">
-                  <Dashboard compact={compact} onNavigate={goToPage} selectedCrop={selectedCrop} />
+                  <DashboardScreen compact={compact} onNavigate={goToPage} selectedCrop={selectedCrop} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
