@@ -6,8 +6,9 @@ import { clearAccessToken, getMe, loadAccessToken, type MeResponse } from '../au
 import { BrandMark } from '../components/BrandMark';
 import { selectDeviceCrop } from '../crop/cropApi';
 import { crops } from '../data';
-import { GlassBackdrop, Login, SetupFlow, styles } from '../redesign/RedesignedApp';
+import { Login, SetupFlow, styles } from '../redesign/RedesignedApp';
 import { AppTabNavigator } from './AppTabNavigator';
+import { GlassBackdrop } from './GlassBackdrop';
 import type { FlowStage } from './types';
 
 export default function RootShell() {
