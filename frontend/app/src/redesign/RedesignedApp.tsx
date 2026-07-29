@@ -11,7 +11,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 
 import {
   clearAccessToken,
@@ -27,11 +26,25 @@ import { glassWebStyle, font } from '../appTheme/glass';
 import { scaleTypography } from '../appTheme/scaleTypography';
 import { ensureBrandFontLoaded } from '../appTheme/webFont';
 import { BrandMark } from '../components/BrandMark';
+import { LineChart } from '../components/LineChart';
+import { SensorSummary } from '../components/SensorSummary';
+import { Surface } from '../components/Surface';
+import { SuitabilityFormulaModal } from '../components/SuitabilityFormulaModal';
 import { getCrops, selectDeviceCrop, type CropResponse } from '../crop/cropApi';
-import { altCrops, crops, factors, latest, sensors, shopProducts, type ShopCategory, type ShopProduct } from '../data';
+import {
+  altCrops,
+  chartMetrics,
+  crops,
+  factors,
+  latest,
+  sensors,
+  shopProducts,
+  type ShopCategory,
+  type ShopProduct,
+} from '../data';
 import { registerDevice } from '../device/deviceApi';
-import { type EnvironmentScore } from '../measurement/measurementApi';
 import { DeviceEnvironmentProvider, useDeviceEnvironment } from '../shared/device-environment/DeviceEnvironmentProvider';
+import { useDisclosure } from '../shared/hooks/useDisclosure';
 import {
   getFactorRecommendation,
   getGradeLabel,
@@ -78,10 +91,6 @@ const areaUnitOptions: Array<{ label: string; value: AreaUnit }> = [
   { label: '평', value: 'PYEONG' },
 ];
 
-
-function Surface({ children, style }: { children: React.ReactNode; style?: any }) {
-  return <View style={[styles.surface, glassWebStyle, style]}>{children}</View>;
-}
 
 function GlassBackdrop() {
   return (
@@ -826,56 +835,10 @@ function Header({ compact, page }: { compact: boolean; page: Page }) {
   );
 }
 
-function makePoints(seed: number, amplitude: number, center: number) {
-  return Array.from({ length: 36 }, (_, index) => {
-    const x = (index / 35) * 600;
-    const y = center + Math.sin(index * 0.42 + seed) * amplitude + Math.sin(index * 0.13) * 6;
-    return `${x.toFixed(1)},${Math.max(12, Math.min(168, y)).toFixed(1)}`;
-  }).join(' ');
-}
-
-const trendSeries = [
-  { label: '온도', color: '#d27d35', points: makePoints(1, 18, 88) },
-  { label: '습도', color: '#438da5', points: makePoints(3, 25, 98) },
-  { label: '조도', color: '#c99b32', points: makePoints(5, 34, 90) },
-  { label: '토양수분', color: palette.green, points: makePoints(7, 16, 105) },
-];
-
-function TrendChart() {
-  return (
-    <View style={styles.chartWrap}>
-      <View style={styles.chartLegend}>
-        {trendSeries.map((series) => (
-          <View key={series.label} style={styles.legendItem}>
-            <View style={[styles.legendLine, { backgroundColor: series.color }]} />
-            <Text style={styles.legendText}>{series.label}</Text>
-          </View>
-        ))}
-      </View>
-      <Svg height={240} preserveAspectRatio="none" viewBox="0 0 600 180" width="100%">
-        {[30, 75, 120, 165].map((y) => (
-          <Line key={y} stroke={palette.line} strokeWidth="1" x1="0" x2="600" y1={y} y2={y} />
-        ))}
-        {trendSeries.map((series) => (
-          <Polyline
-            fill="none"
-            key={series.label}
-            points={series.points}
-            stroke={series.color}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2.2"
-          />
-        ))}
-      </Svg>
-      <View style={styles.chartAxis}>
-        <Text style={styles.axisText}>00:00</Text>
-        <Text style={styles.axisText}>06:00</Text>
-        <Text style={styles.axisText}>12:00</Text>
-        <Text style={styles.axisText}>18:00</Text>
-        <Text style={styles.axisText}>현재</Text>
-      </View>
-    </View>
+function makeWavePoints(seed: number, amplitude: number, center: number): number[] {
+  return Array.from(
+    { length: 36 },
+    (_, index) => center + Math.sin(index * 0.42 + seed) * amplitude + Math.sin(index * 0.13) * 6,
   );
 }
 
@@ -888,69 +851,6 @@ function SectionHeader({ action, description, title }: { action?: React.ReactNod
       </View>
       {action}
     </View>
-  );
-}
-
-function SuitabilityFormulaModal({
-  onClose,
-  scoreData,
-  visible,
-}: {
-  onClose: () => void;
-  scoreData: EnvironmentScore | null;
-  visible: boolean;
-}) {
-  return (
-    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
-      <View style={styles.modalBackdrop}>
-        <Surface style={styles.formulaModal}>
-          <View style={styles.modalHeader}>
-            <View style={styles.modalHeaderCopy}>
-              <Text style={styles.modalEyebrow}>SUITABILITY FORMULA</Text>
-              <Text style={styles.modalTitle}>적합도 계산식</Text>
-              <Text style={styles.modalDescription}>온도·습도·PPFD 세 가지 환경값만 사용합니다.</Text>
-            </View>
-            <Pressable onPress={onClose} style={styles.modalClose}>
-              <Text style={styles.modalCloseText}>닫기</Text>
-            </Pressable>
-          </View>
-
-          <ScrollView contentContainerStyle={styles.formulaContent}>
-            <View style={styles.formulaSection}>
-              <Text style={styles.formulaSectionTitle}>1. 지표별 점수 계산</Text>
-              <Text style={styles.formulaBody}>
-                작물별 0점 하한(L₀), 적정 하한(L), 적정 상한(U), 0점 상한(U₀)을 기준으로 각 지표를 0~100점으로 환산합니다. 적정 범위는 100점이며 바깥 구간은 선형으로 감소합니다.
-              </Text>
-              {scoreData?.factors.map((factor) => (
-                <View key={factor.key} style={styles.formulaFactorRow}>
-                  <View>
-                    <Text style={styles.formulaFactorName}>{factor.label}</Text>
-                    <Text style={styles.formulaFactorRange}>적정 {factor.optimalMin.toLocaleString('ko-KR')}~{factor.optimalMax.toLocaleString('ko-KR')}{factor.unit}</Text>
-                  </View>
-                  <Text style={styles.formulaFactorScore}>{factor.score}점</Text>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.formulaSection}>
-              <Text style={styles.formulaSectionTitle}>2. 종합 적합도 계산</Text>
-              <View style={styles.formulaExpressionBox}>
-                <Text style={styles.formulaExpression}>
-                  100 × (T/100)¹⁄³ × (H/100)¹⁄³ × (L/100)¹⁄³
-                </Text>
-                <Text style={styles.formulaEquivalentExpression}>= (T × H × L)¹⁄³</Text>
-              </View>
-              <Text style={styles.formulaBody}>T = 온도 점수 · H = 습도 점수 · L = PPFD 광량 점수</Text>
-            </View>
-
-            <View style={styles.formulaNotice}>
-              <Text style={styles.formulaNoticeTitle}>점수 제외 항목</Text>
-              <Text style={styles.formulaBody}>오염도, CO₂, 토양수분은 종합 적합도에 포함하지 않습니다.</Text>
-            </View>
-          </ScrollView>
-        </Surface>
-      </View>
-    </Modal>
   );
 }
 
@@ -973,7 +873,7 @@ function Dashboard({
   const currentCrop = crops[selectedCrop] ?? crops[0];
   const [chartRange, setChartRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
   const { score: scoreData, measurements: latestData } = useDeviceEnvironment();
-  const [formulaOpen, setFormulaOpen] = useState(false);
+  const formulaDisclosure = useDisclosure();
 
   const factorDetail = (key: string) => {
     const factor = scoreData?.factors.find((item) => item.key === key);
@@ -1026,7 +926,7 @@ function Dashboard({
         </View>
         <Pressable
           accessibilityRole="button"
-          onPress={() => setFormulaOpen(true)}
+          onPress={formulaDisclosure.show}
           style={({ pressed }) => [styles.formulaLink, styles.formulaLinkTop, pressed && styles.pressed]}
         >
           <Text style={styles.formulaLinkText}>적합도 계산식</Text>
@@ -1034,7 +934,7 @@ function Dashboard({
         </Pressable>
       </Surface>
 
-      <SuitabilityFormulaModal onClose={() => setFormulaOpen(false)} scoreData={scoreData} visible={formulaOpen} />
+      <SuitabilityFormulaModal onClose={formulaDisclosure.hide} scoreData={scoreData} visible={formulaDisclosure.open} />
 
       <Surface style={styles.dashboardAlertPanel}>
         <View style={[styles.dashboardAlertHeader, compact && styles.stack]}>
@@ -1081,7 +981,15 @@ function Dashboard({
             title="환경 변화"
             description={`최근 ${chartRange === '1h' ? '1시간' : chartRange === '24h' ? '24시간' : chartRange === '7d' ? '7일' : '30일'} 센서 측정 추이`}
           />
-          <TrendChart />
+          <LineChart
+            axisLabels={['00:00', '06:00', '12:00', '18:00', '현재']}
+            height={180}
+            series={chartMetrics.map((metric) => ({
+              label: metric.label,
+              color: metric.color,
+              values: makeWavePoints(metric.seed, metric.amp, metric.mid),
+            }))}
+          />
         </Surface>
       </View>
 
@@ -1123,27 +1031,7 @@ function Dashboard({
 
         <Surface style={[styles.deviceStatusPanel, compact && styles.fullWidth]}>
           <SectionHeader title="하드웨어 키트" description="공간분석 세트 + 토양분석 세트" />
-          <View style={styles.deviceOverview}>
-            <View>
-              <Text style={styles.deviceOverviewValue}>7</Text>
-              <Text style={styles.deviceOverviewLabel}>연결 센서</Text>
-            </View>
-            <View>
-              <Text style={styles.deviceOverviewValue}>7</Text>
-              <Text style={styles.deviceOverviewLabel}>정상 작동</Text>
-            </View>
-          </View>
-          <View style={styles.deviceSensorList}>
-            {sensors.map((sensor, index) => (
-              <View key={sensor.label} style={styles.deviceSensorItem}>
-                <View style={styles.onlineDot} />
-                <View style={styles.deviceSensorCopy}>
-                  <Text style={styles.deviceSensorName}>{sensor.label}</Text>
-                  <Text style={styles.deviceSensorMeta}>{sensor.model} · #{String(index + 1).padStart(2, '0')} · 정상 수신</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+          <SensorSummary sensors={sensors} statusLabel="정상 수신" />
         </Surface>
       </View>
     </View>
@@ -1159,7 +1047,7 @@ function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
   const currentCrop = crops[selectedCrop] ?? crops[0];
   const { score: analysisScore, measurements: analysisLatest, error: analysisLoadError, refetch } = useDeviceEnvironment();
   const analysisError = analysisLoadError?.message ?? null;
-  const [analysisFormulaOpen, setAnalysisFormulaOpen] = useState(false);
+  const formulaDisclosure = useDisclosure();
   const [cropSelectionError, setCropSelectionError] = useState<string | null>(null);
   const [selectingCropCode, setSelectingCropCode] = useState<string | null>(null);
 
@@ -1238,7 +1126,7 @@ function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
             <Text style={styles.reportSummaryTitle}>{issueFactors.length ? `${issueFactors.map((factor) => factor.label).join('·')} 환경을 확인하세요` : '온도·습도·광량이 모두 적정합니다'}</Text>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setAnalysisFormulaOpen(true)}
+              onPress={formulaDisclosure.show}
               style={({ pressed }) => [styles.formulaLink, styles.formulaLinkBottom, pressed && styles.pressed]}
             >
               <Text style={styles.formulaLinkText}>적합도 계산식</Text>
@@ -1257,9 +1145,9 @@ function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
       </Surface>
 
       <SuitabilityFormulaModal
-        onClose={() => setAnalysisFormulaOpen(false)}
+        onClose={formulaDisclosure.hide}
         scoreData={analysisScore}
-        visible={analysisFormulaOpen}
+        visible={formulaDisclosure.open}
       />
 
       <Surface style={styles.reportSection}>
@@ -1409,23 +1297,6 @@ function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
   );
 }
 
-function Sparkline({ color, values }: { color: string; values: number[] }) {
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const span = max - min || 1;
-  const points = values.map((value, index) => {
-    const x = (index / (values.length - 1)) * 280;
-    const y = 62 - ((value - min) / span) * 48;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  return (
-    <Svg height={72} preserveAspectRatio="none" viewBox="0 0 280 72" width="100%">
-      <Line stroke={palette.line} strokeWidth="1" x1="0" x2="280" y1="62" y2="62" />
-      <Polyline fill="none" points={points} stroke={color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" />
-    </Svg>
-  );
-}
-
 function Live({ compact }: { compact: boolean }) {
   const [deviceOpen, setDeviceOpen] = useState(false);
   const { measurements: measurement } = useDeviceEnvironment();
@@ -1465,7 +1336,7 @@ function Live({ compact }: { compact: boolean }) {
             </View>
             <Text style={styles.liveValue}>{metric.value}</Text>
             <Text style={styles.liveCaption}>현재 측정값</Text>
-            <Sparkline color={metric.color} values={metric.sparkline} />
+            <LineChart gridLines={1} height={72} series={[{ color: metric.color, values: metric.sparkline }]} showLegend={false} />
             <View style={styles.liveFooter}>
               <Text style={styles.liveFooterText}>최저 {Math.min(...metric.sparkline).toLocaleString('ko-KR')}</Text>
               <Text style={styles.liveFooterText}>최고 {Math.max(...metric.sparkline).toLocaleString('ko-KR')}</Text>
@@ -1485,21 +1356,7 @@ function Live({ compact }: { compact: boolean }) {
                 <Text style={styles.modalCloseText}>닫기</Text>
               </Pressable>
             </View>
-            <View style={styles.deviceOverview}>
-              <View><Text style={styles.deviceOverviewValue}>7</Text><Text style={styles.deviceOverviewLabel}>연결 센서</Text></View>
-              <View><Text style={styles.deviceOverviewValue}>7</Text><Text style={styles.deviceOverviewLabel}>정상 작동</Text></View>
-            </View>
-            <View style={styles.deviceSensorList}>
-              {sensors.map((sensor, index) => (
-                <View key={sensor.label} style={styles.deviceSensorItem}>
-                  <View style={styles.onlineDot} />
-                  <View style={styles.deviceSensorCopy}>
-                    <Text style={styles.deviceSensorName}>{sensor.label}</Text>
-                    <Text style={styles.deviceSensorMeta}>{sensor.model} · #{String(index + 1).padStart(2, '0')} · 정상 연결</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
+            <SensorSummary sensors={sensors} statusLabel="정상 연결" />
           </Surface>
         </View>
       </Modal>
@@ -1954,16 +1811,6 @@ const styles = StyleSheet.create(scaleTypography({
   disabledButton: { opacity: 0.5 },
   sessionLoading: { alignItems: 'center', gap: 18, justifyContent: 'center' },
   sessionLoadingText: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '700' },
-  surface: {
-    backgroundColor: palette.panel,
-    borderColor: palette.line,
-    borderRadius: 22,
-    borderWidth: 1,
-    shadowColor: '#203329',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.11,
-    shadowRadius: 36,
-  },
   loginPage: { alignItems: 'center', flexGrow: 1, justifyContent: 'center', padding: 32 },
   loginFrame: { alignItems: 'center', flexDirection: 'row', gap: 100, maxWidth: 980, width: '100%' },
   loginFrameCompact: { flexDirection: 'column', gap: 38 },
@@ -2169,13 +2016,6 @@ const styles = StyleSheet.create(scaleTypography({
   rangeButtonActive: { backgroundColor: palette.panel },
   rangeButtonText: { color: palette.muted, fontFamily: font, fontSize: 14, fontWeight: '700' },
   rangeButtonTextActive: { color: palette.greenDark, fontWeight: '900' },
-  chartWrap: { gap: 12 },
-  chartLegend: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  legendItem: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-  legendLine: { borderRadius: 999, height: 3, width: 17 },
-  legendText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '700' },
-  chartAxis: { flexDirection: 'row', justifyContent: 'space-between' },
-  axisText: { color: palette.muted, fontFamily: font, fontSize: 15 },
   summaryPanel: { flexBasis: 260, flexGrow: 0, gap: 18, padding: 23 },
   summaryEyebrow: { color: palette.green, fontFamily: font, fontSize: 14, fontWeight: '900', letterSpacing: 1.2 },
   summaryCrop: { color: palette.text, fontFamily: font, fontSize: 22, fontWeight: '900' },
@@ -2200,14 +2040,6 @@ const styles = StyleSheet.create(scaleTypography({
   statusBadgeText: { color: palette.greenDark, fontFamily: font, fontSize: 15, fontWeight: '800' },
   statusBadgeTextWarn: { color: palette.amber },
   deviceStatusPanel: { flexBasis: 380, flexGrow: 0, gap: 26, padding: 32 },
-  deviceOverview: { flexDirection: 'row', gap: 34 },
-  deviceOverviewValue: { color: palette.text, fontFamily: font, fontSize: 28, fontWeight: '900', lineHeight: 33 },
-  deviceOverviewLabel: { color: palette.muted, fontFamily: font, fontSize: 14, fontWeight: '700' },
-  deviceSensorList: { gap: 10 },
-  deviceSensorItem: { alignItems: 'center', backgroundColor: palette.panelMuted, borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 13, minHeight: 82, padding: 17 },
-  deviceSensorCopy: { flex: 1, gap: 4 },
-  deviceSensorName: { color: palette.text, fontFamily: font, fontSize: 17, fontWeight: '900' },
-  deviceSensorMeta: { color: palette.muted, fontFamily: font, fontSize: 14, lineHeight: 21 },
   analysisGrid: { alignItems: 'stretch', flexDirection: 'column', gap: 24 },
   analysisScorePanel: { gap: 22, padding: 36 },
   bigScoreRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 5 },
@@ -2434,20 +2266,6 @@ const styles = StyleSheet.create(scaleTypography({
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
   detailModal: { gap: 24, maxWidth: 560, padding: 28, width: '100%' },
   infoModal: { gap: 22, maxHeight: '84%', maxWidth: 580, padding: 28, width: '100%' },
-  formulaModal: { gap: 22, maxHeight: '86%', maxWidth: 680, padding: 30, width: '100%' },
-  formulaContent: { gap: 18, paddingBottom: 4 },
-  formulaSection: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 14, borderWidth: 1, gap: 14, padding: 20 },
-  formulaSectionTitle: { color: palette.text, fontFamily: font, fontSize: 18, fontWeight: '900' },
-  formulaBody: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 24 },
-  formulaFactorRow: { alignItems: 'center', borderTopColor: palette.line, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 12 },
-  formulaFactorName: { color: palette.text, fontFamily: font, fontSize: 15, fontWeight: '900' },
-  formulaFactorRange: { color: palette.muted, fontFamily: font, fontSize: 13, marginTop: 3 },
-  formulaFactorScore: { color: palette.greenDark, fontFamily: font, fontSize: 18, fontWeight: '900' },
-  formulaExpressionBox: { alignItems: 'center', backgroundColor: palette.greenSoft, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 20 },
-  formulaExpression: { color: palette.greenDark, fontFamily: font, fontSize: 18, fontWeight: '900', textAlign: 'center' },
-  formulaEquivalentExpression: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '500', marginTop: 8, textAlign: 'center' },
-  formulaNotice: { backgroundColor: palette.amberSoft, borderColor: 'rgba(201,139,47,0.24)', borderRadius: 14, borderWidth: 1, gap: 6, padding: 18 },
-  formulaNoticeTitle: { color: palette.text, fontFamily: font, fontSize: 15, fontWeight: '900' },
   alertModal: { gap: 24, maxHeight: '84%', maxWidth: 680, padding: 30, width: '100%' },
   cartModal: { gap: 20, maxHeight: '82%', maxWidth: 620, padding: 28, width: '100%' },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
