@@ -11,7 +11,7 @@ import { SensorSummary } from '../../components/SensorSummary';
 import { SuitabilityFormulaModal } from '../../components/SuitabilityFormulaModal';
 import { Surface } from '../../components/Surface';
 import { chartMetrics, crops, factors, latest, sensors } from '../../data';
-import type { Page } from '../../redesign/RedesignedApp';
+import type { Page } from '../../navigation/types';
 import { useDeviceEnvironment } from '../../shared/device-environment/DeviceEnvironmentProvider';
 import { getGradeLabel, getIssueFactors } from '../../shared/factorPresentation';
 import { useDisclosure } from '../../shared/hooks/useDisclosure';

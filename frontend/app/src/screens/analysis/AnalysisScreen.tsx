@@ -9,7 +9,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { SuitabilityFormulaModal } from '../../components/SuitabilityFormulaModal';
 import { Surface } from '../../components/Surface';
 import { altCrops, crops } from '../../data';
-import type { Page } from '../../redesign/RedesignedApp';
+import type { Page } from '../../navigation/types';
 import { useDeviceEnvironment } from '../../shared/device-environment/DeviceEnvironmentProvider';
 import { getFactorRecommendation, getGradeLabel, getIssueFactors } from '../../shared/factorPresentation';
 import { useDisclosure } from '../../shared/hooks/useDisclosure';

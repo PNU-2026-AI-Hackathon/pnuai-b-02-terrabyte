@@ -7,7 +7,7 @@ import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
 import { shopProducts, type ShopProduct } from '../../data';
-import type { Page } from '../../redesign/RedesignedApp';
+import type { Page } from '../../navigation/types';
 import { useDeviceEnvironment } from '../../shared/device-environment/DeviceEnvironmentProvider';
 import { getRecommendedProductIds } from '../../shared/factorPresentation';
 

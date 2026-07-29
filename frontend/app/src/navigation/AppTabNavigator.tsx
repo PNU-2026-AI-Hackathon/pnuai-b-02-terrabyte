@@ -3,12 +3,7 @@ import { NavigationContainer, useNavigationContainerRef } from '@react-navigatio
 import { useState, type ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import {
-  Header,
-  Sidebar,
-  styles,
-  type Page,
-} from '../redesign/RedesignedApp';
+import { Header, Sidebar, styles } from '../redesign/RedesignedApp';
 import { AnalysisScreen } from '../screens/analysis/AnalysisScreen';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { HistoryScreen } from '../screens/history/HistoryScreen';
@@ -16,7 +11,7 @@ import { GuideScreen } from '../screens/guide/GuideScreen';
 import { LiveScreen } from '../screens/live/LiveScreen';
 import { ShopScreen } from '../screens/shop/ShopScreen';
 import { DeviceEnvironmentProvider } from '../shared/device-environment/DeviceEnvironmentProvider';
-import type { AppTabParamList } from './types';
+import type { AppTabParamList, Page } from './types';
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 

@@ -6,7 +6,7 @@ import { scaleTypography } from '../../appTheme/scaleTypography';
 import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
-import type { Page } from '../../redesign/RedesignedApp';
+import type { Page } from '../../navigation/types';
 
 export function HistoryScreen({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
   const records = [

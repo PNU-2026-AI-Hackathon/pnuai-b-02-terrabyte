@@ -28,16 +28,11 @@ import { BrandMark } from '../components/BrandMark';
 import { SectionHeader } from '../components/SectionHeader';
 import { Surface } from '../components/Surface';
 import { getCrops, selectDeviceCrop, type CropResponse } from '../crop/cropApi';
-import {
-  crops,
-  factors,
-} from '../data';
+import { crops } from '../data';
 import { registerDevice } from '../device/deviceApi';
+import type { FlowStage, Page } from '../navigation/types';
 
 ensureBrandFontLoaded();
-
-export type Page = 'dashboard' | 'analysis' | 'live' | 'history' | 'guide' | 'shop';
-export type FlowStage = 'auth' | 'device' | 'crop' | 'setup' | 'app';
 
 const pageCopy: Record<Page, { title: string; description: string }> = {
   dashboard: { title: '공간 개요', description: '스마트팜 전환 적합도와 운영 중인 재배 환경을 확인하세요.' },
