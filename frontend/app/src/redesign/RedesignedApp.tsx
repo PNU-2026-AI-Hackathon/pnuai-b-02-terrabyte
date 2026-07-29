@@ -30,12 +30,8 @@ import { BrandMark } from '../components/BrandMark';
 import { getCrops, selectDeviceCrop, type CropResponse } from '../crop/cropApi';
 import { crops, factors, latest, score, shopProducts, type ShopCategory, type ShopProduct } from '../data';
 import { registerDevice } from '../device/deviceApi';
-import {
-  getEnvironmentScore,
-  getLatestMeasurements,
-  type EnvironmentScore,
-  type LatestMeasurements,
-} from '../measurement/measurementApi';
+import { type EnvironmentScore } from '../measurement/measurementApi';
+import { DeviceEnvironmentProvider, useDeviceEnvironment } from '../shared/device-environment/DeviceEnvironmentProvider';
 
 ensureBrandFontLoaded();
 
@@ -954,47 +950,17 @@ function SuitabilityFormulaModal({
 
 function Dashboard({
   compact,
-  deviceId,
   onNavigate,
   selectedCrop,
 }: {
   compact: boolean;
-  deviceId?: number;
   onNavigate: (page: Page) => void;
   selectedCrop: number;
 }) {
   const currentCrop = crops[selectedCrop] ?? crops[0];
   const [chartRange, setChartRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
-  const [scoreData, setScoreData] = useState<EnvironmentScore | null>(null);
-  const [latestData, setLatestData] = useState<LatestMeasurements | null>(null);
-  const [monitoringError, setMonitoringError] = useState<string | null>(null);
+  const { score: scoreData, measurements: latestData } = useDeviceEnvironment();
   const [formulaOpen, setFormulaOpen] = useState(false);
-
-  useEffect(() => {
-    if (!deviceId) return undefined;
-    let active = true;
-    const load = async () => {
-      try {
-        const [nextScore, nextLatest] = await Promise.all([
-          getEnvironmentScore(deviceId),
-          getLatestMeasurements(deviceId),
-        ]);
-        if (active) {
-          setScoreData(nextScore);
-          setLatestData(nextLatest);
-          setMonitoringError(null);
-        }
-      } catch (error) {
-        if (active) setMonitoringError(error instanceof Error ? error.message : '측정 데이터를 불러오지 못했습니다.');
-      }
-    };
-    void load();
-    const interval = setInterval(() => void load(), 30000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [deviceId, selectedCrop]);
 
   const factorDetail = (key: string) => {
     const factor = scoreData?.factors.find((item) => item.key === key);
@@ -1182,46 +1148,18 @@ function Dashboard({
   );
 }
 
-function Analysis({ compact, deviceId, onNavigate, onSelectCrop, selectedCrop }: {
+function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
   compact: boolean;
-  deviceId?: number;
   onNavigate: (page: Page) => void;
   onSelectCrop: (cropCode: string) => Promise<void>;
   selectedCrop: number;
 }) {
   const currentCrop = crops[selectedCrop] ?? crops[0];
-  const [analysisScore, setAnalysisScore] = useState<EnvironmentScore | null>(null);
-  const [analysisLatest, setAnalysisLatest] = useState<LatestMeasurements | null>(null);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const { score: analysisScore, measurements: analysisLatest, error: analysisLoadError, refetch } = useDeviceEnvironment();
+  const analysisError = analysisLoadError?.message ?? null;
   const [analysisFormulaOpen, setAnalysisFormulaOpen] = useState(false);
   const [cropSelectionError, setCropSelectionError] = useState<string | null>(null);
   const [selectingCropCode, setSelectingCropCode] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!deviceId) return undefined;
-    let active = true;
-    const load = async () => {
-      try {
-        const [nextScore, nextLatest] = await Promise.all([
-          getEnvironmentScore(deviceId),
-          getLatestMeasurements(deviceId),
-        ]);
-        if (active) {
-          setAnalysisScore(nextScore);
-          setAnalysisLatest(nextLatest);
-          setAnalysisError(null);
-        }
-      } catch (error) {
-        if (active) setAnalysisError(error instanceof Error ? error.message : '진단 데이터를 불러오지 못했습니다.');
-      }
-    };
-    void load();
-    const interval = setInterval(() => void load(), 30000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [deviceId, selectedCrop]);
 
   const selectRecommendedCrop = async (index: number) => {
     const crop = crops[index];
@@ -1230,6 +1168,7 @@ function Analysis({ compact, deviceId, onNavigate, onSelectCrop, selectedCrop }:
     setSelectingCropCode(crop.code);
     try {
       await onSelectCrop(crop.code);
+      await refetch();
     } catch (error) {
       setCropSelectionError(error instanceof Error ? error.message : '작물 선택을 변경하지 못했습니다.');
     } finally {
@@ -1488,35 +1427,13 @@ function Sparkline({ color, values }: { color: string; values: number[] }) {
   );
 }
 
-function Live({ compact, deviceId }: { compact: boolean; deviceId?: number }) {
-  const [tick, setTick] = useState(0);
+function Live({ compact }: { compact: boolean }) {
   const [deviceOpen, setDeviceOpen] = useState(false);
-  const [measurement, setMeasurement] = useState<LatestMeasurements | null>(null);
+  const { measurements: measurement } = useDeviceEnvironment();
   const sensorDevices = [
     ['온·습도 센서', 'DHT22'], ['조도 센서', 'BH1750'], ['토양수분 센서', 'EF04027'],
     ['토양 온도 센서', 'DS18B20'], ['소음 센서', 'SEN0232'], ['미세먼지 센서', 'PMS5003'], ['CO₂ 센서', 'SCD40'],
   ];
-  useEffect(() => {
-    if (!deviceId) return undefined;
-    let active = true;
-    const refresh = async () => {
-      try {
-        const next = await getLatestMeasurements(deviceId);
-        if (active) {
-          setMeasurement(next);
-          setTick((current) => current + 1);
-        }
-      } catch {
-        // 직전 정상 측정값을 유지한다.
-      }
-    };
-    void refresh();
-    const interval = setInterval(() => void refresh(), 3000);
-    return () => {
-      active = false;
-      clearInterval(interval);
-    };
-  }, [deviceId]);
 
   const values = measurement?.measurements;
   const liveMetrics = latest.slice(0, 4).map((metric) => {
@@ -1540,7 +1457,7 @@ function Live({ compact, deviceId }: { compact: boolean; deviceId?: number }) {
           <Text style={styles.liveStatus}>센서 정상 연결</Text>
         </View>
         <View style={styles.liveToolbarRight}>
-          <Text style={styles.liveRefresh}>3초마다 자동 갱신 · 업데이트 {tick + 1}</Text>
+          <Text style={styles.liveRefresh}>3초마다 자동 갱신{measurement ? ` · 업데이트 #${measurement.sequence}` : ''}</Text>
           <Text style={styles.liveDeviceAction}>디바이스 상태 보기</Text>
         </View>
       </Pressable>
@@ -1986,48 +1903,48 @@ export default function RedesignedApp() {
   }
 
   return (
-    <View style={[styles.root, styles.appShell, compact && styles.appShellCompact]}>
-      <GlassBackdrop />
-      <Sidebar
-        compact={compact}
-        cropName={(crops[selectedCrop] ?? crops[0]).name}
-        onLogout={() => {
-          void clearAccessToken();
-          setDeviceId(undefined);
-          setSelectedCropCode(crops[0].code);
-          setFlow('auth');
-        }}
-        onNavigate={setPage}
-        page={page}
-      />
-      <View style={styles.workspace}>
-        <Header compact={compact} page={page} />
-        <ScrollView contentContainerStyle={[styles.workspaceScroll, compact && styles.workspaceScrollCompact]}>
-          {page === 'dashboard' ? (
-            <Dashboard
-              compact={compact}
-              deviceId={deviceId}
-              onNavigate={setPage}
-              selectedCrop={selectedCrop}
-            />
-          ) : null}
-          {page === 'analysis' ? (
-            <Analysis
-              compact={compact}
-              deviceId={deviceId}
-              onNavigate={setPage}
-              onSelectCrop={changeSelectedCrop}
-              selectedCrop={selectedCrop}
-            />
-          ) : null}
-          {page === 'live' ? <Live compact={compact} deviceId={deviceId} /> : null}
-          {page === 'history' ? <History compact={compact} onNavigate={setPage} /> : null}
-          {page === 'guide' ? <Guide compact={compact} onNavigate={setPage} /> : null}
-          {page === 'shop' ? <Shop compact={compact} /> : null}
-        </ScrollView>
+    <DeviceEnvironmentProvider deviceId={deviceId}>
+      <View style={[styles.root, styles.appShell, compact && styles.appShellCompact]}>
+        <GlassBackdrop />
+        <Sidebar
+          compact={compact}
+          cropName={(crops[selectedCrop] ?? crops[0]).name}
+          onLogout={() => {
+            void clearAccessToken();
+            setDeviceId(undefined);
+            setSelectedCropCode(crops[0].code);
+            setFlow('auth');
+          }}
+          onNavigate={setPage}
+          page={page}
+        />
+        <View style={styles.workspace}>
+          <Header compact={compact} page={page} />
+          <ScrollView contentContainerStyle={[styles.workspaceScroll, compact && styles.workspaceScrollCompact]}>
+            {page === 'dashboard' ? (
+              <Dashboard
+                compact={compact}
+                onNavigate={setPage}
+                selectedCrop={selectedCrop}
+              />
+            ) : null}
+            {page === 'analysis' ? (
+              <Analysis
+                compact={compact}
+                onNavigate={setPage}
+                onSelectCrop={changeSelectedCrop}
+                selectedCrop={selectedCrop}
+              />
+            ) : null}
+            {page === 'live' ? <Live compact={compact} /> : null}
+            {page === 'history' ? <History compact={compact} onNavigate={setPage} /> : null}
+            {page === 'guide' ? <Guide compact={compact} onNavigate={setPage} /> : null}
+            {page === 'shop' ? <Shop compact={compact} /> : null}
+          </ScrollView>
+        </View>
+        <StatusBar style="dark" />
       </View>
-      <StatusBar style="dark" />
-    </View>
+    </DeviceEnvironmentProvider>
   );
 }
 
