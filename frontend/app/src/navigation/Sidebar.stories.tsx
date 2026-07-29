@@ -8,6 +8,7 @@ const meta = {
   component: Sidebar,
   args: {
     cropName: '방울토마토',
+    onHide: fn(),
     onLogout: fn(),
     onNavigate: fn(),
     page: 'dashboard',

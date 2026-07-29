@@ -16,9 +16,10 @@ const navItems: Array<{ key: Page; label: string }> = [
   { key: 'shop', label: '제품 추천' },
 ];
 
-export function Sidebar({ compact, cropName, onLogout, onNavigate, page }: {
+export function Sidebar({ compact, cropName, onHide, onLogout, onNavigate, page }: {
   compact: boolean;
   cropName: string;
+  onHide?: () => void;
   onLogout: () => void;
   onNavigate: (page: Page) => void;
   page: Page;
@@ -45,6 +46,11 @@ export function Sidebar({ compact, cropName, onLogout, onNavigate, page }: {
     <View style={[styles.sidebar, glassWebStyle]}>
       <View style={styles.brandRow}>
         <Text style={styles.brandName}>TerraByte</Text>
+        {onHide ? (
+          <Pressable accessibilityLabel="사이드바 숨기기" accessibilityRole="button" onPress={onHide} style={({ pressed }) => [styles.hideButton, pressed && styles.pressed]}>
+            <Text style={styles.hideButtonText}>‹</Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <Text style={styles.navCaption}>메뉴</Text>
@@ -115,8 +121,10 @@ export function Sidebar({ compact, cropName, onLogout, onNavigate, page }: {
 const styles = StyleSheet.create(scaleTypography({
   pressed: { opacity: 0.78 },
   sidebar: { backgroundColor: 'rgba(255,255,255,0.44)', borderColor: palette.line, borderRightWidth: 1, paddingBottom: 30, paddingHorizontal: 22, paddingTop: 38, width: 240, zIndex: 2 },
-  brandRow: { alignItems: 'center', flexDirection: 'row', paddingHorizontal: 10 },
+  brandRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10 },
   brandName: { color: palette.text, fontFamily: font, fontSize: 24, fontWeight: '900', letterSpacing: -0.6 },
+  hideButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, height: 30, justifyContent: 'center', width: 30 },
+  hideButtonText: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '900' },
   navCaption: { color: palette.muted, fontFamily: font, fontSize: 14, fontWeight: '900', letterSpacing: 0.3, marginBottom: 16, marginTop: 54, paddingHorizontal: 13 },
   navList: { gap: 8 },
   navItem: { borderLeftColor: 'transparent', borderLeftWidth: 3, borderRadius: 9, justifyContent: 'center', minHeight: 48, paddingHorizontal: 15 },

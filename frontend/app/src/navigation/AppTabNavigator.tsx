@@ -1,8 +1,10 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { useState, type ReactNode } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { font } from '../appTheme/glass';
+import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
 import { AnalysisScreen } from '../screens/analysis/AnalysisScreen';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
@@ -60,6 +62,7 @@ const appShellFill = { flex: 1 };
 export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelectCrop, selectedCrop }: AppTabNavigatorProps) {
   const navigationRef = useNavigationContainerRef<AppTabParamList>();
   const [page, setPage] = useState<Page>('dashboard');
+  const [sidebarHidden, setSidebarHidden] = useState(false);
 
   const syncActivePage = () => {
     const routeName = navigationRef.current?.getCurrentRoute()?.name as keyof AppTabParamList | undefined;
@@ -71,7 +74,20 @@ export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelec
   return (
     <DeviceEnvironmentProvider deviceId={deviceId}>
       <View style={[styles.appShell, compact && styles.appShellCompact, appShellFill]}>
-        <Sidebar compact={compact} cropName={cropName} onLogout={onLogout} onNavigate={goToPage} page={page} />
+        {!compact && sidebarHidden ? (
+          <Pressable accessibilityLabel="사이드바 펼치기" accessibilityRole="button" onPress={() => setSidebarHidden(false)} style={styles.showSidebarButton}>
+            <Text style={styles.showSidebarButtonText}>›</Text>
+          </Pressable>
+        ) : (
+          <Sidebar
+            compact={compact}
+            cropName={cropName}
+            onHide={compact ? undefined : () => setSidebarHidden(true)}
+            onLogout={onLogout}
+            onNavigate={goToPage}
+            page={page}
+          />
+        )}
         <NavigationContainer onReady={syncActivePage} onStateChange={syncActivePage} ref={navigationRef}>
           <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
             <Tab.Screen name="Dashboard">
@@ -129,4 +145,19 @@ const styles = StyleSheet.create(scaleTypography({
   workspace: { flex: 1, minWidth: 0, zIndex: 1 },
   workspaceScroll: { alignItems: 'center', paddingBottom: 88, paddingHorizontal: 48 },
   workspaceScrollCompact: { paddingBottom: 56, paddingHorizontal: 20 },
+  showSidebarButton: {
+    alignItems: 'center',
+    backgroundColor: palette.panel,
+    borderColor: palette.line,
+    borderRadius: 8,
+    borderWidth: 1,
+    height: 30,
+    justifyContent: 'center',
+    left: 14,
+    position: 'absolute',
+    top: 38,
+    width: 30,
+    zIndex: 3,
+  },
+  showSidebarButtonText: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '900' },
 }));
