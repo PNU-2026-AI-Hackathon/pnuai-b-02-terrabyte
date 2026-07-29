@@ -6,7 +6,6 @@ import { ScrollView, View } from 'react-native';
 import {
   Analysis,
   Dashboard,
-  Guide,
   Header,
   Shop,
   Sidebar,
@@ -14,6 +13,7 @@ import {
   type Page,
 } from '../redesign/RedesignedApp';
 import { HistoryScreen } from '../screens/history/HistoryScreen';
+import { GuideScreen } from '../screens/guide/GuideScreen';
 import { LiveScreen } from '../screens/live/LiveScreen';
 import { DeviceEnvironmentProvider } from '../shared/device-environment/DeviceEnvironmentProvider';
 import type { AppTabParamList } from './types';
@@ -108,7 +108,7 @@ export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelec
             <Tab.Screen name="Guide">
               {() => (
                 <ScreenLayout compact={compact} page="guide">
-                  <Guide compact={compact} onNavigate={goToPage} />
+                  <GuideScreen compact={compact} onNavigate={goToPage} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
