@@ -4,12 +4,12 @@ import { useState, type ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import {
-  Analysis,
   Header,
   Sidebar,
   styles,
   type Page,
 } from '../redesign/RedesignedApp';
+import { AnalysisScreen } from '../screens/analysis/AnalysisScreen';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { HistoryScreen } from '../screens/history/HistoryScreen';
 import { GuideScreen } from '../screens/guide/GuideScreen';
@@ -87,7 +87,7 @@ export function AppTabNavigator({ compact, cropName, deviceId, onLogout, onSelec
             <Tab.Screen name="Analysis">
               {() => (
                 <ScreenLayout compact={compact} page="analysis">
-                  <Analysis compact={compact} onNavigate={goToPage} onSelectCrop={onSelectCrop} selectedCrop={selectedCrop} />
+                  <AnalysisScreen compact={compact} onNavigate={goToPage} onSelectCrop={onSelectCrop} selectedCrop={selectedCrop} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
