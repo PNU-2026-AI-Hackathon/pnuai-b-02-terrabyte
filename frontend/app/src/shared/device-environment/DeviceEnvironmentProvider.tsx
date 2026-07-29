@@ -6,10 +6,12 @@ import {
   type EnvironmentScore,
   type LatestMeasurements,
 } from '../../measurement/measurementApi';
+import { getSoilRecommendation, type SoilRecommendation } from '../../soil/soilApi';
 
 export type DeviceEnvironmentState = {
   score: EnvironmentScore | null;
   measurements: LatestMeasurements | null;
+  soilRecommendation: SoilRecommendation | null;
   loading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
@@ -22,6 +24,7 @@ type DeviceEnvironmentProviderProps = {
   pollIntervalMs?: number;
   fetchScore?: typeof getEnvironmentScore;
   fetchMeasurements?: typeof getLatestMeasurements;
+  fetchSoilRecommendation?: typeof getSoilRecommendation;
   children: ReactNode;
 };
 
@@ -30,10 +33,12 @@ export function DeviceEnvironmentProvider({
   pollIntervalMs = 3000,
   fetchScore = getEnvironmentScore,
   fetchMeasurements = getLatestMeasurements,
+  fetchSoilRecommendation = getSoilRecommendation,
   children,
 }: DeviceEnvironmentProviderProps) {
   const [score, setScore] = useState<EnvironmentScore | null>(null);
   const [measurements, setMeasurements] = useState<LatestMeasurements | null>(null);
+  const [soilRecommendation, setSoilRecommendation] = useState<SoilRecommendation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const activeRef = useRef(true);
@@ -42,13 +47,17 @@ export function DeviceEnvironmentProvider({
     if (!deviceId) return;
     setLoading(true);
     try {
-      const [nextScore, nextMeasurements] = await Promise.all([
+      // soilRecommendation은 score/measurements와 달리 실패해도 이 화면 전체를 error 상태로
+      // 만들지 않는다 — Guide 화면만 쓰는 부가 데이터라, 여기서 개별적으로 흡수해 null로 둔다.
+      const [nextScore, nextMeasurements, nextSoilRecommendation] = await Promise.all([
         fetchScore(deviceId),
         fetchMeasurements(deviceId),
+        fetchSoilRecommendation(deviceId).catch(() => null),
       ]);
       if (activeRef.current) {
         setScore(nextScore);
         setMeasurements(nextMeasurements);
+        setSoilRecommendation(nextSoilRecommendation);
         setError(null);
       }
     } catch (caught) {
@@ -58,13 +67,14 @@ export function DeviceEnvironmentProvider({
     } finally {
       if (activeRef.current) setLoading(false);
     }
-  }, [deviceId, fetchScore, fetchMeasurements]);
+  }, [deviceId, fetchScore, fetchMeasurements, fetchSoilRecommendation]);
 
   useEffect(() => {
     activeRef.current = true;
     if (!deviceId) {
       setScore(null);
       setMeasurements(null);
+      setSoilRecommendation(null);
       return undefined;
     }
     void load();
@@ -76,8 +86,8 @@ export function DeviceEnvironmentProvider({
   }, [deviceId, pollIntervalMs, load]);
 
   const value = useMemo<DeviceEnvironmentState>(
-    () => ({ score, measurements, loading, error, refetch: load }),
-    [score, measurements, loading, error, load],
+    () => ({ score, measurements, soilRecommendation, loading, error, refetch: load }),
+    [score, measurements, soilRecommendation, loading, error, load],
   );
 
   return <DeviceEnvironmentContext.Provider value={value}>{children}</DeviceEnvironmentContext.Provider>;

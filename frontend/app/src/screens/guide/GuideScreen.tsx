@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { font } from '../../appTheme/glass';
 import { palette } from '../../appTheme/palette';
@@ -10,18 +10,21 @@ import { shopProducts, type ShopProduct } from '../../data';
 import type { Page } from '../../navigation/types';
 import { useDeviceEnvironment } from '../../shared/device-environment/DeviceEnvironmentProvider';
 import { getRecommendedProductIds } from '../../shared/factorPresentation';
+import { useDisclosure } from '../../shared/hooks/useDisclosure';
+import { mapMaterialNameToProductId } from '../../shared/soilPresentation';
 
 export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
-  const { score } = useDeviceEnvironment();
+  const { score, soilRecommendation } = useDeviceEnvironment();
   const recommendedProducts = getRecommendedProductIds(score?.factors ?? [])
     .map((id) => shopProducts.find((product) => product.id === id))
     .filter((product): product is ShopProduct => Boolean(product));
+  const preChecksDisclosure = useDisclosure();
 
   return (
     <View style={styles.pageBody}>
       <Surface style={styles.guideHero}>
-        <View style={styles.guideHeroCopy}><Text style={styles.reportLabel}>TODAY'S MANAGEMENT</Text><Text style={styles.guideHeroTitle}>오늘의 관리 작업 3개</Text><Text style={styles.guideHeroBody}>환경 이상 알림과 현재 생육 단계를 기준으로 우선순위를 정했습니다.</Text></View>
-        <View style={styles.guideProgress}><Text style={styles.guideProgressValue}>0 / 3</Text><Text style={styles.guideProgressLabel}>완료한 작업</Text></View>
+        <View style={styles.guideHeroCopy}><Text style={styles.reportLabel}>TODAY'S MANAGEMENT</Text><Text style={styles.guideHeroTitle}>오늘의 관리 작업 2개</Text><Text style={styles.guideHeroBody}>환경 이상 알림과 현재 생육 단계를 기준으로 우선순위를 정했습니다.</Text></View>
+        <View style={styles.guideProgress}><Text style={styles.guideProgressValue}>0 / 2</Text><Text style={styles.guideProgressLabel}>완료한 작업</Text></View>
       </Surface>
 
       <Surface style={styles.guidePanel}>
@@ -47,6 +50,62 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
           <View style={styles.guideStageItem}><Text style={styles.guideStageLabel}>권장 환경</Text><Text style={styles.guideStageTitle}>20~26℃ · 55~70%</Text><Text style={styles.guideStageBody}>보조 조명 4시간을 기준으로 관리합니다.</Text></View>
           <View style={styles.guideStageItem}><Text style={styles.guideStageLabel}>다음 점검</Text><Text style={styles.guideStageTitle}>3일 후</Text><Text style={styles.guideStageBody}>새잎, 잎 말림, 줄기 웃자람 여부를 확인하고 환경을 다시 분석합니다.</Text></View>
         </View>
+      </Surface>
+
+      <Surface style={styles.guidePanel}>
+        <SectionHeader
+          title="맞춤 배지 추천"
+          description={soilRecommendation ? `${soilRecommendation.cropName} 기준 배합입니다.` : '작물을 선택하면 이 공간에 맞는 배지 추천을 볼 수 있어요.'}
+        />
+        {soilRecommendation ? (
+          <>
+            <View style={styles.soilMixRow}>
+              <Text style={styles.soilMixRatio}>{soilRecommendation.mixRatioText}</Text>
+              <Text style={styles.soilReason}>{soilRecommendation.reason}</Text>
+            </View>
+            <View style={[styles.soilMaterialGrid, compact && styles.stack]}>
+              {soilRecommendation.materials.map((material) => {
+                const productId = mapMaterialNameToProductId(material.name);
+                const product = productId ? shopProducts.find((item) => item.id === productId) : undefined;
+                return (
+                  <View key={material.name} style={styles.soilMaterialCard}>
+                    <Text style={styles.soilMaterialName}>{material.name}</Text>
+                    <Text style={styles.soilMaterialRole}>{material.role}</Text>
+                    {product ? (
+                      <Pressable onPress={() => onNavigate('shop')}>
+                        <Text style={styles.soilMaterialBuyLink}>{product.name} 구매하러 가기 →</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+            {soilRecommendation.cautions.length > 0 ? (
+              <View style={styles.soilCautionList}>
+                {soilRecommendation.cautions.map((caution) => (
+                  <Text key={caution} style={styles.soilCautionItem}>⚠ {caution}</Text>
+                ))}
+              </View>
+            ) : null}
+            {soilRecommendation.preChecks.length > 0 ? (
+              <View>
+                <Pressable accessibilityRole="button" onPress={preChecksDisclosure.toggle}>
+                  <Text style={styles.soilPreCheckToggle}>
+                    {preChecksDisclosure.open ? '사전 점검 항목 접기' : `사전 점검 항목 보기 (${soilRecommendation.preChecks.length})`}
+                  </Text>
+                </Pressable>
+                {preChecksDisclosure.open ? (
+                  <View style={styles.soilPreCheckList}>
+                    {soilRecommendation.preChecks.map((item) => (
+                      <Text key={item} style={styles.soilPreCheckItem}>☐ {item}</Text>
+                    ))}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+            <Text style={styles.soilAssumptionNotice}>{soilRecommendation.assumptionNotice.join(' ')}</Text>
+          </>
+        ) : null}
       </Surface>
 
       <Surface style={styles.guideProductsPanel}>
@@ -92,6 +151,20 @@ const styles = StyleSheet.create(scaleTypography({
   guideStageLabel: { color: palette.greenDark, fontFamily: font, fontSize: 15, fontWeight: '900' },
   guideStageTitle: { color: palette.text, fontFamily: font, fontSize: 20, fontWeight: '900' },
   guideStageBody: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 26 },
+  soilMixRow: { gap: 6 },
+  soilMixRatio: { color: palette.text, fontFamily: font, fontSize: 21, fontWeight: '900' },
+  soilReason: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 24 },
+  soilMaterialGrid: { flexDirection: 'row', gap: 14 },
+  soilMaterialCard: { backgroundColor: palette.panelMuted, borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, flex: 1, gap: 6, padding: 20 },
+  soilMaterialName: { color: palette.text, fontFamily: font, fontSize: 17, fontWeight: '900' },
+  soilMaterialRole: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '500', lineHeight: 22 },
+  soilMaterialBuyLink: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800', marginTop: 8 },
+  soilCautionList: { gap: 6 },
+  soilCautionItem: { color: palette.amber, fontFamily: font, fontSize: 14, fontWeight: '700', lineHeight: 22 },
+  soilPreCheckToggle: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800' },
+  soilPreCheckList: { gap: 4, marginTop: 10 },
+  soilPreCheckItem: { color: palette.secondary, fontFamily: font, fontSize: 14, lineHeight: 22 },
+  soilAssumptionNotice: { color: palette.muted, fontFamily: font, fontSize: 12, lineHeight: 19 },
   guideProductsPanel: { gap: 28, padding: 36 },
   guideProductGrid: { flexDirection: 'row', gap: 14 },
   guideProductCard: { backgroundColor: palette.panelMuted, borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, flex: 1, gap: 8, minHeight: 190, padding: 22 },

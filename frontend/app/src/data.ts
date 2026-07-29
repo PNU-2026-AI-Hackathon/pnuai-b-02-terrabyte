@@ -230,6 +230,14 @@ export const shopProducts: ShopProduct[] = [
     price: 8900,
   },
   {
+    id: 'vermiculite',
+    category: 'soil',
+    name: '버미큘라이트 3L',
+    emoji: '🟤',
+    desc: '수분·양분 보유력을 높여 건조가 빠른 배지를 보완하는 토양 개량재',
+    price: 7900,
+  },
+  {
     id: 'basil-seeds',
     category: 'seeds',
     name: '바질 씨앗',
