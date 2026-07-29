@@ -113,10 +113,48 @@ export const score = {
 };
 
 export const altCrops = [
-  { name: '상추', emoji: '🥬', expectedScore: 85, setsCropIndex: 1 },
-  { name: '페퍼민트', emoji: '🌱', expectedScore: 79, setsCropIndex: 3 },
-  { name: '바질', emoji: '🌿', expectedScore: 74, setsCropIndex: 2 },
+  {
+    name: '상추',
+    emoji: '🥬',
+    expectedScore: 85,
+    setsCropIndex: 1,
+    reason: '현재 온도와 토양수분 조건에 가장 잘 맞고, 조도 보완 효과를 빠르게 받을 수 있습니다.',
+    caution: '습도가 45% 아래로 내려가지 않도록 관리가 필요합니다.',
+  },
+  {
+    name: '페퍼민트',
+    emoji: '🌱',
+    expectedScore: 79,
+    setsCropIndex: 3,
+    reason: '환경 변화에 대한 적응력이 높아 현재 조건에서도 비교적 안정적인 생장이 예상됩니다.',
+    caution: '과도한 번식을 막기 위해 단독 화분 재배를 권장합니다.',
+  },
+  {
+    name: '바질',
+    emoji: '🌿',
+    expectedScore: 74,
+    setsCropIndex: 2,
+    reason: '온도 조건은 적합하지만 현재 광량으로는 줄기가 가늘게 자랄 가능성이 있습니다.',
+    caution: '생장등 보완 후 선택하면 예상 적합도가 83점까지 상승합니다.',
+  },
 ];
+
+export type Sensor = { label: string; model: string };
+
+export const sensors: Sensor[] = [
+  { label: '온·습도 센서', model: 'DHT22' },
+  { label: '조도 센서', model: 'BH1750' },
+  { label: '토양수분 센서', model: 'EF04027' },
+  { label: '토양 온도 센서', model: 'DS18B20' },
+  { label: '소음 센서', model: 'SEN0232' },
+  { label: '미세먼지 센서', model: 'PMS5003' },
+  { label: 'CO₂ 센서', model: 'SCD40' },
+];
+
+export const factorProductMap: Partial<Record<'temperature' | 'humidity' | 'plantLight', string[]>> = {
+  plantLight: ['grow-light'],
+  humidity: ['watering-kit'],
+};
 
 export const shopTabs: Array<{ key: ShopCategory; label: string }> = [
   { key: 'parts', label: '부품' },

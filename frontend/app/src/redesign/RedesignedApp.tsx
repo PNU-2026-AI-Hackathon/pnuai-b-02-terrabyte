@@ -28,10 +28,16 @@ import { scaleTypography } from '../appTheme/scaleTypography';
 import { ensureBrandFontLoaded } from '../appTheme/webFont';
 import { BrandMark } from '../components/BrandMark';
 import { getCrops, selectDeviceCrop, type CropResponse } from '../crop/cropApi';
-import { crops, factors, latest, score, shopProducts, type ShopCategory, type ShopProduct } from '../data';
+import { altCrops, crops, factors, latest, sensors, shopProducts, type ShopCategory, type ShopProduct } from '../data';
 import { registerDevice } from '../device/deviceApi';
 import { type EnvironmentScore } from '../measurement/measurementApi';
 import { DeviceEnvironmentProvider, useDeviceEnvironment } from '../shared/device-environment/DeviceEnvironmentProvider';
+import {
+  getFactorRecommendation,
+  getGradeLabel,
+  getIssueFactors,
+  getRecommendedProductIds,
+} from '../shared/factorPresentation';
 
 ensureBrandFontLoaded();
 
@@ -948,6 +954,13 @@ function SuitabilityFormulaModal({
   );
 }
 
+const extendedMetricSensors: Array<[label: string, model: string]> = [
+  ['토양 온도', 'DS18B20'],
+  ['CO₂', 'SCD40'],
+  ['미세먼지', 'PMS5003'],
+  ['소음', 'SEN0232'],
+];
+
 function Dashboard({
   compact,
   onNavigate,
@@ -975,23 +988,12 @@ function Dashboard({
     { label: '토양수분', value: latestData ? `${latestData.measurements.soilMoisturePct}%` : '--', detail: '종합 적합도 산식에서는 제외' },
   ];
   const displayFactors = scoreData?.factors ?? factors.slice(0, 3);
-  const issueFactors = scoreData?.factors.filter((factor) => factor.status !== 'OK') ?? [];
-  const gradeText = scoreData?.grade === 'GOOD' ? '적합' : scoreData?.grade === 'NORMAL' ? '보통' : scoreData ? '보완 필요' : '계산 중';
-  const extendedStats = [
-    { label: '토양 온도', value: '22.8℃', detail: 'DS18B20 · 적정' },
-    { label: 'CO₂', value: '742ppm', detail: 'SCD40 · 적정' },
-    { label: '미세먼지', value: '14㎍/㎥', detail: 'PMS5003 · 좋음' },
-    { label: '소음', value: '42dB', detail: 'SEN0232 · 안정' },
-  ];
-  const sensorDevices = [
-    ['온·습도 센서', 'DHT22'],
-    ['조도 센서', 'BH1750'],
-    ['토양수분 센서', 'EF04027'],
-    ['토양 온도 센서', 'DS18B20'],
-    ['소음 센서', 'SEN0232'],
-    ['미세먼지 센서', 'PMS5003'],
-    ['CO₂ 센서', 'SCD40'],
-  ];
+  const issueFactors = getIssueFactors(scoreData?.factors ?? []);
+  const gradeText = getGradeLabel(scoreData?.grade);
+  const extendedStats = extendedMetricSensors.map(([label, model]) => {
+    const metric = latest.find((item) => item.label === label);
+    return { label, value: metric?.value ?? '--', detail: `${model} · 정상` };
+  });
 
   return (
     <View style={styles.pageBody}>
@@ -1132,12 +1134,12 @@ function Dashboard({
             </View>
           </View>
           <View style={styles.deviceSensorList}>
-            {sensorDevices.map(([name, model], index) => (
-              <View key={name} style={styles.deviceSensorItem}>
+            {sensors.map((sensor, index) => (
+              <View key={sensor.label} style={styles.deviceSensorItem}>
                 <View style={styles.onlineDot} />
                 <View style={styles.deviceSensorCopy}>
-                  <Text style={styles.deviceSensorName}>{name}</Text>
-                  <Text style={styles.deviceSensorMeta}>{model} · #{String(index + 1).padStart(2, '0')} · 정상 수신</Text>
+                  <Text style={styles.deviceSensorName}>{sensor.label}</Text>
+                  <Text style={styles.deviceSensorMeta}>{sensor.model} · #{String(index + 1).padStart(2, '0')} · 정상 수신</Text>
                 </View>
               </View>
             ))}
@@ -1176,11 +1178,6 @@ function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
     }
   };
 
-  const recommendationByKey: Record<string, string> = {
-    temperature: '온도가 적정 범위를 벗어나면 환기 또는 히팅 장치를 조절하세요.',
-    humidity: '관수와 환기 시간을 조절해 적정 습도를 유지하세요.',
-    plantLight: 'PPFD가 부족하면 생장등의 세기와 설치 거리를 조절하세요.',
-  };
   const scoreFactorReports = analysisScore?.factors.map((factor) => ({
     label: factor.label,
     unit: factor.unit,
@@ -1190,7 +1187,7 @@ function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
     finding: factor.status === 'OK'
       ? `현재 ${factor.current.toLocaleString('ko-KR')}${factor.unit}로 적정 범위 안에 있으며 축 점수는 ${factor.score}점입니다.`
       : `현재값이 적정 범위에서 ${factor.gap.toLocaleString('ko-KR')}${factor.unit} ${factor.status === 'LOW' ? '부족' : '초과'}하며 축 점수는 ${factor.score}점입니다.`,
-    recommendation: recommendationByKey[factor.key],
+    recommendation: getFactorRecommendation(factor.key),
   })) ?? [];
   const soilMoistureReport = analysisLatest ? [{
     label: '토양수분',
@@ -1202,15 +1199,17 @@ function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
     recommendation: '작물과 배지에 맞는 관수 기준이 확정되면 별도 관수 판단에 활용하세요.',
   }] : [];
   const factorReports = [...scoreFactorReports, ...soilMoistureReport];
-  const issueFactors = analysisScore?.factors.filter((factor) => factor.status !== 'OK') ?? [];
+  const issueFactors = getIssueFactors(analysisScore?.factors ?? []);
   const measuredAtText = analysisScore
     ? new Date(analysisScore.measuredAt).toLocaleString('ko-KR')
     : '데이터 수신 대기 중';
-  const cropReports = [
-    { index: 1, name: '상추', score: 85, reason: '현재 온도와 토양수분 조건에 가장 잘 맞고, 조도 보완 효과를 빠르게 받을 수 있습니다.', caution: '습도가 45% 아래로 내려가지 않도록 관리가 필요합니다.' },
-    { index: 3, name: '페퍼민트', score: 79, reason: '환경 변화에 대한 적응력이 높아 현재 조건에서도 비교적 안정적인 생장이 예상됩니다.', caution: '과도한 번식을 막기 위해 단독 화분 재배를 권장합니다.' },
-    { index: 2, name: '바질', score: 74, reason: '온도 조건은 적합하지만 현재 광량으로는 줄기가 가늘게 자랄 가능성이 있습니다.', caution: '생장등 보완 후 선택하면 예상 적합도가 83점까지 상승합니다.' },
-  ];
+  const cropReports = altCrops.map((crop) => ({
+    index: crop.setsCropIndex,
+    name: crop.name,
+    score: crop.expectedScore,
+    reason: crop.reason,
+    caution: crop.caution,
+  }));
 
   return (
     <View style={styles.pageBody}>
@@ -1232,7 +1231,7 @@ function Analysis({ compact, onNavigate, onSelectCrop, selectedCrop }: {
           <View style={styles.reportScoreBlock}>
             <Text style={styles.reportSummaryLabel}>종합 적합도</Text>
             <View style={styles.bigScoreRow}><Text style={styles.bigScore}>{analysisScore?.total ?? '--'}</Text><Text style={styles.bigScoreUnit}>/ 100</Text></View>
-            <Text style={styles.reportAssessment}>{analysisScore?.grade === 'GOOD' ? '스마트팜 전환 적합' : analysisScore?.grade === 'NORMAL' ? '일부 환경 보완 필요' : analysisScore ? '환경 개선 필요' : '계산 대기 중'}</Text>
+            <Text style={styles.reportAssessment}>{getGradeLabel(analysisScore?.grade)}</Text>
           </View>
           <View style={[styles.reportSummaryBlock, styles.reportSummaryBlockWithFormula]}>
             <Text style={styles.reportSummaryLabel}>핵심 진단</Text>
@@ -1430,10 +1429,6 @@ function Sparkline({ color, values }: { color: string; values: number[] }) {
 function Live({ compact }: { compact: boolean }) {
   const [deviceOpen, setDeviceOpen] = useState(false);
   const { measurements: measurement } = useDeviceEnvironment();
-  const sensorDevices = [
-    ['온·습도 센서', 'DHT22'], ['조도 센서', 'BH1750'], ['토양수분 센서', 'EF04027'],
-    ['토양 온도 센서', 'DS18B20'], ['소음 센서', 'SEN0232'], ['미세먼지 센서', 'PMS5003'], ['CO₂ 센서', 'SCD40'],
-  ];
 
   const values = measurement?.measurements;
   const liveMetrics = latest.slice(0, 4).map((metric) => {
@@ -1495,12 +1490,12 @@ function Live({ compact }: { compact: boolean }) {
               <View><Text style={styles.deviceOverviewValue}>7</Text><Text style={styles.deviceOverviewLabel}>정상 작동</Text></View>
             </View>
             <View style={styles.deviceSensorList}>
-              {sensorDevices.map(([name, model], index) => (
-                <View key={name} style={styles.deviceSensorItem}>
+              {sensors.map((sensor, index) => (
+                <View key={sensor.label} style={styles.deviceSensorItem}>
                   <View style={styles.onlineDot} />
                   <View style={styles.deviceSensorCopy}>
-                    <Text style={styles.deviceSensorName}>{name}</Text>
-                    <Text style={styles.deviceSensorMeta}>{model} · #{String(index + 1).padStart(2, '0')} · 정상 연결</Text>
+                    <Text style={styles.deviceSensorName}>{sensor.label}</Text>
+                    <Text style={styles.deviceSensorMeta}>{sensor.model} · #{String(index + 1).padStart(2, '0')} · 정상 연결</Text>
                   </View>
                 </View>
               ))}
@@ -1553,6 +1548,11 @@ function History({ compact, onNavigate }: { compact: boolean; onNavigate: (page:
 }
 
 function Guide({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
+  const { score } = useDeviceEnvironment();
+  const recommendedProducts = getRecommendedProductIds(score?.factors ?? [])
+    .map((id) => shopProducts.find((product) => product.id === id))
+    .filter((product): product is ShopProduct => Boolean(product));
+
   return (
     <View style={styles.pageBody}>
       <Surface style={styles.guideHero}>
@@ -1587,18 +1587,13 @@ function Guide({ compact, onNavigate }: { compact: boolean; onNavigate: (page: P
       </Surface>
 
       <Surface style={styles.guideProductsPanel}>
-        <SectionHeader title="현재 환경 추천 제품" description="조도 부족, 오후 습도 하락과 배수 상태를 기준으로 선정했습니다." />
+        <SectionHeader title="현재 환경 추천 제품" description="확인이 필요한 환경 지표와 토양 배수 상태를 기준으로 선정했습니다." />
         <View style={[styles.guideProductGrid, compact && styles.stack]}>
-          {[
-            ['식물 생장등 (LED)', '조도 부족 보완', '29,900원', '예상 환경점수 +11점'],
-            ['자동 관수 키트', '습도·관수 편차 관리', '39,900원', '관수 기록 자동화'],
-            ['펄라이트 3L', '토양 배수성 보완', '6,900원', '권장 혼합 비율 20%'],
-          ].map(([name, reason, price, effect]) => (
-            <View key={name} style={styles.guideProductCard}>
-              <Text style={styles.guideProductReason}>{reason}</Text>
-              <Text style={styles.guideProductName}>{name}</Text>
-              <Text style={styles.guideProductEffect}>{effect}</Text>
-              <Text style={styles.guideProductPrice}>{price}</Text>
+          {recommendedProducts.map((product) => (
+            <View key={product.id} style={styles.guideProductCard}>
+              <Text style={styles.guideProductReason}>{product.desc}</Text>
+              <Text style={styles.guideProductName}>{product.name}</Text>
+              <Text style={styles.guideProductPrice}>{product.price.toLocaleString('ko-KR')}원</Text>
             </View>
           ))}
         </View>
@@ -1609,6 +1604,7 @@ function Guide({ compact, onNavigate }: { compact: boolean; onNavigate: (page: P
 }
 
 function Shop({ compact }: { compact: boolean }) {
+  const { score } = useDeviceEnvironment();
   const [category, setCategory] = useState<'all' | ShopCategory>('all');
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
@@ -1624,7 +1620,7 @@ function Shop({ compact }: { compact: boolean }) {
   const cartCount = Object.values(cart).reduce((sum, value) => sum + value, 0);
   const cartProducts = shopProducts.filter((product) => (cart[product.id] ?? 0) > 0);
   const cartTotal = cartProducts.reduce((sum, product) => sum + product.price * (cart[product.id] ?? 0), 0);
-  const recommendedProducts = ['grow-light', 'watering-kit', 'perlite']
+  const recommendedProducts = getRecommendedProductIds(score?.factors ?? [])
     .map((id) => shopProducts.find((product) => product.id === id))
     .filter((product): product is ShopProduct => Boolean(product));
   const tabs: Array<{ key: 'all' | ShopCategory; label: string }> = [
@@ -1652,7 +1648,6 @@ function Shop({ compact }: { compact: boolean }) {
             <Pressable key={product.id} onPress={() => setSelectedProduct(product)} style={styles.shopRecommendationCard}>
               <View style={styles.shopRecommendationTop}>
                 <Text style={styles.shopRecommendationRank}>{index + 1}순위</Text>
-                <Text style={styles.shopRecommendationReason}>{index === 0 ? '조도 개선' : index === 1 ? '습도 관리' : '배수 보완'}</Text>
               </View>
               <Text style={styles.shopRecommendationName}>{product.name}</Text>
               <Text style={styles.shopRecommendationDescription}>{product.desc}</Text>
