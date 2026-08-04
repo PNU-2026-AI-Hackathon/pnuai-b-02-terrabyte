@@ -46,11 +46,15 @@ class SoilRecommendationApiIntegrationTests {
 
     @BeforeEach
     void resetData() {
+        jdbcTemplate.update("DELETE FROM cultivation_space");
         jdbcTemplate.update("""
                 UPDATE device
-                SET user_id = NULL, crop_code = NULL, crop_selected_at = NULL,
+                SET user_id = NULL, space_id = NULL, claimed_at = NULL,
                     status = 'OFFLINE', last_seen_at = NULL
                 """);
+        jdbcTemplate.update(
+                "UPDATE pot SET node_id=NULL,crop_code=NULL,crop_selected_at=NULL,"
+                        + "status='OFFLINE',last_seen_at=NULL");
         jdbcTemplate.update("DELETE FROM app_user");
     }
 

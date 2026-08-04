@@ -3,6 +3,10 @@ package com.terrabyte.backend.measurement;
 import java.time.Instant;
 
 public record TelemetrySample(
+        long potId,
+        long deviceId,
+        String nodeId,
+        String cropCode,
         String hardwareDeviceId,
         Instant observedAt,
         long sequence,
@@ -20,8 +24,17 @@ public record TelemetrySample(
         boolean airSensorValid,
         boolean lightSensorValid) {
 
-    public static TelemetrySample from(TelemetrySampleRequest request) {
+    public static TelemetrySample from(
+            TelemetrySampleRequest request,
+            long potId,
+            long deviceId,
+            String nodeId,
+            String cropCode) {
         return new TelemetrySample(
+                potId,
+                deviceId,
+                nodeId,
+                cropCode,
                 request.deviceId(),
                 request.observedAt(),
                 request.sequence(),
@@ -38,5 +51,29 @@ public record TelemetrySample(
                 request.quality().soilSensorValid(),
                 request.quality().airSensorValid(),
                 request.quality().lightSensorValid());
+    }
+
+    public TelemetrySample(
+            String hardwareDeviceId,
+            Instant observedAt,
+            long sequence,
+            String siteId,
+            String zoneId,
+            String soilType,
+            String cropType,
+            String calibrationVersion,
+            double soilMoisturePct,
+            long soilMoistureRawAdc,
+            double airTemperatureC,
+            double airHumidityPct,
+            double plantLightPpfdUmolM2S,
+            boolean soilSensorValid,
+            boolean airSensorValid,
+            boolean lightSensorValid) {
+        this(
+                0, 0, zoneId, null, hardwareDeviceId, observedAt, sequence,
+                siteId, zoneId, soilType, cropType, calibrationVersion,
+                soilMoisturePct, soilMoistureRawAdc, airTemperatureC, airHumidityPct,
+                plantLightPpfdUmolM2S, soilSensorValid, airSensorValid, lightSensorValid);
     }
 }

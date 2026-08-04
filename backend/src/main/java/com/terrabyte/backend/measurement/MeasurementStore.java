@@ -8,10 +8,10 @@ public interface MeasurementStore {
 
     void write(TelemetrySample sample);
 
-    Optional<TelemetrySample> findLatest(String hardwareDeviceId);
+    Optional<TelemetrySample> findLatest(long potId);
 
     List<MeasurementPoint> findPoints(
-            String hardwareDeviceId,
+            long potId,
             MeasurementMetric metric,
             Instant start);
 }

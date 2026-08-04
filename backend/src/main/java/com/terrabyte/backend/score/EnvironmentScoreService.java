@@ -4,8 +4,8 @@ import java.util.List;
 import java.util.Locale;
 
 import com.terrabyte.backend.api.ApiException;
-import com.terrabyte.backend.device.Device;
-import com.terrabyte.backend.device.DeviceRepository;
+import com.terrabyte.backend.pot.Pot;
+import com.terrabyte.backend.pot.PotRepository;
 import com.terrabyte.backend.measurement.MeasurementStore;
 import com.terrabyte.backend.measurement.TelemetrySample;
 import org.springframework.http.HttpStatus;
@@ -16,28 +16,28 @@ public class EnvironmentScoreService {
 
     private static final String EQUAL_FORMULA = "100 × (T/100 × H/100 × L/100)^(1/3)";
 
-    private final DeviceRepository deviceRepository;
+    private final PotRepository potRepository;
     private final MeasurementStore measurementStore;
     private final CropScoreProfileRepository profileRepository;
     private final SuitabilityScoreCalculator calculator;
 
     public EnvironmentScoreService(
-            DeviceRepository deviceRepository,
+            PotRepository potRepository,
             MeasurementStore measurementStore,
             CropScoreProfileRepository profileRepository,
             SuitabilityScoreCalculator calculator) {
-        this.deviceRepository = deviceRepository;
+        this.potRepository = potRepository;
         this.measurementStore = measurementStore;
         this.profileRepository = profileRepository;
         this.calculator = calculator;
     }
 
-    public EnvironmentScoreResponse latest(long userId, long deviceId) {
-        Device device = deviceRepository.findByIdAndUserId(deviceId, userId)
-                .orElseThrow(() -> notFound("DEVICE_NOT_FOUND", "기기를 찾을 수 없습니다."));
-        TelemetrySample sample = measurementStore.findLatest(device.hardwareId())
+    public EnvironmentScoreResponse latest(long userId, long potId) {
+        Pot pot = potRepository.findOwned(potId, userId)
+                .orElseThrow(() -> notFound("POT_NOT_FOUND", "화분을 찾을 수 없습니다."));
+        TelemetrySample sample = measurementStore.findLatest(pot.id())
                 .orElseThrow(() -> notFound("MEASUREMENT_NOT_FOUND", "아직 수신된 측정 데이터가 없습니다."));
-        if (device.cropCode() == null) {
+        if (pot.cropCode() == null) {
             throw notFound("CROP_NOT_SELECTED", "환경 적합도를 계산할 작물을 먼저 선택해 주세요.");
         }
         if (!sample.airSensorValid() || !sample.lightSensorValid()) {
@@ -46,7 +46,7 @@ public class EnvironmentScoreService {
                     "INVALID_SCORE_INPUT",
                     "온도·습도·광량 센서값이 모두 유효해야 점수를 계산할 수 있습니다.");
         }
-        CropScoreProfile profile = profileRepository.findActiveByCropCode(device.cropCode())
+        CropScoreProfile profile = profileRepository.findActiveByCropCode(pot.cropCode())
                 .orElseThrow(() -> notFound("CROP_PROFILE_NOT_FOUND", "작물 점수 기준을 찾을 수 없습니다."));
 
         EnvironmentScoreResponse.Factor temperature = factor(
@@ -70,7 +70,7 @@ public class EnvironmentScoreService {
                 profile.plantLightExponent());
 
         return new EnvironmentScoreResponse(
-                device.id(),
+                pot.id(),
                 profile.cropCode(),
                 profile.cropName(),
                 total,

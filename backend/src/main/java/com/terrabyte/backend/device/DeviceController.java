@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,5 +30,15 @@ public class DeviceController {
                 Long.parseLong(jwt.getSubject()),
                 request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    public java.util.List<DeviceResponse> all(@AuthenticationPrincipal Jwt jwt) {
+        return deviceService.findAll(Long.parseLong(jwt.getSubject()));
+    }
+
+    @GetMapping("/{deviceId}")
+    public DeviceResponse one(@AuthenticationPrincipal Jwt jwt, @PathVariable long deviceId) {
+        return deviceService.findOne(Long.parseLong(jwt.getSubject()), deviceId);
     }
 }

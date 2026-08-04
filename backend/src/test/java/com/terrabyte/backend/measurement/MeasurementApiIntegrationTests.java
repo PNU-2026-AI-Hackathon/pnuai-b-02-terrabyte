@@ -66,9 +66,10 @@ class MeasurementApiIntegrationTests {
     void resetData() {
         jdbcTemplate.update("""
                 UPDATE device
-                SET user_id = NULL, crop_code = NULL, crop_selected_at = NULL,
+                SET user_id = NULL, space_id = NULL, claimed_at = NULL,
                     status = 'OFFLINE', last_seen_at = NULL
                 """);
+        jdbcTemplate.update("UPDATE pot SET node_id=NULL,crop_code=NULL,crop_selected_at=NULL,status='OFFLINE',last_seen_at=NULL");
         jdbcTemplate.update("DELETE FROM app_user");
     }
 
@@ -126,11 +127,12 @@ class MeasurementApiIntegrationTests {
     void returnsLatestAndTimeSeriesForDeviceOwner() throws Exception {
         String token = signupAndGetToken();
         long deviceId = registerAndGetDeviceId(token);
+        long potId = jdbcTemplate.queryForObject("SELECT MIN(id) FROM pot WHERE device_id=?", Long.class, deviceId);
         selectCrop(token, deviceId, "lettuce");
         TelemetrySample sample = sample(Instant.now().minusSeconds(5));
-        when(measurementStore.findLatest(HARDWARE_ID)).thenReturn(java.util.Optional.of(sample));
+        when(measurementStore.findLatest(potId)).thenReturn(java.util.Optional.of(sample));
         when(measurementStore.findPoints(
-                eq(HARDWARE_ID),
+                eq(potId),
                 eq(MeasurementMetric.AIR_TEMPERATURE_C),
                 any(Instant.class)))
                 .thenReturn(List.of(new MeasurementPoint(sample.observedAt(), 27.1)));

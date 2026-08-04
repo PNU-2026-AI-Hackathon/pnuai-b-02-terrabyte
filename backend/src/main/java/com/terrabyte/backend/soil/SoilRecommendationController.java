@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/devices/{deviceId}/soil-recommendation")
+@RequestMapping("/api")
 public class SoilRecommendationController {
 
     private final SoilRecommendationService service;
@@ -17,10 +17,18 @@ public class SoilRecommendationController {
         this.service = service;
     }
 
-    @GetMapping
+    @GetMapping("/pots/{potId}/soil-recommendation")
     public SoilRecommendationResponse latest(
             @AuthenticationPrincipal Jwt jwt,
+            @PathVariable long potId) {
+        return service.latest(Long.parseLong(jwt.getSubject()), potId);
+    }
+
+    @GetMapping("/devices/{deviceId}/soil-recommendation")
+    @Deprecated
+    public SoilRecommendationResponse latestForDevice(
+            @AuthenticationPrincipal Jwt jwt,
             @PathVariable long deviceId) {
-        return service.latest(Long.parseLong(jwt.getSubject()), deviceId);
+        return service.latestForDevice(Long.parseLong(jwt.getSubject()), deviceId);
     }
 }

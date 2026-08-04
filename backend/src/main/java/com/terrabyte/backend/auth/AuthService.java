@@ -6,6 +6,7 @@ import com.terrabyte.backend.api.ApiException;
 import com.terrabyte.backend.device.DeviceRepository;
 import com.terrabyte.backend.device.DeviceResponse;
 import com.terrabyte.backend.space.CultivationSpaceRepository;
+import com.terrabyte.backend.pot.PotRepository;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,18 +20,21 @@ public class AuthService {
     private final TokenService tokenService;
     private final DeviceRepository deviceRepository;
     private final CultivationSpaceRepository spaceRepository;
+    private final PotRepository potRepository;
 
     public AuthService(
             UserAccountRepository userRepository,
             PasswordEncoder passwordEncoder,
             TokenService tokenService,
             DeviceRepository deviceRepository,
-            CultivationSpaceRepository spaceRepository) {
+            CultivationSpaceRepository spaceRepository,
+            PotRepository potRepository) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
         this.deviceRepository = deviceRepository;
         this.spaceRepository = spaceRepository;
+        this.potRepository = potRepository;
     }
 
     public AuthResponse signup(SignupRequest request) {
@@ -70,9 +74,10 @@ public class AuthService {
         DeviceResponse device = foundDevice
                 .map(value -> DeviceResponse.from(
                         value,
-                        spaceRepository.findByUserId(userId).orElse(null)))
+                        value.spaceId() == null ? null : spaceRepository.findByIdAndUserId(value.spaceId(), userId).orElse(null),
+                        potRepository.findAllByDevice(value.id())))
                 .orElse(null);
-        boolean hasCrop = foundDevice.map(value -> value.cropCode() != null).orElse(false);
+        boolean hasCrop = potRepository.existsCropByUser(userId);
         return new MeResponse(UserResponse.from(user), device != null, hasCrop, device);
     }
 

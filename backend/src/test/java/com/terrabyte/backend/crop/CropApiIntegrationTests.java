@@ -49,9 +49,10 @@ class CropApiIntegrationTests {
         jdbcTemplate.update("DELETE FROM cultivation_space");
         jdbcTemplate.update("""
                 UPDATE device
-                SET user_id = NULL, crop_code = NULL, crop_selected_at = NULL,
+                SET user_id = NULL, space_id = NULL, claimed_at = NULL,
                     status = 'OFFLINE', last_seen_at = NULL
                 """);
+        jdbcTemplate.update("UPDATE pot SET node_id=NULL,crop_code=NULL,crop_selected_at=NULL,status='OFFLINE',last_seen_at=NULL");
         jdbcTemplate.update("DELETE FROM app_user");
     }
 
@@ -103,7 +104,7 @@ class CropApiIntegrationTests {
                 .andExpect(jsonPath("$.crop.code").value("lettuce"));
 
         String selected = jdbcTemplate.queryForObject(
-                "SELECT crop_code FROM device WHERE id = ?", String.class, deviceId);
+                "SELECT crop_code FROM pot WHERE device_id = ? ORDER BY id LIMIT 1", String.class, deviceId);
         org.assertj.core.api.Assertions.assertThat(selected).isEqualTo("lettuce");
     }
 

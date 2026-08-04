@@ -50,9 +50,10 @@ class DeviceApiIntegrationTests {
         jdbcTemplate.update(
                 """
                 UPDATE device
-                SET user_id = NULL, crop_code = NULL, crop_selected_at = NULL,
+                SET user_id = NULL, space_id = NULL, claimed_at = NULL,
                     status = 'OFFLINE', last_seen_at = NULL
                 """);
+        jdbcTemplate.update("UPDATE pot SET node_id=NULL,crop_code=NULL,crop_selected_at=NULL,status='OFFLINE',last_seen_at=NULL");
         jdbcTemplate.update("DELETE FROM app_user");
     }
 
@@ -115,8 +116,10 @@ class DeviceApiIntegrationTests {
     }
 
     @Test
-    void rejectsASecondDeviceForTheSameUser() throws Exception {
-        jdbcTemplate.update("INSERT INTO device (serial_code) VALUES (?)", "111111");
+    void allowsASecondDeviceForTheSameUser() throws Exception {
+        jdbcTemplate.update(
+                "INSERT INTO device (serial_code, claim_code, hardware_id) VALUES (?, ?, ?)",
+                "111111", "111111", "orangepi-pro-03");
         String token = signupAndGetToken("owner@example.com", "기기소유자");
         register(token, DEMO_SERIAL_CODE);
 
@@ -124,8 +127,11 @@ class DeviceApiIntegrationTests {
                         .header("Authorization", bearer(token))
                         .contentType(APPLICATION_JSON)
                         .content(deviceBody("111111")))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("USER_ALREADY_HAS_DEVICE"));
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/devices").header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
     }
 
     @Test
@@ -165,16 +171,29 @@ class DeviceApiIntegrationTests {
     }
 
     @Test
-    void stillRejectsASecondDevTestDeviceForTheSameUser() throws Exception {
+    // 계정당 1기기 제약이 해제(D6)되어 같은 계정이 개발 테스트 코드를 여러 번 써도 된다.
+    // 매번 별개의 기기와 화분이 생겨야 하며, 앞서 만든 기기를 재사용하면 안 된다.
+    void createsASeparateDevTestDeviceEachTimeForTheSameUser() throws Exception {
         String token = signupAndGetToken("dev-tester@example.com", "테스터");
-        register(token, DEV_TEST_SERIAL_CODE);
 
-        mockMvc.perform(post("/api/devices")
+        JsonNode first = registerDevTestDevice(token);
+        JsonNode second = registerDevTestDevice(token);
+
+        assertThat(second.get("id").asLong()).isNotEqualTo(first.get("id").asLong());
+        assertThat(first.get("pots")).hasSize(1);
+        assertThat(second.get("pots")).hasSize(1);
+    }
+
+    private JsonNode registerDevTestDevice(String token) throws Exception {
+        String body = mockMvc.perform(post("/api/devices")
                         .header("Authorization", bearer(token))
                         .contentType(APPLICATION_JSON)
                         .content(deviceBody(DEV_TEST_SERIAL_CODE)))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("USER_ALREADY_HAS_DEVICE"));
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(body);
     }
 
     @Test

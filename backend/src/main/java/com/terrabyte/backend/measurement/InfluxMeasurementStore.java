@@ -27,7 +27,10 @@ public class InfluxMeasurementStore implements MeasurementStore {
     @Override
     public void write(TelemetrySample sample) {
         Point point = Point.measurement(MEASUREMENT)
-                .addTag("hardware_device_id", sample.hardwareDeviceId())
+                .addTag("pot_id", Long.toString(sample.potId()))
+                .addTag("device_id", Long.toString(sample.deviceId()))
+                .addTag("node_id", sample.nodeId())
+                .addTag("crop_code", sample.cropCode() == null ? "" : sample.cropCode())
                 .addTag("site_id", sample.siteId())
                 .addTag("zone_id", sample.zoneId())
                 .addTag("soil_type", sample.soilType())
@@ -47,38 +50,38 @@ public class InfluxMeasurementStore implements MeasurementStore {
     }
 
     @Override
-    public Optional<TelemetrySample> findLatest(String hardwareDeviceId) {
+    public Optional<TelemetrySample> findLatest(long potId) {
         String flux = """
                 from(bucket: "%s")
                   |> range(start: 1970-01-01T00:00:00Z)
-                  |> filter(fn: (r) => r._measurement == "%s" and r.hardware_device_id == "%s")
+                  |> filter(fn: (r) => r._measurement == "%s" and r.pot_id == "%s")
                   |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
                   |> sort(columns: ["_time"], desc: true)
                   |> limit(n: 1)
                 """.formatted(
                 escape(properties.bucket()),
                 MEASUREMENT,
-                escape(hardwareDeviceId));
+                potId);
 
         return records(flux).stream().findFirst().map(this::toSample);
     }
 
     @Override
     public List<MeasurementPoint> findPoints(
-            String hardwareDeviceId,
+            long potId,
             MeasurementMetric metric,
             Instant start) {
         String flux = """
                 from(bucket: "%s")
                   |> range(start: time(v: "%s"))
-                  |> filter(fn: (r) => r._measurement == "%s" and r.hardware_device_id == "%s")
+                  |> filter(fn: (r) => r._measurement == "%s" and r.pot_id == "%s")
                   |> filter(fn: (r) => r._field == "%s")
                   |> sort(columns: ["_time"])
                 """.formatted(
                 escape(properties.bucket()),
                 start,
                 MEASUREMENT,
-                escape(hardwareDeviceId),
+                potId,
                 metric.field());
 
         return records(flux).stream()
@@ -97,7 +100,11 @@ public class InfluxMeasurementStore implements MeasurementStore {
     private TelemetrySample toSample(FluxRecord record) {
         Map<String, Object> values = record.getValues();
         return new TelemetrySample(
-                string(values, "hardware_device_id"),
+                Long.parseLong(string(values, "pot_id")),
+                Long.parseLong(string(values, "device_id")),
+                string(values, "node_id"),
+                string(values, "crop_code"),
+                null,
                 record.getTime(),
                 number(values.get("sequence")).longValue(),
                 string(values, "site_id"),

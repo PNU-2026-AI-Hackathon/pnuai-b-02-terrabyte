@@ -6,7 +6,6 @@ import java.time.Instant;
 public record CultivationSpace(
         long id,
         long userId,
-        long deviceId,
         String name,
         String spaceType,
         BigDecimal areaSquareMeters,

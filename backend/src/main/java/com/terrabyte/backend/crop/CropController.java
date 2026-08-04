@@ -33,10 +33,17 @@ public class CropController {
     }
 
     @PatchMapping("/devices/{deviceId}/crop")
+    @Deprecated
     public CropSelectionResponse select(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable long deviceId,
             @Valid @RequestBody CropSelectionRequest request) {
-        return cropService.select(Long.parseLong(jwt.getSubject()), deviceId, request);
+        return cropService.selectForDevice(Long.parseLong(jwt.getSubject()), deviceId, request);
+    }
+
+    @PatchMapping("/pots/{potId}/crop")
+    public CropSelectionResponse selectPot(@AuthenticationPrincipal Jwt jwt, @PathVariable long potId,
+            @Valid @RequestBody CropSelectionRequest request) {
+        return cropService.select(Long.parseLong(jwt.getSubject()), potId, request);
     }
 }

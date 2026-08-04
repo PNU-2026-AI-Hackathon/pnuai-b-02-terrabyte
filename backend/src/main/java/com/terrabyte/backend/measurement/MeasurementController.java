@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/devices/{deviceId}/measurements")
+@RequestMapping("/api")
 public class MeasurementController {
 
     private final MeasurementService measurementService;
@@ -18,23 +18,35 @@ public class MeasurementController {
         this.measurementService = measurementService;
     }
 
-    @GetMapping("/latest")
-    public LatestMeasurementsResponse latest(
-            @AuthenticationPrincipal Jwt jwt,
-            @PathVariable long deviceId) {
-        return measurementService.latest(Long.parseLong(jwt.getSubject()), deviceId);
+    @GetMapping("/pots/{potId}/measurements/latest")
+    public LatestMeasurementsResponse latest(@AuthenticationPrincipal Jwt jwt, @PathVariable long potId) {
+        return measurementService.latest(Long.parseLong(jwt.getSubject()), potId);
     }
 
-    @GetMapping
+    @GetMapping("/pots/{potId}/measurements")
     public MeasurementSeriesResponse series(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable long potId,
+            @RequestParam String metric,
+            @RequestParam(defaultValue = "24h") String range) {
+        return measurementService.series(Long.parseLong(jwt.getSubject()), potId, metric, range);
+    }
+
+    @Deprecated
+    @GetMapping("/devices/{deviceId}/measurements/latest")
+    public LatestMeasurementsResponse latestForDevice(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable long deviceId) {
+        return measurementService.latestForDevice(Long.parseLong(jwt.getSubject()), deviceId);
+    }
+
+    @Deprecated
+    @GetMapping("/devices/{deviceId}/measurements")
+    public MeasurementSeriesResponse seriesForDevice(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable long deviceId,
             @RequestParam String metric,
             @RequestParam(defaultValue = "24h") String range) {
-        return measurementService.series(
-                Long.parseLong(jwt.getSubject()),
-                deviceId,
-                metric,
-                range);
+        return measurementService.seriesForDevice(
+                Long.parseLong(jwt.getSubject()), deviceId, metric, range);
     }
 }
