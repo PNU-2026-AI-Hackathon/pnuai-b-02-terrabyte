@@ -1,0 +1,16 @@
+node_modules/
+.expo/
+dist/
+web-build/
+storybook-static/
+*.tsbuildinfo
+.metro-health-check*
+
+.env
+.env.*
+!.env.example
+
+.git/
+.idea/
+.vscode/
+.DS_Store

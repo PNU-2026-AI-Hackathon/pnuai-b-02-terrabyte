@@ -53,3 +53,12 @@ sourceSets.main.resources.srcDir layout.buildDirectory.dir('generated-resources'
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// Docker 개발 컨테이너에서 원격 디버깅(JDWP) 등 JVM 옵션을 주입하기 위한 훅.
+// 환경 변수가 없으면 아무 동작도 하지 않으므로 로컬 실행에는 영향이 없다.
+tasks.named('bootRun') {
+	String extraJvmArgs = System.getenv('BOOT_RUN_JVM_ARGS')
+	if (extraJvmArgs != null && !extraJvmArgs.isBlank()) {
+		jvmArgs(extraJvmArgs.trim().split('\\s+') as List)
+	}
+}

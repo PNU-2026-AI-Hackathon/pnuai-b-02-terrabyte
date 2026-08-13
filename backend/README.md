@@ -9,7 +9,19 @@
 - SQLite: 작물별 환경 점수 프로필 및 계산 결과
 - InfluxDB 2.x: 하드웨어 센서 시계열 데이터
 
-## 로컬 실행
+## Docker 로 실행 (권장)
+
+저장소 루트에서 `docker compose up --build` 한 번이면 PostgreSQL·InfluxDB·백엔드·프론트엔드가 함께 뜹니다.
+JDK/Gradle 버전은 컨테이너에 고정되어 있고, 원격 디버깅 포트(5005)도 열려 있습니다.
+자세한 내용은 [`docs/docker_dev_environment.md`](../docs/docker_dev_environment.md) 를 참고하세요.
+
+```bash
+cp .env.example .env
+docker compose up --build        # 전체 스택
+make test                        # 백엔드 테스트만 실행
+```
+
+## 로컬 실행 (호스트에 직접 설치)
 
 JDK 17 이상과 실행 중인 PostgreSQL이 필요합니다. 기본 연결 정보는 아래와 같습니다.
 

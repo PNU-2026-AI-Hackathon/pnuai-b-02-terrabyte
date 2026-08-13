@@ -1,0 +1,164 @@
+# TerraByte 개발용 Docker Compose 스택
+#
+#   docker compose up          # PostgreSQL + InfluxDB + Spring 백엔드 + Expo 프론트엔드
+#   docker compose --profile storybook up storybook
+#
+# 자세한 사용법은 docs/docker_dev_environment.md 를 참고하세요.
+name: terrabyte
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    container_name: terrabyte-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-terrabyte}
+      POSTGRES_USER: ${POSTGRES_USER:-terrabyte}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-terrabyte}
+      TZ: ${TZ:-Asia/Seoul}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "${POSTGRES_USER:-terrabyte}" -d "${POSTGRES_DB:-terrabyte}"
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+    restart: unless-stopped
+
+  influxdb:
+    image: ${INFLUXDB_IMAGE:-influxdb:2.7}
+    container_name: terrabyte-influxdb
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_USERNAME:-terrabyte}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD:-terrabyte-admin-password}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG:-terrabyte}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET:-telemetry}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:-terrabyte-local-token}
+      TZ: ${TZ:-Asia/Seoul}
+    ports:
+      - "${INFLUX_PORT:-8086}:8086"
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    healthcheck:
+      test: ["CMD", "influx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+      args:
+        JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:21-jdk-jammy}
+        UID: ${DOCKER_UID:-1000}
+        GID: ${DOCKER_GID:-1000}
+    image: terrabyte/backend-dev
+    container_name: terrabyte-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        # 백엔드는 기동 시점에 Influx 가 필요하지 않으므로 healthy 까지 기다리지 않는다.
+        condition: service_started
+    environment:
+      TZ: ${TZ:-Asia/Seoul}
+      SERVER_PORT: "8080"
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-terrabyte}
+      POSTGRES_USER: ${POSTGRES_USER:-terrabyte}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-terrabyte}
+      SQLITE_URL: jdbc:sqlite:/workspace/backend/db/terrabyte-score.db
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: ${INFLUX_TOKEN:-terrabyte-local-token}
+      INFLUX_ORG: ${INFLUX_ORG:-terrabyte}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-telemetry}
+      TELEMETRY_DEVICE_KEY: ${TELEMETRY_DEVICE_KEY:-terrabyte-local-device-key}
+      JWT_ISSUER: ${JWT_ISSUER:-terrabyte-backend}
+      JWT_SECRET: ${JWT_SECRET:-terrabyte-local-development-secret-change-me-2026}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT1H}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:19006,http://localhost:3000,http://localhost:8088}
+      # 원격 디버거(IDE)가 5005 로 붙을 수 있게 bootRun JVM 에 JDWP 를 붙인다.
+      BOOT_RUN_JVM_ARGS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+      - "${BACKEND_DEBUG_PORT:-5005}:5005"
+    volumes:
+      - ./backend:/workspace/backend
+      # 호스트(macOS, 다른 JDK)의 빌드 산출물과 섞이지 않도록 컨테이너 전용 볼륨을 덮어쓴다.
+      - backend-build:/workspace/backend/build
+      - backend-project-gradle:/workspace/backend/.gradle
+      - backend-gradle-home:/home/dev/.gradle
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend/app
+      dockerfile: Dockerfile.dev
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+    image: terrabyte/frontend-dev
+    container_name: terrabyte-frontend
+    depends_on:
+      - backend
+    environment:
+      TZ: ${TZ:-Asia/Seoul}
+      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8080}
+      REACT_NATIVE_PACKAGER_HOSTNAME: ${REACT_NATIVE_PACKAGER_HOSTNAME:-localhost}
+      EXPO_NO_TELEMETRY: "1"
+      # 컨테이너 bind mount 에서 파일 변경 감지가 누락되는 것을 막는다.
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+    ports:
+      - "${FRONTEND_PORT:-8081}:8081"
+    volumes:
+      - ./frontend/app:/workspace/app
+      # 호스트의 macOS용 네이티브 모듈이 컨테이너로 들어오지 않도록 분리한다.
+      - frontend-node-modules:/workspace/app/node_modules
+    command: ["npx", "expo", "start", "--web", "--port", "8081"]
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+
+  storybook:
+    profiles: ["storybook"]
+    image: terrabyte/frontend-dev
+    build:
+      context: ./frontend/app
+      dockerfile: Dockerfile.dev
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+    container_name: terrabyte-storybook
+    environment:
+      TZ: ${TZ:-Asia/Seoul}
+      EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "${STORYBOOK_PORT:-6006}:6006"
+    volumes:
+      - ./frontend/app:/workspace/app
+      - frontend-node-modules:/workspace/app/node_modules
+    command: ["npm", "run", "storybook", "--", "--host", "0.0.0.0", "--no-open"]
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres-data:
+  influxdb-data:
+  influxdb-config:
+  backend-build:
+  backend-project-gradle:
+  backend-gradle-home:
+  frontend-node-modules:

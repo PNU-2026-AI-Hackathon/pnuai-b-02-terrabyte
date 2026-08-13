@@ -25,6 +25,21 @@ frontend/
 
 ## 실행 방법
 
+### Docker 로 실행 (권장)
+
+저장소 루트에서 아래 한 줄이면 백엔드·DB 와 함께 Expo 웹 개발 서버(http://localhost:8081)가 뜹니다.
+Node.js/npm 버전은 컨테이너에 고정되어 있어 별도 설치가 필요 없습니다.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Storybook 은 `make storybook` (http://localhost:6006).
+iOS 시뮬레이터·Android 에뮬레이터 실행은 네이티브 SDK 가 필요해 컨테이너에서 지원되지 않으므로
+아래의 호스트 실행 방법을 사용합니다. 자세한 내용은
+[`docs/docker_dev_environment.md`](../docs/docker_dev_environment.md) 를 참고하세요.
+
 ### 사전 준비
 
 처음 받았거나 `node_modules`가 없으면 먼저 의존성을 설치합니다.

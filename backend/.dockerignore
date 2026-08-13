@@ -1,0 +1,26 @@
+# 빌드 컨텍스트에서 제외 (이미지 크기 · 캐시 무효화 방지)
+build/
+.gradle/
+out/
+bin/
+docs/
+README.md
+
+# 개발자 로컬 전용 Gradle 설정 (org.gradle.java.home 등 호스트 경로 포함)
+gradle.properties
+
+# 로컬 SQLite 데이터
+db/*.db
+db/*.db-shm
+db/*.db-wal
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# 환경 변수
+.env
+.env.*
+!.env.example

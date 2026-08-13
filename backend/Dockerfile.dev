@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1.7
+#
+# 개발용 백엔드 이미지.
+# 소스는 bind mount 로 들어오고, 이 이미지는 "고정된 JDK + 도구"만 제공한다.
+# Gradle 버전은 gradle/wrapper/gradle-wrapper.properties (8.14.3) 로 고정된다.
+ARG JAVA_IMAGE=eclipse-temurin:21-jdk-jammy
+FROM ${JAVA_IMAGE}
+
+ARG UID=1000
+ARG GID=1000
+
+ENV HOME=/home/dev \
+    GRADLE_USER_HOME=/home/dev/.gradle \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends curl git tini; \
+    rm -rf /var/lib/apt/lists/*; \
+    if ! getent group "${GID}" >/dev/null; then groupadd -g "${GID}" dev; fi; \
+    if ! getent passwd "${UID}" >/dev/null; then \
+        useradd -M -u "${UID}" -g "${GID}" -d /home/dev -s /bin/bash dev; \
+    fi; \
+    mkdir -p /workspace/backend /home/dev/.gradle; \
+    chown -R "${UID}:${GID}" /workspace /home/dev
+
+COPY docker-entrypoint-dev.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+USER ${UID}:${GID}
+WORKDIR /workspace/backend
+
+EXPOSE 8080 5005
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+CMD ["bootRun"]

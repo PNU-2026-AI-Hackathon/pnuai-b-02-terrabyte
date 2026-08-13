@@ -78,9 +78,39 @@
 > AI 도구를 어떤 단계에서 어떻게 활용했는지, 어떤 성과가 도출되었는지 기술해주세요.
 
 ### 4. 설치 및 사용 방법
-> 제품을 설치하기 위헤 필요한 소프트웨어 및 설치 방법을 작성하세요.
->
-> 제품을 설치하고 난 후, 실행 할 수 있는 방법을 작성하세요.
+
+#### 4.1. Docker 로 한 번에 실행 (권장)
+
+Docker Desktop 4.x 이상만 설치되어 있으면 JDK·Gradle·Node.js·DB 를 따로 설치하지 않아도 됩니다.
+
+```bash
+git clone https://github.com/PNU-2026-AI-Hackathon/pnuai-b-02-terrabyte.git
+cd pnuai-b-02-terrabyte
+cp .env.example .env
+docker compose up --build      # 또는 make up
+```
+
+| 서비스 | 주소 |
+| --- | --- |
+| 프론트엔드 (Expo Web) | http://localhost:8081 |
+| 백엔드 상태 확인 | http://localhost:8080/actuator/health |
+| InfluxDB UI | http://localhost:8086 |
+
+테스트 실행은 `make test`, 중지는 `make down`, DB 초기화까지 하려면 `make down-v` 입니다.
+백엔드는 `localhost:5005` 에서 원격 디버거(JDWP)를 받습니다.
+버전 고정·디버깅·배포 스택 등 자세한 내용은 [`docs/docker_dev_environment.md`](docs/docker_dev_environment.md) 를 참고하세요.
+
+배포용 스택(빌드된 jar + nginx 정적 번들)은 다음과 같이 실행합니다.
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build   # 또는 make prod-up
+# http://localhost:8088
+```
+
+#### 4.2. 호스트에 직접 설치해서 실행
+
+Docker 없이 실행하려면 JDK 17 이상, Node.js 22 이상, PostgreSQL, InfluxDB 2.x 가 필요합니다.
+자세한 절차는 [`backend/README.md`](backend/README.md) 와 [`frontend/README.md`](frontend/README.md) 에 있습니다.
 
 ### 5. 소개 및 시연 영상
 > 프로젝트에 대한 소개와 시연 영상을 넣으세요.

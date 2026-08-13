@@ -1,0 +1,97 @@
+# TerraByte 배포(프로덕션 유사) 스택
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   http://localhost:${WEB_PORT:-8088}
+#
+# 개발 스택(docker-compose.yml)과 달리 소스 bind mount 없이 이미지에 빌드된
+# jar / 정적 번들만 실행합니다. 실제 배포 시에는 .env 의 자격 증명을 반드시 교체하세요.
+name: terrabyte-prod
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-terrabyte}
+      POSTGRES_USER: ${POSTGRES_USER:-terrabyte}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 를 설정하세요}
+      TZ: ${TZ:-Asia/Seoul}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "${POSTGRES_USER:-terrabyte}" -d "${POSTGRES_DB:-terrabyte}"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  influxdb:
+    image: ${INFLUXDB_IMAGE:-influxdb:2.7}
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: ${INFLUX_USERNAME:-terrabyte}
+      DOCKER_INFLUXDB_INIT_PASSWORD: ${INFLUX_PASSWORD:?INFLUX_PASSWORD 를 설정하세요}
+      DOCKER_INFLUXDB_INIT_ORG: ${INFLUX_ORG:-terrabyte}
+      DOCKER_INFLUXDB_INIT_BUCKET: ${INFLUX_BUCKET:-telemetry}
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUX_TOKEN:?INFLUX_TOKEN 을 설정하세요}
+      TZ: ${TZ:-Asia/Seoul}
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      - influxdb-config:/etc/influxdb2
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        JAVA_IMAGE: ${JAVA_IMAGE:-eclipse-temurin:21-jdk-jammy}
+        JAVA_RUNTIME_IMAGE: ${JAVA_RUNTIME_IMAGE:-eclipse-temurin:21-jre-jammy}
+    image: terrabyte/backend:${IMAGE_TAG:-local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      influxdb:
+        condition: service_started
+    environment:
+      TZ: ${TZ:-Asia/Seoul}
+      SERVER_PORT: "8080"
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-terrabyte}
+      POSTGRES_USER: ${POSTGRES_USER:-terrabyte}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD 를 설정하세요}
+      SQLITE_URL: jdbc:sqlite:/app/data/terrabyte-score.db
+      INFLUX_URL: http://influxdb:8086
+      INFLUX_TOKEN: ${INFLUX_TOKEN:?INFLUX_TOKEN 을 설정하세요}
+      INFLUX_ORG: ${INFLUX_ORG:-terrabyte}
+      INFLUX_BUCKET: ${INFLUX_BUCKET:-telemetry}
+      TELEMETRY_DEVICE_KEY: ${TELEMETRY_DEVICE_KEY:?TELEMETRY_DEVICE_KEY 를 설정하세요}
+      JWT_ISSUER: ${JWT_ISSUER:-terrabyte-backend}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 을 32바이트 이상으로 설정하세요}
+      JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT1H}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8088}
+    volumes:
+      - backend-data:/app/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend/app
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+        NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.27-alpine}
+        # 빈 값 = 동일 출처(/api) 요청 → nginx 가 backend 로 프록시
+        EXPO_PUBLIC_API_BASE_URL: ${PROD_API_BASE_URL-}
+    image: terrabyte/web:${IMAGE_TAG:-local}
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_PORT:-8088}:80"
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  influxdb-data:
+  influxdb-config:
+  backend-data:
