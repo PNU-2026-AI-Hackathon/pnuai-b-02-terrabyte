@@ -1,6 +1,12 @@
 // Arduino CLI/IDE sketch entry marker.
 // The implementation lives in src/main.cpp and src/SensorAdapter.cpp so the
 // same sources are also built by PlatformIO without duplication.
+//
+// NOTE: src/dataset_logger.cpp is bench tooling, not production firmware, and
+// defines its own setup()/loop(). The Arduino IDE compiles src/ recursively and
+// will fail with duplicate symbols, so temporarily move that file out of the
+// tree for IDE builds. PlatformIO selects between them per environment via
+// build_src_filter and is the supported path.
 
 /*
  * Pin map (Arduino Nano-compatible board)

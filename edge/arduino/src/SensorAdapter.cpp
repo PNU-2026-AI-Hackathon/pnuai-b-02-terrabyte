@@ -126,6 +126,7 @@ SensorSample readSensorSample() {
   sample.illuminanceLux = 12000.0f + (step * 250.0f);
   sample.soilTemperatureC = 18.0f + (step * 0.10f);
   sample.soilMoisturePct = 48.0f + (step * 0.50f);
+  sample.soilMoistureRawAdc = static_cast<int16_t>(520 - (step * 5));
   sample.validity = kAllSensorFieldsValid;
   return sample;
 #endif
@@ -175,6 +176,7 @@ SensorSample readSensorSample() {
 
 #if !TB_MOCK_SENSOR_ENABLED && TB_SOIL_MOISTURE_ENABLED
   const int rawSoilMoisture = analogRead(TB_SOIL_MOISTURE_ADC_PIN);
+  sample.soilMoistureRawAdc = static_cast<int16_t>(rawSoilMoisture);
   const int dryAdc = TB_SOIL_MOISTURE_DRY_ADC;
   const int wetAdc = TB_SOIL_MOISTURE_WET_ADC;
   const int minimumAdc = dryAdc < wetAdc ? dryAdc : wetAdc;

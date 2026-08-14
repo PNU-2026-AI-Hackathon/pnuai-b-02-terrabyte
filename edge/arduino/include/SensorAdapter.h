@@ -17,6 +17,11 @@ constexpr uint8_t kAllSensorFieldsValid =
     kCoreTelemetryFieldsValid | kSoilTemperatureValid | kSoilMoistureValid |
     kIlluminanceValid;
 
+// Raw ADC count when no soil-moisture reading was taken. The capacitive sensor
+// itself can legitimately report 0, so a sentinel outside the 10-bit range is
+// needed to distinguish "not sampled" from "sampled as zero".
+constexpr int16_t kSoilMoistureRawAdcAbsent = -1;
+
 struct SensorSample {
   float airTemperatureC = NAN;
   float relativeHumidityPct = NAN;
@@ -24,6 +29,10 @@ struct SensorSample {
   float illuminanceLux = NAN;
   float soilTemperatureC = NAN;
   float soilMoisturePct = NAN;
+  // Uncalibrated ADC count. Retained even when the derived percentage is
+  // rejected, so a dataset stays usable after the calibration endpoints are
+  // corrected.
+  int16_t soilMoistureRawAdc = kSoilMoistureRawAdcAbsent;
   uint8_t validity = 0;
 };
 
