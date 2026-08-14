@@ -98,6 +98,39 @@ class TelemetryContractCompatibilityTests {
         assertThat(envelope.nodes().get(0).quality().soilSensorValidOrFalse()).isFalse();
     }
 
+    /**
+     * The soil probes are optional at the firmware level, so the edge emits a
+     * second, wider shape once they are compiled in. Both must parse: pinning
+     * only the three-metric payload would let the soil path rot unnoticed,
+     * since nothing but this edge ever produces it.
+     */
+    private static final String EDGE_PAYLOAD_WITH_SOIL = """
+            {"schema_version":2,"event_type":"telemetry.sample",\
+            "gateway_id":"orangepi-pro-01",\
+            "event_id":"12345678-1234-5678-1234-567812345678",\
+            "observed_at":"2026-07-21T04:05:06Z",\
+            "nodes":[{"node_id":"terrabyte-node-01","sequence":42,\
+            "measurements":{"air_temperature_c":24.5,"air_humidity_pct":61.2,\
+            "plant_light_ppfd_umol_m2_s":382.0,"soil_temperature_c":18.5,\
+            "soil_moisture_pct":50.5},\
+            "quality":{"air_sensor_valid":true,"light_sensor_valid":true,\
+            "soil_sensor_valid":true}}]}""";
+
+    @Test
+    void deserialisesTheEdgePayloadThatCarriesSoilProbes() throws Exception {
+        TelemetryEnvelope envelope =
+                objectMapper.readValue(EDGE_PAYLOAD_WITH_SOIL, TelemetryEnvelope.class);
+        TelemetryEnvelope.Node node = envelope.nodes().get(0);
+
+        assertThat(node.measurements().soilTemperatureC()).isEqualTo(18.5);
+        assertThat(node.measurements().soilMoisturePct()).isEqualTo(50.5);
+        assertThat(node.quality().soilSensorValidOrFalse()).isTrue();
+
+        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+            assertThat(factory.getValidator().validate(envelope)).isEmpty();
+        }
+    }
+
     @Test
     void aV1PayloadIsRejected() throws Exception {
         // v1 shape: schema_version 1, device_id, and the context block whose
