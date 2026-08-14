@@ -7,6 +7,5 @@ public record InfluxProperties(
         String url,
         String token,
         String org,
-        String bucket,
-        String deviceKey) {
+        String bucket) {
 }

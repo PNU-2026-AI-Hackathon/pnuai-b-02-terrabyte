@@ -27,6 +27,7 @@ dependencies {
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'com.influxdb:influxdb-client-java:8.0.0'
+	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
 	runtimeOnly 'org.postgresql:postgresql'
 	runtimeOnly 'org.xerial:sqlite-jdbc'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

@@ -2,78 +2,62 @@ package com.terrabyte.backend.measurement;
 
 import java.time.Instant;
 
+/**
+ * One node's measurements, resolved against the pot and gateway that own them.
+ *
+ * <p>{@code eventId} is the Orange Pi outbox UUID. It travels all the way into
+ * InfluxDB as a field (never a tag — a value unique per sample would explode
+ * series cardinality) so a stored sample can be traced back to the edge event
+ * that produced it.
+ */
 public record TelemetrySample(
         long potId,
         long deviceId,
         String nodeId,
         String cropCode,
         String hardwareDeviceId,
+        String eventId,
         Instant observedAt,
         long sequence,
-        String siteId,
-        String zoneId,
-        String soilType,
-        String cropType,
-        String calibrationVersion,
         double soilMoisturePct,
         long soilMoistureRawAdc,
         double airTemperatureC,
         double airHumidityPct,
         double plantLightPpfdUmolM2S,
+        // Nullable, unlike soilMoisturePct above: the probe is optional, and a
+        // missing reading collapsing to 0.0 would read as a confident "0°C"
+        // rather than "unknown" — the same hazard soilMoisturePctOrZero()
+        // already accepts for moisture must not be repeated for temperature.
+        Double soilTemperatureC,
         boolean soilSensorValid,
         boolean airSensorValid,
         boolean lightSensorValid) {
 
     public static TelemetrySample from(
-            TelemetrySampleRequest request,
+            TelemetryEnvelope envelope,
+            TelemetryEnvelope.Node node,
             long potId,
             long deviceId,
-            String nodeId,
             String cropCode) {
+        TelemetryEnvelope.Measurements measurements = node.measurements();
+        TelemetryEnvelope.Quality quality = node.quality();
         return new TelemetrySample(
                 potId,
                 deviceId,
-                nodeId,
+                node.nodeId(),
                 cropCode,
-                request.deviceId(),
-                request.observedAt(),
-                request.sequence(),
-                request.context().siteId(),
-                request.context().zoneId(),
-                request.context().soilType(),
-                request.context().cropType(),
-                request.context().calibrationVersion(),
-                request.measurements().soilMoisturePct(),
-                request.measurements().soilMoistureRawAdc(),
-                request.measurements().airTemperatureC(),
-                request.measurements().airHumidityPct(),
-                request.measurements().plantLightPpfdUmolM2S(),
-                request.quality().soilSensorValid(),
-                request.quality().airSensorValid(),
-                request.quality().lightSensorValid());
-    }
-
-    public TelemetrySample(
-            String hardwareDeviceId,
-            Instant observedAt,
-            long sequence,
-            String siteId,
-            String zoneId,
-            String soilType,
-            String cropType,
-            String calibrationVersion,
-            double soilMoisturePct,
-            long soilMoistureRawAdc,
-            double airTemperatureC,
-            double airHumidityPct,
-            double plantLightPpfdUmolM2S,
-            boolean soilSensorValid,
-            boolean airSensorValid,
-            boolean lightSensorValid) {
-        this(
-                0, 0, zoneId, null, hardwareDeviceId, observedAt, sequence,
-                siteId, zoneId, soilType, cropType, calibrationVersion,
-                soilMoisturePct, soilMoistureRawAdc, airTemperatureC, airHumidityPct,
-                plantLightPpfdUmolM2S, soilSensorValid, airSensorValid, lightSensorValid);
+                envelope.gatewayId(),
+                envelope.eventId(),
+                envelope.observedAt(),
+                node.sequence(),
+                measurements.soilMoisturePctOrZero(),
+                measurements.soilMoistureRawAdcOrZero(),
+                measurements.airTemperatureC(),
+                measurements.airHumidityPct(),
+                measurements.plantLightPpfdUmolM2S(),
+                measurements.soilTemperatureC(),
+                quality.soilSensorValidOrFalse(),
+                quality.airSensorValid(),
+                quality.lightSensorValid());
     }
 }

@@ -42,4 +42,16 @@ app:
     token: ${INFLUX_TOKEN:terrabyte-local-token}
     org: ${INFLUX_ORG:terrabyte}
     bucket: ${INFLUX_BUCKET:telemetry}
-    device-key: ${TELEMETRY_DEVICE_KEY:terrabyte-local-device-key}
+  mqtt:
+    enabled: ${MQTT_ENABLED:false}
+    url: ${MQTT_URL:tcp://localhost:1883}
+    client-id: ${MQTT_CLIENT_ID:terrabyte-backend}
+    username: ${MQTT_USERNAME:terrabyte-backend}
+    password: ${MQTT_PASSWORD:terrabyte-backend-local}
+    topic-prefix: ${MQTT_TOPIC_PREFIX:tb/v2}
+    connection-timeout: ${MQTT_CONNECTION_TIMEOUT:PT10S}
+    keep-alive: ${MQTT_KEEP_ALIVE:PT30S}
+    clean-session: ${MQTT_CLEAN_SESSION:false}
+  telemetry:
+    http-ingest:
+      enabled: ${TELEMETRY_HTTP_INGEST_ENABLED:false}
