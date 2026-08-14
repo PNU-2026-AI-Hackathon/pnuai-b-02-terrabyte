@@ -79,7 +79,7 @@ services:
       context: ./frontend/app
       dockerfile: Dockerfile
       args:
-        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+        NODE_IMAGE: ${NODE_IMAGE:-node:24-bookworm-slim}
         NGINX_IMAGE: ${NGINX_IMAGE:-nginx:1.27-alpine}
         # 빈 값 = 동일 출처(/api) 요청 → nginx 가 backend 로 프록시
         EXPO_PUBLIC_API_BASE_URL: ${PROD_API_BASE_URL-}

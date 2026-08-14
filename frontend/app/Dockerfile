@@ -3,7 +3,7 @@
 # 배포용 프론트엔드 이미지 (멀티 스테이지)
 #   1) build   : Expo 웹 정적 번들 생성 (expo export)
 #   2) runtime : nginx 로 정적 파일 서빙 + /api 를 백엔드로 프록시
-ARG NODE_IMAGE=node:22-bookworm-slim
+ARG NODE_IMAGE=node:24-bookworm-slim
 ARG NGINX_IMAGE=nginx:1.27-alpine
 
 FROM ${NODE_IMAGE} AS build

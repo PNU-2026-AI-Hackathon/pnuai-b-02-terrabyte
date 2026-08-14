@@ -81,7 +81,10 @@
 
 #### 4.1. Docker 로 한 번에 실행 (권장)
 
-Docker Desktop 4.x 이상만 설치되어 있으면 JDK·Gradle·Node.js·DB 를 따로 설치하지 않아도 됩니다.
+Docker Desktop 4.x 이상(또는 OrbStack · Colima · Docker Engine 24+)만 있으면
+JDK·Gradle·Node.js·DB 를 따로 설치하지 않아도 됩니다.
+Compose v2 와 buildx 가 모두 필요하며, Colima·Linux 준비 절차는
+[`docs/docker_dev_environment.md`](docs/docker_dev_environment.md) 1절에 있습니다.
 
 ```bash
 git clone https://github.com/PNU-2026-AI-Hackathon/pnuai-b-02-terrabyte.git

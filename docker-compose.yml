@@ -109,7 +109,7 @@ services:
       context: ./frontend/app
       dockerfile: Dockerfile.dev
       args:
-        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+        NODE_IMAGE: ${NODE_IMAGE:-node:24-bookworm-slim}
     image: terrabyte/frontend-dev
     container_name: terrabyte-frontend
     depends_on:
@@ -119,6 +119,9 @@ services:
       EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:8080}
       REACT_NATIVE_PACKAGER_HOSTNAME: ${REACT_NATIVE_PACKAGER_HOSTNAME:-localhost}
       EXPO_NO_TELEMETRY: "1"
+      # 컨테이너에는 브라우저가 없다. 지정하지 않으면 Expo 가 xdg-open 을 실행하려다
+      # ENOENT 로 죽는다(재시작 루프).
+      BROWSER: "none"
       # 컨테이너 bind mount 에서 파일 변경 감지가 누락되는 것을 막는다.
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
@@ -140,7 +143,7 @@ services:
       context: ./frontend/app
       dockerfile: Dockerfile.dev
       args:
-        NODE_IMAGE: ${NODE_IMAGE:-node:22-bookworm-slim}
+        NODE_IMAGE: ${NODE_IMAGE:-node:24-bookworm-slim}
     container_name: terrabyte-storybook
     environment:
       TZ: ${TZ:-Asia/Seoul}

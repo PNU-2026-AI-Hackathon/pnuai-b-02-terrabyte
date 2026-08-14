@@ -60,7 +60,11 @@ versions: ## 컨테이너에 고정된 툴체인 버전 출력
 	@$(COMPOSE) run --rm --no-deps --entrypoint sh influxdb -c 'influxd version'
 
 test: ## 백엔드 테스트 실행 (외부 DB 불필요, H2 + in-memory SQLite)
-	$(COMPOSE) run --rm --no-deps backend test
+	# 실행 중인 backend 컨테이너(bootRun)가 Gradle 홈과 프로젝트 .gradle 디렉터리의
+	# 락을 잡고 있으므로, 일회성 실행은 두 경로를 모두 분리해야 스택을 내리지 않고도
+	# 테스트할 수 있다. 두 경로 모두 backend-gradle-home 볼륨 안이라 캐시는 유지된다.
+	$(COMPOSE) run --rm --no-deps -e GRADLE_USER_HOME=/home/dev/.gradle/one-shot backend \
+		--project-cache-dir /home/dev/.gradle/one-shot-project test
 
 backend-sh: ## 백엔드 컨테이너 셸
 	$(COMPOSE) exec backend bash

@@ -5,8 +5,34 @@
 
 ## 1. 사전 준비
 
-- Docker Desktop 4.x 이상 (또는 OrbStack / Docker Engine 24+ with Compose v2)
-- `docker compose version` 이 `v2.x` 로 나오는지 확인
+런타임은 아래 중 하나면 됩니다. 어느 쪽이든 **Compose v2 와 BuildKit(buildx)** 이 필요합니다.
+
+| 런타임 | 준비 |
+| --- | --- |
+| Docker Desktop 4.x+ (macOS/Windows) | 설치만 하면 compose·buildx 가 함께 들어 있습니다 |
+| OrbStack (macOS) | 설치만 하면 compose·buildx 가 함께 들어 있습니다 |
+| Colima (macOS, CLI) | `brew install colima docker docker-compose docker-buildx` 후 아래 참고 |
+| Docker Engine 24+ (Linux) | `docker-compose-plugin` · `docker-buildx-plugin` 패키지 설치 |
+
+Colima 는 CLI 플러그인을 직접 연결해야 합니다(하지 않으면 legacy builder 로 떨어져
+`--mount=type=cache` 를 쓰는 Dockerfile 빌드가 실패합니다):
+
+```bash
+mkdir -p ~/.docker/cli-plugins
+ln -sfn /opt/homebrew/opt/docker-compose/bin/docker-compose ~/.docker/cli-plugins/docker-compose
+ln -sfn /opt/homebrew/opt/docker-buildx/bin/docker-buildx  ~/.docker/cli-plugins/docker-buildx
+colima start --cpu 4 --memory 8 --disk 60
+```
+
+확인:
+
+```bash
+docker compose version   # v2.x 이상
+docker buildx version    # 출력되어야 함
+```
+
+Linux 에서는 `.env` 의 `DOCKER_UID`/`DOCKER_GID` 를 `id -u`/`id -g` 값으로 맞춰 주세요.
+macOS(Docker Desktop·OrbStack·Colima)는 기본값 그대로 두면 됩니다.
 
 ```bash
 cp .env.example .env    # 또는 make init
@@ -46,7 +72,7 @@ make down-v      # 중지 + DB 볼륨 삭제 (완전 초기화)
 | JDK (빌드·실행) | `.env` → `JAVA_IMAGE` | `eclipse-temurin:21-jdk-jammy` |
 | JRE (배포 런타임) | `.env` → `JAVA_RUNTIME_IMAGE` | `eclipse-temurin:21-jre-jammy` |
 | Gradle | `backend/gradle/wrapper/gradle-wrapper.properties` | 8.14.3 (Wrapper) |
-| Node.js / npm / npx | `.env` → `NODE_IMAGE` | `node:22-bookworm-slim` |
+| Node.js / npm / npx | `.env` → `NODE_IMAGE` | `node:24-bookworm-slim` |
 | PostgreSQL | `.env` → `POSTGRES_IMAGE` | `postgres:17-alpine` |
 | InfluxDB | `.env` → `INFLUXDB_IMAGE` | `influxdb:2.7` |
 | nginx (배포용) | `.env` → `NGINX_IMAGE` | `nginx:1.27-alpine` |
@@ -182,7 +208,9 @@ make prod-down
 
 | 증상 | 해결 |
 | --- | --- |
-| `port is already allocated` | 호스트에서 같은 포트를 쓰는 프로세스 종료, 또는 `.env` 의 `*_PORT` 변경 |
+| `port is already allocated` | 호스트에서 같은 포트를 쓰는 프로세스 종료, 또는 `.env` 의 `*_PORT` 변경 (호스트에 PostgreSQL 이 이미 떠 있으면 `POSTGRES_PORT` 를 바꾸세요) |
+| `the --mount option requires BuildKit` | buildx 플러그인이 없습니다. 위 1절의 Colima/Linux 준비 절차 참고 |
+| `npm ci` 가 `Missing: ... from lock file` 로 실패 | `package-lock.json` 이 npm 11+ 로 생성돼 있습니다. `NODE_IMAGE` 를 npm 11 이상 포함 이미지(`node:24-bookworm-slim`)로 유지하세요 |
 | 백엔드가 Flyway 오류로 죽음 | `make down-v` 로 DB 초기화 후 재실행 |
 | 프론트엔드가 `Cannot find module` | `docker compose restart frontend` (진입점이 `npm ci` 재실행) |
 | 파일 변경이 반영되지 않음 | `make restart`(백엔드) / `docker compose restart frontend` |

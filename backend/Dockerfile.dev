@@ -22,7 +22,9 @@ RUN set -eux; \
     if ! getent passwd "${UID}" >/dev/null; then \
         useradd -M -u "${UID}" -g "${GID}" -d /home/dev -s /bin/bash dev; \
     fi; \
-    mkdir -p /workspace/backend /home/dev/.gradle; \
+    # build/ .gradle/ 는 named volume 의 마운트 지점이다. 이미지에 미리 만들어 두지
+    # 않으면 Docker 가 root 소유로 생성해 컨테이너 사용자가 쓰지 못한다.
+    mkdir -p /workspace/backend/build /workspace/backend/.gradle /home/dev/.gradle; \
     chown -R "${UID}:${GID}" /workspace /home/dev
 
 COPY docker-entrypoint-dev.sh /usr/local/bin/entrypoint.sh
