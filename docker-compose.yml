@@ -53,6 +53,31 @@ services:
       start_period: 20s
     restart: unless-stopped
 
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: terrabyte-mosquitto
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/aclfile:/mosquitto/config/aclfile:ro
+      - ./infra/mosquitto/passwd:/mosquitto/config/passwd:ro
+      # retained 메시지(특히 up/status 온라인 상태)와 로그가 재시작 후에도 남아야
+      # 백엔드가 게이트웨이 프레즌스를 다시 계산하지 않아도 된다.
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    healthcheck:
+      # 컨테이너가 떠 있는지가 아니라 브로커가 실제로 응답하는지 확인한다:
+      # mosquitto_sub 로 1초간 구독을 시도해 접속·인증 경로가 살아있음을 증명한다.
+      test:
+        - CMD-SHELL
+        - mosquitto_sub -h localhost -p 1883 -u terrabyte-backend -P "${MQTT_PASSWORD:-terrabyte-backend-local}" -t '$$SYS/#' -C 1 -W 3 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -69,6 +94,9 @@ services:
       influxdb:
         # 백엔드는 기동 시점에 Influx 가 필요하지 않으므로 healthy 까지 기다리지 않는다.
         condition: service_started
+      mosquitto:
+        # MQTT 연결 없이는 게이트웨이 텔레메트리를 받을 수 없으므로 healthy 를 기다린다.
+        condition: service_healthy
     environment:
       TZ: ${TZ:-Asia/Seoul}
       SERVER_PORT: "8080"
@@ -81,6 +109,11 @@ services:
       INFLUX_ORG: ${INFLUX_ORG:-terrabyte}
       INFLUX_BUCKET: ${INFLUX_BUCKET:-telemetry}
       TELEMETRY_DEVICE_KEY: ${TELEMETRY_DEVICE_KEY:-terrabyte-local-device-key}
+      MQTT_ENABLED: ${MQTT_ENABLED:-true}
+      MQTT_URL: ${MQTT_URL:-tcp://mosquitto:1883}
+      MQTT_USERNAME: ${MQTT_USERNAME:-terrabyte-backend}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-terrabyte-backend-local}
+      MQTT_TOPIC_PREFIX: ${MQTT_TOPIC_PREFIX:-tb/v2}
       JWT_ISSUER: ${JWT_ISSUER:-terrabyte-backend}
       JWT_SECRET: ${JWT_SECRET:-terrabyte-local-development-secret-change-me-2026}
       JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT1H}
@@ -161,6 +194,8 @@ volumes:
   postgres-data:
   influxdb-data:
   influxdb-config:
+  mosquitto-data:
+  mosquitto-log:
   backend-build:
   backend-project-gradle:
   backend-gradle-home:

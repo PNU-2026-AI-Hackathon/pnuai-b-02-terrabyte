@@ -1,0 +1,32 @@
+# TerraByte MQTT ACL — 토픽 위조 방지가 이 파일 전체의 존재 이유다.
+#
+# 배경 (docs/design/device_model_and_telemetry_contract.md §6.4):
+#   인증 주체를 백엔드에서 Mosquitto로 옮기는 것이 이번 리팩터의 핵심이다.
+#   각 게이트웨이 사용자는 "자기 자신의 gatewayId" 아래에만 쓸 수 있고,
+#   "자기 자신의 gatewayId" 아래만 읽을 수 있다. 즉 gw-orangepi-pro-01 계정으로는
+#   tb/v2/orangepi-pro-02/up/# 에 발행하는 것이 프로토콜 레벨에서 아예 불가능하다.
+#   그 결과, 백엔드가 MQTT 토픽에서 뽑아낸 gatewayId 를 추가 검증 없이 신뢰해도
+#   안전해진다 — 브로커가 이미 "이 메시지는 진짜 그 게이트웨이가 보낸 것"을
+#   보장했기 때문이다. 이것이 백엔드의 공용 X-Device-Key 검사
+#   (MeasurementService.authenticateDevice)를 통째로 삭제할 수 있는 근거다.
+#
+# 계정을 새 게이트웨이만큼 늘릴 때는 아래 블록을 게이트웨이당 하나씩 복사한다.
+# (10개 미리 발급 방식 — dynamic-security 플러그인은 데모 이후로 미룸, §6.4 참고)
+
+# ---------------------------------------------------------------------------
+# 백엔드: 모든 게이트웨이의 uplink 를 구독하고, 모든 게이트웨이에 downlink 를 보낸다.
+# ---------------------------------------------------------------------------
+user terrabyte-backend
+topic read  tb/v2/+/up/#
+topic write tb/v2/+/dn/#
+
+# ---------------------------------------------------------------------------
+# 게이트웨이 계정 — 각자 자신의 gatewayId 이름공간 밖으로는 read/write 둘 다 불가능.
+# ---------------------------------------------------------------------------
+user gw-orangepi-pro-01
+topic write tb/v2/orangepi-pro-01/up/#
+topic read  tb/v2/orangepi-pro-01/dn/#
+
+user gw-orangepi-pro-02
+topic write tb/v2/orangepi-pro-02/up/#
+topic read  tb/v2/orangepi-pro-02/dn/#
