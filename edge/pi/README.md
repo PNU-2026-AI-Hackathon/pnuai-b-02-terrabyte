@@ -111,6 +111,89 @@ pending/dead row 수를 경보로 연결해야 합니다.
 명시해야만 허용됩니다. Orange Pi 시각이 `TB_CLOCK_MINIMUM_UTC`보다 이르면 NTP가
 동기화되지 않은 것으로 보고 관측을 폐기합니다.
 
+## 관수 판정 (`terrabyte_edge/irrigation`)
+
+지금 관수할지 말지를 판정합니다. 관수량은 **30 mL 고정**이며, 이 모듈은 "얼마나"를
+결정하지 않습니다.
+
+판정은 두 단계이고 **순서가 안전성의 근거**입니다.
+
+1. **안전 봉투(safety envelope)** — 결정론적 규칙. 센서 유효성, 측정 신선도(10분),
+   건조 게이트, 최소 간격, 일일 예산. 하나라도 걸리면 즉시 거부하고 **모델은 호출되지
+   않습니다.**
+2. **랜덤 포레스트** — 봉투를 통과한 경우에만 판정. 봉투가 먼저·독립적으로 평가되므로
+   모델은 관수를 **억제만 할 수 있고 결정론적 규칙이 허용한 범위를 넓힐 수 없습니다**
+   (`D17`).
+
+프로필 두 가지: `EnvelopeLimits.supervised()`(기본, 건조 게이트 45%·최소 간격 6시간)와
+클라우드 장애용 `EnvelopeLimits.autonomous()`(`D16` 기준, 15%·12시간).
+
+모델 아티팩트가 없거나 스키마가 어긋나면 `ModelError`가 발생하고, 판정은
+`MODEL_UNAVAILABLE`로 **관수하지 않는 쪽**으로 떨어집니다.
+
+### 런타임 의존성 없음
+
+포레스트는 오프라인에서 scikit-learn으로 학습한 뒤 순수 배열 JSON으로 내보냅니다.
+추론기(`forest.py`)는 numpy도 scikit-learn도 import하지 않으므로 Orange Pi의 의존성은
+`pyserial` 하나로 유지됩니다. 25트리·깊이 7 기준 아티팩트 273 KiB, 로드 7.6 ms,
+판정 0.013 ms(개발 PC 실측).
+
+### 데이터 수집 (`edge/arduino` dataset_logger + `tools/capture_dataset.py`)
+
+`src/dataset_logger.cpp`는 **배포 펌웨어가 아닙니다.** JSON Lines 계약 대신 CSV를
+내보내고, 시리얼 명령을 받고, 액추에이터 인터록이 전혀 없습니다. PlatformIO의 기본
+환경에서 제외되어 있어 명시적으로만 빌드됩니다.
+
+```bash
+cd edge/arduino && pio run -e dataset_logger -t upload
+
+cd edge/pi
+python tools/capture_dataset.py --port /dev/ttyUSB0 --output data/raw/pot-01.csv
+```
+
+물을 줄 때마다 stdin에 `w30`(30 mL)을 입력하십시오. **이 관수 이벤트가 라벨의
+유일한 출처이며**, 없으면 캡처는 그냥 센서 기록일 뿐입니다. Arduino에 RTC가 없어
+벽시계 시각은 호스트가 붙입니다.
+
+### 가짜 캡처 (실측 데이터 확보 전까지)
+
+```bash
+python tools/make_bench_capture.py --pots 4 --days 45
+```
+
+`data/`는 git-ignored이고 생성 파일 첫 줄에 `# SYNTHETIC` 배너가 박힙니다.
+**측정값이 아니므로 수집한 데이터로 보고하면 안 됩니다.** 화분마다 배지 건조 속도,
+흡수율, 관수 임계값, 사용자 습관, 광주기를 다르게 뽑습니다.
+
+### 재학습
+
+```bash
+python -m venv .venv
+.venv/bin/pip install -r tools/requirements-train.txt
+.venv/bin/python tools/train_irrigation_rf.py                    # CPU
+.venv/bin/python tools/train_irrigation_rf.py --backend xgboost --device cuda
+```
+
+`data/raw/*.csv`를 자동으로 읽습니다. 라벨은 **"운영자가 6시간 안에 물을 줬는가"**로,
+공식이 아니라 사람의 결정입니다. 캡처가 하나도 없으면 물수지 생성기로 폴백하는데,
+그 경우 **라벨이 곧 공식이라 포레스트는 넘겨받은 방정식을 재발견할 뿐**이며 경고를
+출력합니다.
+
+평가 분할은 절대 무작위가 아닙니다. 1분 간격 행은 서로 거의 같은 값이라 셔플하면
+이웃 행이 반대편에 들어가 배포에서 재현 불가능한 정확도가 나옵니다. 화분이 여러 개면
+**마지막 화분을 통째로 홀드아웃**하고, 하나뿐이면 시간순 75/25로 자릅니다.
+
+백엔드 두 가지 모두 동일한 순수 파이썬 아티팩트를 내보내므로 Orange Pi 런타임은
+어느 쪽으로 학습했든 달라지지 않습니다.
+
+- `sklearn` (기본, CPU) — 리프가 확률, `aggregation: mean_probability`
+- `xgboost` (`--device cuda`로 NVIDIA GPU) — 리프가 raw margin,
+  `aggregation: sum_logit`. RAPIDS cuML 대신 고른 이유는 Windows 네이티브 pip로
+  설치되기 때문입니다(cuML은 WSL2 필요).
+
+내보내기 단계는 학습 표본을 런타임 추론기로 재채점해 학습기와 확률이 일치하는지
+검사하고, 불일치하면 아티팩트를 쓰지 않습니다(train/serve skew 차단).
+
 ## 테스트
 
 테스트에는 외부 서버, serial 장치, pyserial이 필요하지 않습니다.

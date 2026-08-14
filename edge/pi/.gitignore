@@ -1,2 +1,7 @@
 __pycache__/
 *.py[cod]
+
+# Bench captures and generated datasets. Never committed: these are either
+# machine-local measurements or synthetic stand-ins, and neither belongs in
+# version control.
+data/

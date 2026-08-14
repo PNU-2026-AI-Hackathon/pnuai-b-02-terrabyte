@@ -1,0 +1,7 @@
+numpy>=1.26
+scikit-learn>=1.4
+
+# Only needed for --backend xgboost. GPU training additionally needs a CUDA
+# build of xgboost and an NVIDIA driver; the CPU wheel below already exposes
+# --device cuda when one is present.
+xgboost>=2.1
