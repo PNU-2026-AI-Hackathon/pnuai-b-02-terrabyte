@@ -30,13 +30,46 @@ class Event:
     relative_humidity_pct: float
     ppfd_umol_m2_s: float
 
-    def backend_body(self) -> dict[str, object]:
+    def envelope_v2(self, *, gateway_id: str) -> dict[str, object]:
+        """Build a telemetry.sample envelope v2 body (one node per envelope).
+
+        ``gateway_id`` is a transport-time parameter rather than a stored
+        field: it is deployment-wide config (``Settings.device_id``), not a
+        property of a single sensor reading, so passing it in here avoids
+        duplicating it into every queued outbox row and avoids changing the
+        SQLite outbox schema (an explicit design constraint — see
+        docs/design/device_model_and_telemetry_contract.md §6.1).
+
+        Field names below must match the backend ``MeasurementMetric`` enum
+        literally. Soil metrics are omitted entirely (not sent as null/zero)
+        because this edge build has no soil probe wired into the serial
+        contract; ``soil_sensor_valid`` is therefore always false.
+        """
         return {
-            "capturedAtUtc": self.captured_at_utc,
-            "airTemperatureC": self.air_temperature_c,
-            "relativeHumidityPct": self.relative_humidity_pct,
-            "ppfdUmolM2S": self.ppfd_umol_m2_s,
-            "inputContract": "perfect_calibrated_v1",
+            "schema_version": 2,
+            "event_type": "telemetry.sample",
+            "gateway_id": gateway_id,
+            "event_id": self.event_id,
+            "observed_at": self.captured_at_utc,
+            "nodes": [
+                {
+                    "node_id": self.node_id,
+                    "sequence": self.sequence,
+                    "measurements": {
+                        "air_temperature_c": self.air_temperature_c,
+                        "air_humidity_pct": self.relative_humidity_pct,
+                        "plant_light_ppfd_umol_m2_s": self.ppfd_umol_m2_s,
+                    },
+                    "quality": {
+                        # Ranges were already enforced by parse_line() before
+                        # this Event was constructed, so the air/light
+                        # readings are valid by construction.
+                        "air_sensor_valid": True,
+                        "light_sensor_valid": True,
+                        "soil_sensor_valid": False,
+                    },
+                }
+            ],
         }
 
     def to_record(self) -> dict[str, object]:

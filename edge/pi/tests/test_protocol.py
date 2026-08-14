@@ -47,13 +47,29 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(event.context_id, "ctx-1")
         self.assertEqual(event.captured_at_utc, "2026-07-21T04:05:06Z")
         self.assertEqual(
-            event.backend_body(),
+            event.envelope_v2(gateway_id="orangepi-pro-01"),
             {
-                "capturedAtUtc": "2026-07-21T04:05:06Z",
-                "airTemperatureC": 24.5,
-                "relativeHumidityPct": 61.2,
-                "ppfdUmolM2S": 382.0,
-                "inputContract": "perfect_calibrated_v1",
+                "schema_version": 2,
+                "event_type": "telemetry.sample",
+                "gateway_id": "orangepi-pro-01",
+                "event_id": "12345678-1234-5678-1234-567812345678",
+                "observed_at": "2026-07-21T04:05:06Z",
+                "nodes": [
+                    {
+                        "node_id": "terrabyte-node-01",
+                        "sequence": 42,
+                        "measurements": {
+                            "air_temperature_c": 24.5,
+                            "air_humidity_pct": 61.2,
+                            "plant_light_ppfd_umol_m2_s": 382.0,
+                        },
+                        "quality": {
+                            "air_sensor_valid": True,
+                            "light_sensor_valid": True,
+                            "soil_sensor_valid": False,
+                        },
+                    }
+                ],
             },
         )
 
