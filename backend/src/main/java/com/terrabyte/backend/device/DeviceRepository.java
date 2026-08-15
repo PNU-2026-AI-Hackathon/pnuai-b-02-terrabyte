@@ -94,6 +94,18 @@ public class DeviceRepository {
                 deviceId);
     }
 
+    /**
+     * Driven by the MQTT last will when a gateway's connection drops.
+     *
+     * <p>{@code last_seen_at} is deliberately left alone: it records when the
+     * gateway was last heard from, and overwriting it with the moment the
+     * broker noticed the disconnect would erase that.
+     */
+    public void markOffline(long deviceId, Instant detectedAt) {
+        jdbcTemplate.update(
+                "UPDATE device SET status = 'OFFLINE' WHERE id = ?", deviceId);
+    }
+
     private Optional<Device> queryOne(String suffix, Object... arguments) {
         return jdbcTemplate.query(SELECT_COLUMNS + suffix, this::mapDevice, arguments)
                 .stream()

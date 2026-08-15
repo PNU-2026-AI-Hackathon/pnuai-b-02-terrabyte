@@ -7,7 +7,6 @@ public record LatestMeasurementsResponse(
         String hardwareDeviceId,
         Instant observedAt,
         long sequence,
-        Context context,
         Measurements measurements,
         Quality quality) {
 
@@ -17,30 +16,17 @@ public record LatestMeasurementsResponse(
                 sample.hardwareDeviceId(),
                 sample.observedAt(),
                 sample.sequence(),
-                new Context(
-                        sample.siteId(),
-                        sample.zoneId(),
-                        sample.soilType(),
-                        sample.cropType(),
-                        sample.calibrationVersion()),
                 new Measurements(
                         sample.soilMoisturePct(),
                         sample.soilMoistureRawAdc(),
                         sample.airTemperatureC(),
                         sample.airHumidityPct(),
-                        sample.plantLightPpfdUmolM2S()),
+                        sample.plantLightPpfdUmolM2S(),
+                        sample.soilTemperatureC()),
                 new Quality(
                         sample.soilSensorValid(),
                         sample.airSensorValid(),
                         sample.lightSensorValid()));
-    }
-
-    public record Context(
-            String siteId,
-            String zoneId,
-            String soilType,
-            String cropType,
-            String calibrationVersion) {
     }
 
     public record Measurements(
@@ -48,7 +34,10 @@ public record LatestMeasurementsResponse(
             long soilMoistureRawAdc,
             double airTemperatureC,
             double airHumidityPct,
-            double plantLightPpfdUmolM2S) {
+            double plantLightPpfdUmolM2S,
+            // Nullable: the soil probe is optional hardware, and an absent
+            // reading must stay distinguishable from a genuine 0°C reading.
+            Double soilTemperatureC) {
     }
 
     public record Quality(

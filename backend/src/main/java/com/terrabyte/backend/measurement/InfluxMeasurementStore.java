@@ -31,11 +31,10 @@ public class InfluxMeasurementStore implements MeasurementStore {
                 .addTag("device_id", Long.toString(sample.deviceId()))
                 .addTag("node_id", sample.nodeId())
                 .addTag("crop_code", sample.cropCode() == null ? "" : sample.cropCode())
-                .addTag("site_id", sample.siteId())
-                .addTag("zone_id", sample.zoneId())
-                .addTag("soil_type", sample.soilType())
-                .addTag("crop_type", sample.cropType())
-                .addTag("calibration_version", sample.calibrationVersion())
+                // event_id is a field, not a tag: it is unique per sample, and
+                // tagging it would create one series per measurement.
+                .addField("event_id", sample.eventId())
+                .addField("gateway_hardware_id", sample.hardwareDeviceId())
                 .addField("sequence", sample.sequence())
                 .addField("soil_moisture_pct", sample.soilMoisturePct())
                 .addField("soil_moisture_raw_adc", sample.soilMoistureRawAdc())
@@ -46,6 +45,11 @@ public class InfluxMeasurementStore implements MeasurementStore {
                 .addField("air_sensor_valid", sample.airSensorValid())
                 .addField("light_sensor_valid", sample.lightSensorValid())
                 .time(sample.observedAt(), WritePrecision.NS);
+        // Point has no null-safe addField: writing a null as 0.0 would poison
+        // the series with a confident "0°C" for nodes that have no soil probe.
+        if (sample.soilTemperatureC() != null) {
+            point.addField("soil_temperature_c", sample.soilTemperatureC());
+        }
         client.getWriteApiBlocking().writePoint(point);
     }
 
@@ -104,19 +108,16 @@ public class InfluxMeasurementStore implements MeasurementStore {
                 Long.parseLong(string(values, "device_id")),
                 string(values, "node_id"),
                 string(values, "crop_code"),
-                null,
+                optional(values, "gateway_hardware_id"),
+                optional(values, "event_id"),
                 record.getTime(),
                 number(values.get("sequence")).longValue(),
-                string(values, "site_id"),
-                string(values, "zone_id"),
-                string(values, "soil_type"),
-                string(values, "crop_type"),
-                string(values, "calibration_version"),
                 number(values.get("soil_moisture_pct")).doubleValue(),
                 number(values.get("soil_moisture_raw_adc")).longValue(),
                 number(values.get("air_temperature_c")).doubleValue(),
                 number(values.get("air_humidity_pct")).doubleValue(),
                 number(values.get("plant_light_ppfd_umol_m2_s")).doubleValue(),
+                optionalNumber(values.get("soil_temperature_c")),
                 Boolean.TRUE.equals(values.get("soil_sensor_valid")),
                 Boolean.TRUE.equals(values.get("air_sensor_valid")),
                 Boolean.TRUE.equals(values.get("light_sensor_valid")));
@@ -127,6 +128,17 @@ public class InfluxMeasurementStore implements MeasurementStore {
             return number;
         }
         throw new IllegalStateException("InfluxDB numeric field is missing or invalid");
+    }
+
+    // Unlike number(), this tolerates absence: a node with no soil probe never
+    // writes soil_temperature_c, and that must read back as null, not 0.0.
+    private Double optionalNumber(Object value) {
+        return value instanceof Number number ? number.doubleValue() : null;
+    }
+
+    private String optional(Map<String, Object> values, String key) {
+        Object value = values.get(key);
+        return value == null ? null : value.toString();
     }
 
     private String string(Map<String, Object> values, String key) {

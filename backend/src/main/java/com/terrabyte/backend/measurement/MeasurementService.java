@@ -1,15 +1,16 @@
 package com.terrabyte.backend.measurement;
 
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 
 import com.terrabyte.backend.api.ApiException;
 import com.terrabyte.backend.device.Device;
 import com.terrabyte.backend.device.DeviceRepository;
 import com.terrabyte.backend.pot.Pot;
 import com.terrabyte.backend.pot.PotRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,46 +18,95 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MeasurementService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(MeasurementService.class);
+
     private final DeviceRepository deviceRepository;
     private final PotRepository potRepository;
     private final MeasurementStore measurementStore;
-    private final InfluxProperties properties;
+    private final TelemetryEventRepository telemetryEventRepository;
     private final Clock clock;
 
     public MeasurementService(
             DeviceRepository deviceRepository,
             PotRepository potRepository,
             MeasurementStore measurementStore,
-            InfluxProperties properties,
+            TelemetryEventRepository telemetryEventRepository,
             Clock clock) {
         this.deviceRepository = deviceRepository;
         this.potRepository = potRepository;
         this.measurementStore = measurementStore;
-        this.properties = properties;
+        this.telemetryEventRepository = telemetryEventRepository;
         this.clock = clock;
     }
 
+    /**
+     * Ingest one telemetry v2 envelope.
+     *
+     * <p>{@code gatewayId} comes from the transport, not the payload. Over MQTT
+     * it is parsed out of the topic, which the broker ACL already restricts to
+     * the authenticated gateway — that is what replaced the shared
+     * {@code X-Device-Key}. A payload that disagrees with the transport is
+     * rejected rather than trusted.
+     */
     @Transactional
-    public TelemetryAcceptedResponse ingest(
-            String suppliedDeviceKey,
-            TelemetrySampleRequest request) {
-        authenticateDevice(suppliedDeviceKey);
-        validateObservedAt(request.observedAt());
-        Device device = deviceRepository.findByHardwareId(request.deviceId())
+    public TelemetryAcceptedResponse ingest(String gatewayId, TelemetryEnvelope envelope) {
+        if (!envelope.gatewayId().equals(gatewayId)) {
+            throw new ApiException(
+                    HttpStatus.FORBIDDEN,
+                    "GATEWAY_ID_MISMATCH",
+                    "전송 경로의 게이트웨이와 페이로드의 게이트웨이가 다릅니다.");
+        }
+        validateObservedAt(envelope.observedAt());
+
+        Device device = deviceRepository.findByHardwareId(gatewayId)
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND,
                         "DEVICE_NOT_FOUND",
                         "등록되지 않은 하드웨어 기기입니다."));
 
-        String nodeId = request.context().zoneId();
-        Pot pot = potRepository.findByDeviceAndNode(device.id(), nodeId)
-                .orElseGet(() -> bindNode(device, nodeId, request.observedAt()));
-        potRepository.markOnline(pot.id(), request.observedAt());
-        deviceRepository.markOnline(device.id(), request.observedAt());
-        measurementStore.write(TelemetrySample.from(
-                request, pot.id(), device.id(), nodeId, pot.cropCode()));
+        Instant now = clock.instant();
+        if (!telemetryEventRepository.claim(
+                envelope.eventId(), gatewayId, envelope.observedAt(), now)) {
+            // QoS 1 redelivery, or the edge retrying an event it never saw
+            // acknowledged. Report success so the outbox stops retrying.
+            LOGGER.debug("duplicate telemetry event_id={} ignored", envelope.eventId());
+            return new TelemetryAcceptedResponse(
+                    true, device.id(), gatewayId, envelope.observedAt(), 0L);
+        }
+
+        long sequence = 0L;
+        for (TelemetryEnvelope.Node node : envelope.nodes()) {
+            Pot pot = potRepository.findByDeviceAndNode(device.id(), node.nodeId())
+                    .orElseGet(() -> bindNode(device, node.nodeId(), envelope.observedAt()));
+            potRepository.markOnline(pot.id(), envelope.observedAt());
+            measurementStore.write(TelemetrySample.from(
+                    envelope, node, pot.id(), device.id(), pot.cropCode()));
+            sequence = node.sequence();
+        }
+        deviceRepository.markOnline(device.id(), envelope.observedAt());
+
         return new TelemetryAcceptedResponse(
-                true, device.id(), request.deviceId(), request.observedAt(), request.sequence());
+                true, device.id(), gatewayId, envelope.observedAt(), sequence);
+    }
+
+    /**
+     * Record a gateway going online or offline.
+     *
+     * <p>Driven by the MQTT last will, so a gateway that loses power is marked
+     * offline by the broker without the backend polling for it.
+     */
+    @Transactional
+    public void updateGatewayPresence(String gatewayId, boolean online) {
+        deviceRepository.findByHardwareId(gatewayId).ifPresentOrElse(
+                device -> {
+                    if (online) {
+                        deviceRepository.markOnline(device.id(), clock.instant());
+                    } else {
+                        deviceRepository.markOffline(device.id(), clock.instant());
+                    }
+                    LOGGER.info("gateway presence gateway_id={} online={}", gatewayId, online);
+                },
+                () -> LOGGER.warn("presence for unknown gateway_id={}", gatewayId));
     }
 
     public LatestMeasurementsResponse latest(long userId, long potId) {
@@ -125,19 +175,6 @@ public class MeasurementService {
         return potRepository.findOwned(potId, userId)
                 .orElseThrow(() -> new ApiException(
                         HttpStatus.NOT_FOUND, "POT_NOT_FOUND", "화분을 찾을 수 없습니다."));
-    }
-
-    private void authenticateDevice(String suppliedDeviceKey) {
-        byte[] expected = properties.deviceKey().getBytes(StandardCharsets.UTF_8);
-        byte[] actual = suppliedDeviceKey == null
-                ? new byte[0]
-                : suppliedDeviceKey.getBytes(StandardCharsets.UTF_8);
-        if (!MessageDigest.isEqual(expected, actual)) {
-            throw new ApiException(
-                    HttpStatus.UNAUTHORIZED,
-                    "INVALID_DEVICE_KEY",
-                    "유효하지 않은 기기 인증 키입니다.");
-        }
     }
 
     private void validateObservedAt(Instant observedAt) {

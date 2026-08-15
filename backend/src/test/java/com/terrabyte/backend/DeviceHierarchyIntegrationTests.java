@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,8 +24,8 @@ import com.terrabyte.backend.device.RegisterDeviceRequest;
 import com.terrabyte.backend.measurement.MeasurementMetric;
 import com.terrabyte.backend.measurement.MeasurementPoint;
 import com.terrabyte.backend.measurement.MeasurementStore;
+import com.terrabyte.backend.measurement.TelemetryEnvelope;
 import com.terrabyte.backend.measurement.TelemetrySample;
-import com.terrabyte.backend.measurement.TelemetrySampleRequest;
 import com.terrabyte.backend.score.CropScoreProfile;
 import com.terrabyte.backend.score.CropScoreProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,12 +39,10 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = "app.telemetry.http-ingest.enabled=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class DeviceHierarchyIntegrationTests {
-
-    private static final String DEVICE_KEY = "terrabyte-local-device-key";
 
     @Autowired
     private MockMvc mockMvc;
@@ -91,6 +90,7 @@ class DeviceHierarchyIntegrationTests {
                     status = 'OFFLINE', last_seen_at = NULL
                 """);
         jdbcTemplate.update("DELETE FROM app_user");
+        jdbcTemplate.update("DELETE FROM telemetry_event");
     }
 
     @Test
@@ -202,20 +202,26 @@ class DeviceHierarchyIntegrationTests {
     }
 
     private void ingest(String nodeId, long sequence) throws Exception {
-        TelemetrySampleRequest request = new TelemetrySampleRequest(
-                1, "telemetry.sample", "orangepi-pro-01", Instant.now().minusSeconds(5), sequence,
-                new TelemetrySampleRequest.Context("site", nodeId, "loam", "basil", "v1"),
-                new TelemetrySampleRequest.Measurements(30.0, 1000L, 27.0, 58.0, 230.0),
-                new TelemetrySampleRequest.Quality(true, true, true));
-        mockMvc.perform(post("/api/telemetry").header("X-Device-Key", DEVICE_KEY)
-                        .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(request)))
+        TelemetryEnvelope envelope = new TelemetryEnvelope(
+                2,
+                "telemetry.sample",
+                "orangepi-pro-01",
+                UUID.randomUUID().toString(),
+                Instant.now().minusSeconds(5),
+                List.of(new TelemetryEnvelope.Node(
+                        nodeId,
+                        sequence,
+                        new TelemetryEnvelope.Measurements(27.0, 58.0, 230.0, null, null, null),
+                        new TelemetryEnvelope.Quality(true, true, null))));
+        mockMvc.perform(post("/api/telemetry")
+                        .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(envelope)))
                 .andExpect(status().isAccepted());
     }
 
     private TelemetrySample sample(long potId, long deviceId) {
         return new TelemetrySample(
-                potId, deviceId, "node-a", "basil", "orangepi-pro-01", Instant.now(), 1,
-                "site", "node-a", "loam", "basil", "v1", 30, 1000, 27.1, 58, 230.5,
+                potId, deviceId, "node-a", "basil", "orangepi-pro-01", UUID.randomUUID().toString(),
+                Instant.now(), 1, 30, 1000, 27.1, 58, 230.5, null,
                 true, true, true);
     }
 
