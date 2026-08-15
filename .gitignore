@@ -61,3 +61,7 @@ desktop.ini
 
 # === AI agent working dirs ===
 .agent-runs/
+.claude/
+CLAUDE.md
+AGENTS.md
+HANDOFF.md
