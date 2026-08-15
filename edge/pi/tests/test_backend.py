@@ -3,8 +3,9 @@ import json
 import unittest
 from urllib.error import HTTPError, URLError
 
-from terrabyte_edge.backend import BackendClient, Delivery
+from terrabyte_edge.backend import HttpPublisher
 from terrabyte_edge.protocol import Event
+from terrabyte_edge.publisher import Delivery
 
 
 def event() -> Event:
@@ -38,11 +39,8 @@ class FakeResponse:
 
 class BackendTests(unittest.TestCase):
     def client(self, transport):
-        return BackendClient(
-            url_for_context=lambda context_id: (
-                "https://api.example.test/api/crop-contexts/"
-                f"{context_id}/environment-observations"
-            ),
+        return HttpPublisher(
+            telemetry_url=lambda: "https://api.example.test/api/telemetry",
             device_id="gateway-1",
             token="super-secret",
             timeout_seconds=4.0,
@@ -55,7 +53,7 @@ class BackendTests(unittest.TestCase):
         def transport(request, timeout):
             captured["request"] = request
             captured["timeout"] = timeout
-            return FakeResponse(201)
+            return FakeResponse(202)
 
         result = self.client(transport).send(event())
 
@@ -63,22 +61,39 @@ class BackendTests(unittest.TestCase):
         request = captured["request"]
         self.assertEqual(request.get_method(), "POST")
         self.assertEqual(request.get_header("Authorization"), "Bearer super-secret")
-        self.assertEqual(request.get_header("X-device-id"), "gateway-1")
-        self.assertEqual(request.get_header("X-arduino-node-id"), "node-1")
-        self.assertEqual(request.get_header("Idempotency-key"), "event-123")
         self.assertEqual(captured["timeout"], 4.0)
         self.assertEqual(
             request.full_url,
-            "https://api.example.test/api/crop-contexts/ctx/id/environment-observations",
+            "https://api.example.test/api/telemetry",
         )
+        # Identity and idempotency now travel in the envelope, so the v1
+        # X-Device-ID / X-Arduino-Node-ID / Idempotency-Key headers are gone.
+        for header in ("X-device-id", "X-arduino-node-id", "Idempotency-key"):
+            self.assertIsNone(request.get_header(header))
         self.assertEqual(
             json.loads(request.data),
             {
-                "capturedAtUtc": "2026-07-21T04:05:06Z",
-                "airTemperatureC": 20.0,
-                "relativeHumidityPct": 50.0,
-                "ppfdUmolM2S": 300.0,
-                "inputContract": "perfect_calibrated_v1",
+                "schema_version": 2,
+                "event_type": "telemetry.sample",
+                "gateway_id": "gateway-1",
+                "event_id": "event-123",
+                "observed_at": "2026-07-21T04:05:06Z",
+                "nodes": [
+                    {
+                        "node_id": "node-1",
+                        "sequence": 1,
+                        "measurements": {
+                            "air_temperature_c": 20.0,
+                            "air_humidity_pct": 50.0,
+                            "plant_light_ppfd_umol_m2_s": 300.0,
+                        },
+                        "quality": {
+                            "air_sensor_valid": True,
+                            "light_sensor_valid": True,
+                            "soil_sensor_valid": False,
+                        },
+                    }
+                ],
             },
         )
 
@@ -145,6 +160,9 @@ class BackendTests(unittest.TestCase):
                     raise raised
 
                 self.assertIs(self.client(transport).send(event()).outcome, expected)
+
+    def test_close_is_a_no_op(self) -> None:
+        self.client(lambda request, timeout: FakeResponse(201)).close()
 
 
 if __name__ == "__main__":

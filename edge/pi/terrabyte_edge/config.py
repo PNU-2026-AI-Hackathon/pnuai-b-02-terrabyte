@@ -8,7 +8,7 @@ import os
 from pathlib import Path
 import re
 from typing import Mapping
-from urllib.parse import quote, urlparse
+from urllib.parse import urlparse
 
 
 class ConfigError(ValueError):
@@ -71,13 +71,23 @@ def _utc_timestamp(env: Mapping[str, str], name: str, default: str) -> datetime:
     return value.astimezone(timezone.utc)
 
 
-def _load_token(env: Mapping[str, str]) -> str:
+def _load_token(env: Mapping[str, str], *, required: bool) -> str:
     direct = env.get("TB_DEVICE_TOKEN", "").strip()
     token_file = env.get("TB_DEVICE_TOKEN_FILE", "").strip()
-    if bool(direct) == bool(token_file):
+    if direct and token_file:
         raise ConfigError(
-            "set exactly one of TB_DEVICE_TOKEN or TB_DEVICE_TOKEN_FILE"
+            "set at most one of TB_DEVICE_TOKEN or TB_DEVICE_TOKEN_FILE"
         )
+    if not direct and not token_file:
+        if required:
+            raise ConfigError(
+                "set exactly one of TB_DEVICE_TOKEN or TB_DEVICE_TOKEN_FILE"
+            )
+        # Under MQTT transport there is no HTTP fallback in play, so the
+        # device token is unused; leave it empty rather than forcing
+        # MQTT-only deployments to provision an HTTP credential they never
+        # send.
+        return ""
     if direct:
         return direct
     try:
@@ -97,6 +107,7 @@ class Settings:
     serial_reconnect_seconds: float
     serial_max_line_bytes: int
     database_path: Path
+    transport: str
     backend_base_url: str
     crop_context_id: str
     device_id: str
@@ -110,27 +121,74 @@ class Settings:
     retry_base_seconds: float
     retry_max_seconds: float
     log_level: str
+    mqtt_host: str
+    mqtt_port: int
+    mqtt_username: str | None
+    mqtt_password: str | None
+    mqtt_tls: bool
+    mqtt_tls_ca_cert: str | None
+    mqtt_topic_prefix: str
+    mqtt_keepalive_seconds: int
+    mqtt_publish_timeout_seconds: float
 
-    def observations_url(self, context_id: str) -> str:
-        context = quote(context_id, safe="")
-        return (
-            f"{self.backend_base_url}/api/crop-contexts/{context}"
-            "/environment-observations"
-        )
+    def mqtt_telemetry_topic(self) -> str:
+        return f"{self.mqtt_topic_prefix}/{self.device_id}/up/telemetry"
+
+    def mqtt_status_topic(self) -> str:
+        return f"{self.mqtt_topic_prefix}/{self.device_id}/up/status"
+
+    def telemetry_url(self) -> str:
+        """Envelope v2 debug/fallback endpoint.
+
+        The same path and the same body the MQTT subscriber consumes. v1 aimed
+        at a per-crop-context observation URL that the backend never exposed,
+        which is why no telemetry could arrive over HTTP at all.
+        """
+
+        return f"{self.backend_base_url}/api/telemetry"
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Settings":
         values = os.environ if env is None else env
-        base_url = _required(values, "TB_BACKEND_BASE_URL").rstrip("/")
-        parsed = urlparse(base_url)
-        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-            raise ConfigError("TB_BACKEND_BASE_URL must be an HTTP(S) URL")
-        if parsed.scheme != "https" and not _boolean(
-            values, "TB_ALLOW_INSECURE_HTTP"
-        ):
-            raise ConfigError(
-                "HTTP backend requires TB_ALLOW_INSECURE_HTTP=true; use HTTPS in production"
-            )
+
+        transport = values.get("TB_TRANSPORT", "mqtt").strip().lower()
+        if transport not in {"mqtt", "http"}:
+            raise ConfigError("TB_TRANSPORT must be mqtt or http")
+
+        # TB_BACKEND_BASE_URL / TB_DEVICE_TOKEN are the HTTP publisher's
+        # settings. Under the default MQTT transport there is no HTTP
+        # fallback in play, so an MQTT-only deployment must not be forced to
+        # provision unused HTTP credentials.
+        if transport == "http":
+            base_url = _required(values, "TB_BACKEND_BASE_URL").rstrip("/")
+            parsed = urlparse(base_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ConfigError("TB_BACKEND_BASE_URL must be an HTTP(S) URL")
+            if parsed.scheme != "https" and not _boolean(
+                values, "TB_ALLOW_INSECURE_HTTP"
+            ):
+                raise ConfigError(
+                    "HTTP backend requires TB_ALLOW_INSECURE_HTTP=true; use HTTPS in production"
+                )
+            device_token = _load_token(values, required=True)
+        else:
+            raw_base_url = values.get("TB_BACKEND_BASE_URL", "").strip()
+            base_url = raw_base_url.rstrip("/") if raw_base_url else ""
+            if base_url:
+                parsed = urlparse(base_url)
+                if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                    raise ConfigError("TB_BACKEND_BASE_URL must be an HTTP(S) URL")
+            device_token = _load_token(values, required=False)
+
+        if transport == "mqtt":
+            mqtt_host = _required(values, "TB_MQTT_HOST")
+        else:
+            mqtt_host = values.get("TB_MQTT_HOST", "").strip()
+        mqtt_username = values.get("TB_MQTT_USERNAME", "").strip() or None
+        mqtt_password = values.get("TB_MQTT_PASSWORD", "").strip() or None
+        mqtt_topic_prefix = values.get("TB_MQTT_TOPIC_PREFIX", "tb/v2").strip().rstrip("/")
+        if not mqtt_topic_prefix:
+            raise ConfigError("TB_MQTT_TOPIC_PREFIX must not be empty")
 
         log_level = values.get("TB_LOG_LEVEL", "INFO").strip().upper()
         if log_level not in {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}:
@@ -162,11 +220,12 @@ class Settings:
                     "TB_DATABASE_PATH", "/var/lib/terrabyte-edge/outbox.sqlite3"
                 )
             ),
+            transport=transport,
             backend_base_url=base_url,
             crop_context_id=_required(values, "TB_CROP_CONTEXT_ID"),
             device_id=_required(values, "TB_DEVICE_ID"),
             expected_node_id=expected_node_id,
-            device_token=_load_token(values),
+            device_token=device_token,
             clock_minimum_utc=_utc_timestamp(
                 values, "TB_CLOCK_MINIMUM_UTC", "2025-01-01T00:00:00Z"
             ),
@@ -181,4 +240,17 @@ class Settings:
             retry_base_seconds=retry_base,
             retry_max_seconds=retry_max,
             log_level=log_level,
+            mqtt_host=mqtt_host,
+            mqtt_port=_integer(values, "TB_MQTT_PORT", 1883, minimum=1),
+            mqtt_username=mqtt_username,
+            mqtt_password=mqtt_password,
+            mqtt_tls=_boolean(values, "TB_MQTT_TLS", False),
+            mqtt_tls_ca_cert=(values.get("TB_MQTT_TLS_CA_CERT", "").strip() or None),
+            mqtt_topic_prefix=mqtt_topic_prefix,
+            mqtt_keepalive_seconds=_integer(
+                values, "TB_MQTT_KEEPALIVE_SECONDS", 30, minimum=5
+            ),
+            mqtt_publish_timeout_seconds=_number(
+                values, "TB_MQTT_PUBLISH_TIMEOUT_SECONDS", 10.0, minimum=0.1
+            ),
         )

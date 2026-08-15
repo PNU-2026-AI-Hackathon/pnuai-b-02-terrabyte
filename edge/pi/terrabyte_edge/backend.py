@@ -1,10 +1,13 @@
-"""Authenticated HTTP transport for the backend observation contract."""
+"""Authenticated HTTP transport for the backend telemetry contract (envelope v2).
+
+This is the HTTP fallback/debug publisher (design doc §6.6, §8.1) — the
+operational path is ``MqttPublisher`` in ``mqtt_publisher.py``. Both share
+the ``Publisher`` protocol from ``publisher.py``.
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
-from enum import Enum
 import json
 import time
 from typing import Callable, Protocol
@@ -12,6 +15,11 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .protocol import Event
+from .publisher import Delivery, DeliveryResult
+
+# Re-exported so existing callers that imported these from ``backend``
+# (they used to be defined here) keep working without a code change.
+__all__ = ["Delivery", "DeliveryResult", "HttpPublisher", "Response", "Transport"]
 
 
 class Response(Protocol):
@@ -23,19 +31,6 @@ class Response(Protocol):
     def __enter__(self) -> "Response": ...
 
     def __exit__(self, *args: object) -> None: ...
-
-
-class Delivery(str, Enum):
-    DELIVERED = "delivered"
-    RETRY = "retry"
-    DEAD = "dead"
-
-
-@dataclass(frozen=True)
-class DeliveryResult:
-    outcome: Delivery
-    reason: str
-    retry_after_seconds: float | None = None
 
 
 Transport = Callable[[Request, float], Response]
@@ -76,35 +71,41 @@ def _retry_after(headers: object) -> float | None:
         return max(0.0, target - time.time())
 
 
-class BackendClient:
+class HttpPublisher:
+    """Formerly ``BackendClient``. Renamed per design doc §8.1: MQTT is now
+    the primary transport and this is kept as the HTTP fallback/debug path.
+    """
+
     def __init__(
         self,
         *,
-        url_for_context: Callable[[str], str],
+        telemetry_url: Callable[[], str],
         device_id: str,
         token: str,
         timeout_seconds: float,
         transport: Transport = _default_transport,
     ) -> None:
-        self.url_for_context = url_for_context
+        self.telemetry_url = telemetry_url
         self.device_id = device_id
         self._token = token
         self.timeout_seconds = timeout_seconds
         self._transport = transport
 
     def send(self, event: Event) -> DeliveryResult:
-        body = json.dumps(event.backend_body(), separators=(",", ":")).encode("utf-8")
+        body = json.dumps(
+            event.envelope_v2(gateway_id=self.device_id), separators=(",", ":")
+        ).encode("utf-8")
         request = Request(
-            self.url_for_context(event.context_id),
+            self.telemetry_url(),
             data=body,
             method="POST",
             headers={
                 "Authorization": f"Bearer {self._token}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                "X-Device-ID": self.device_id,
-                "X-Arduino-Node-ID": event.node_id,
-                "Idempotency-Key": event.event_id,
+                # The envelope carries gateway_id, node_id and event_id, so
+                # none of them are duplicated into headers any more; the
+                # backend reads identity and idempotency from the body alone.
                 "User-Agent": "terrabyte-edge/0.1",
             },
         )
@@ -137,8 +138,14 @@ class BackendClient:
         except (URLError, OSError, TimeoutError) as exc:
             return DeliveryResult(Delivery.RETRY, type(exc).__name__)
 
-        if status == 201:
-            return DeliveryResult(Delivery.DELIVERED, "created")
+        if status == 202:
+            return DeliveryResult(Delivery.DELIVERED, "accepted")
         if status in {401, 403, 404, 408, 425, 429} or status >= 500:
             return DeliveryResult(Delivery.RETRY, f"http_{status}")
         return DeliveryResult(Delivery.DEAD, f"unexpected_http_{status}")
+
+    def close(self) -> None:
+        # urlopen() does not hold a persistent connection between calls, so
+        # there is nothing to release here. Present for Publisher protocol
+        # symmetry with MqttPublisher, whose close() does matter.
+        return None
