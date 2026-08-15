@@ -53,13 +53,16 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
       : `현재값이 적정 범위에서 ${factor.gap.toLocaleString('ko-KR')}${factor.unit} ${factor.status === 'LOW' ? '부족' : '초과'}하며 축 점수는 ${factor.score}점입니다.`,
     recommendation: getFactorRecommendation(factor.key),
   })) ?? [];
-  const soilMoistureReport = analysisLatest ? [{
+  // 프로브가 없으면 항목 자체를 만들지 않는다. "0%" 로 표시하면 실제로 바싹
+  // 마른 화분과 구분되지 않는다.
+  const soilMoisturePct = analysisLatest?.measurements.soilMoisturePct;
+  const soilMoistureReport = soilMoisturePct != null ? [{
     label: '토양수분',
     unit: '%',
-    avg24h: analysisLatest.measurements.soilMoisturePct,
+    avg24h: soilMoisturePct,
     axisMax: 100,
     status: 'REFERENCE',
-    finding: `현재 토양수분은 ${analysisLatest.measurements.soilMoisturePct}%입니다. 이 값은 모니터링용이며 종합 적합도에는 포함되지 않습니다.`,
+    finding: `현재 토양수분은 ${soilMoisturePct}%입니다. 이 값은 모니터링용이며 종합 적합도에는 포함되지 않습니다.`,
     recommendation: '작물과 배지에 맞는 관수 기준이 확정되면 별도 관수 판단에 활용하세요.',
   }] : [];
   const factorReports = [...scoreFactorReports, ...soilMoistureReport];

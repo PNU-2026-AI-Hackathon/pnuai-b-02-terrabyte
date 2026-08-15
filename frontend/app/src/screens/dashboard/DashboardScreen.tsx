@@ -54,7 +54,7 @@ export function DashboardScreen({
     { label: '온도', value: latestData ? `${latestData.measurements.airTemperatureC}℃` : '--', detail: factorDetail('temperature') },
     { label: '습도', value: latestData ? `${latestData.measurements.airHumidityPct}%` : '--', detail: factorDetail('humidity') },
     { label: '광량', value: latestData ? `${latestData.measurements.plantLightPpfdUmolM2S.toLocaleString('ko-KR')} PPFD` : '--', detail: factorDetail('plantLight') },
-    { label: '토양수분', value: latestData ? `${latestData.measurements.soilMoisturePct}%` : '--', detail: '종합 적합도 산식에서는 제외' },
+    { label: '토양수분', value: latestData?.measurements.soilMoisturePct == null ? '--' : `${latestData.measurements.soilMoisturePct}%`, detail: '종합 적합도 산식에서는 제외' },
   ];
   const displayFactors = scoreData?.factors ?? factors.slice(0, 3);
   const issueFactors = getIssueFactors(scoreData?.factors ?? []);

@@ -221,7 +221,7 @@ class DeviceHierarchyIntegrationTests {
     private TelemetrySample sample(long potId, long deviceId) {
         return new TelemetrySample(
                 potId, deviceId, "node-a", "basil", "orangepi-pro-01", UUID.randomUUID().toString(),
-                Instant.now(), 1, 30, 1000, 27.1, 58, 230.5, null,
+                Instant.now(), 1, 30.0, 1000L, 27.1, 58, 230.5, null,
                 true, true, true);
     }
 

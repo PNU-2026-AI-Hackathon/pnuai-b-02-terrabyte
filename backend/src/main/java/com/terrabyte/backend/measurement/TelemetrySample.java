@@ -19,15 +19,15 @@ public record TelemetrySample(
         String eventId,
         Instant observedAt,
         long sequence,
-        double soilMoisturePct,
-        long soilMoistureRawAdc,
+        // Nullable, like every soil reading here. The probe is optional, so
+        // "absent" and "0%" are different facts and only one of them is safe to
+        // act on: a fabricated 0.0 reaches irrigation as a confident "bone dry",
+        // which is the single reading most likely to cause over-watering.
+        Double soilMoisturePct,
+        Long soilMoistureRawAdc,
         double airTemperatureC,
         double airHumidityPct,
         double plantLightPpfdUmolM2S,
-        // Nullable, unlike soilMoisturePct above: the probe is optional, and a
-        // missing reading collapsing to 0.0 would read as a confident "0°C"
-        // rather than "unknown" — the same hazard soilMoisturePctOrZero()
-        // already accepts for moisture must not be repeated for temperature.
         Double soilTemperatureC,
         boolean soilSensorValid,
         boolean airSensorValid,
@@ -50,8 +50,8 @@ public record TelemetrySample(
                 envelope.eventId(),
                 envelope.observedAt(),
                 node.sequence(),
-                measurements.soilMoisturePctOrZero(),
-                measurements.soilMoistureRawAdcOrZero(),
+                measurements.soilMoisturePct(),
+                measurements.soilMoistureRawAdc(),
                 measurements.airTemperatureC(),
                 measurements.airHumidityPct(),
                 measurements.plantLightPpfdUmolM2S(),

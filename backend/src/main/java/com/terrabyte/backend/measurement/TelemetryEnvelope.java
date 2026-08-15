@@ -67,14 +67,6 @@ public record TelemetryEnvelope(
             @DecimalMin("-20.0") @DecimalMax("80.0") Double soilTemperatureC,
             @DecimalMin("0.0") @DecimalMax("100.0") Double soilMoisturePct,
             @PositiveOrZero Long soilMoistureRawAdc) {
-
-        public double soilMoisturePctOrZero() {
-            return soilMoisturePct == null ? 0.0 : soilMoisturePct;
-        }
-
-        public long soilMoistureRawAdcOrZero() {
-            return soilMoistureRawAdc == null ? 0L : soilMoistureRawAdc;
-        }
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

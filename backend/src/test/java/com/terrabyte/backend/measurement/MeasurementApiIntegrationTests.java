@@ -243,6 +243,68 @@ class MeasurementApiIntegrationTests {
     }
 
     @Test
+    void treatsAnAbsentSoilMoistureAsNullRatherThanZero() throws Exception {
+        // The dangerous one. An absent moisture reading coerced to 0.0 reaches
+        // the irrigation path as a confident "bone dry", which is exactly the
+        // input most likely to trigger watering that was never needed. The
+        // gateway omits these fields entirely when no probe is compiled in.
+        Instant observedAt = Instant.now().minusSeconds(5);
+        String body = objectMapper.writeValueAsString(new TelemetryEnvelope(
+                2,
+                "telemetry.sample",
+                HARDWARE_ID,
+                UUID.randomUUID().toString(),
+                observedAt,
+                List.of(new TelemetryEnvelope.Node(
+                        NODE_ID,
+                        1,
+                        new TelemetryEnvelope.Measurements(
+                                27.1, 58.0, 230.5, null, null, null),
+                        new TelemetryEnvelope.Quality(true, true, null)))));
+
+        mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted());
+
+        org.mockito.ArgumentCaptor<TelemetrySample> captor =
+                org.mockito.ArgumentCaptor.forClass(TelemetrySample.class);
+        verify(measurementStore).write(captor.capture());
+        TelemetrySample stored = captor.getValue();
+        assertThat(stored.soilMoisturePct()).isNull();
+        assertThat(stored.soilMoistureRawAdc()).isNull();
+        // quality.soil_sensor_valid was omitted too, so nothing downstream may
+        // treat this node as having a usable soil reading.
+        assertThat(stored.soilSensorValid()).isFalse();
+    }
+
+    @Test
+    void carriesSoilMoistureThroughWhenTheProbeIsPresent() throws Exception {
+        Instant observedAt = Instant.now().minusSeconds(5);
+        String body = objectMapper.writeValueAsString(new TelemetryEnvelope(
+                2,
+                "telemetry.sample",
+                HARDWARE_ID,
+                UUID.randomUUID().toString(),
+                observedAt,
+                List.of(new TelemetryEnvelope.Node(
+                        NODE_ID,
+                        1,
+                        new TelemetryEnvelope.Measurements(
+                                27.1, 58.0, 230.5, 18.5, 31.2, 1847L),
+                        new TelemetryEnvelope.Quality(true, true, true)))));
+
+        mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted());
+
+        org.mockito.ArgumentCaptor<TelemetrySample> captor =
+                org.mockito.ArgumentCaptor.forClass(TelemetrySample.class);
+        verify(measurementStore).write(captor.capture());
+        TelemetrySample stored = captor.getValue();
+        assertThat(stored.soilMoisturePct()).isEqualTo(31.2);
+        assertThat(stored.soilMoistureRawAdc()).isEqualTo(1847L);
+        assertThat(stored.soilSensorValid()).isTrue();
+    }
+
+    @Test
     void returnsLatestAndTimeSeriesForDeviceOwner() throws Exception {
         String token = signupAndGetToken();
         long deviceId = registerAndGetDeviceId(token);
@@ -368,7 +430,7 @@ class MeasurementApiIntegrationTests {
                 observedAt,
                 1042,
                 58.0,
-                1847,
+                1847L,
                 27.1,
                 58.0,
                 230.5,

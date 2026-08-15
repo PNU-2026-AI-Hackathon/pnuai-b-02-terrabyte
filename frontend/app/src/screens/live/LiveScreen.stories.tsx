@@ -57,6 +57,7 @@ const mockMeasurements: LatestMeasurements = {
   measurements: {
     soilMoisturePct: 56,
     soilMoistureRawAdc: 1840,
+    soilTemperatureC: 18.5,
     airTemperatureC: 24.6,
     airHumidityPct: 61,
     plantLightPpfdUmolM2S: 420,

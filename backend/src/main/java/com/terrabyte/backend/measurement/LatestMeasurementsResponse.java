@@ -30,8 +30,8 @@ public record LatestMeasurementsResponse(
     }
 
     public record Measurements(
-            double soilMoisturePct,
-            long soilMoistureRawAdc,
+            Double soilMoisturePct,
+            Long soilMoistureRawAdc,
             double airTemperatureC,
             double airHumidityPct,
             double plantLightPpfdUmolM2S,
