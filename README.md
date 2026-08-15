@@ -373,6 +373,18 @@ docker compose -f docker-compose.prod.yml up -d --build
 | 상태 확인 | http://localhost:8088/actuator/health |
 
 중지:
+| 프론트엔드 (Expo Web) | http://localhost:8081 |
+| 백엔드 상태 확인 | http://localhost:8080/actuator/health |
+| AI 서버 상태 확인 | http://localhost:8000/health |
+| InfluxDB UI | http://localhost:8086 |
+
+테스트 실행은 `make test`, 중지는 `make down`, DB 초기화까지 하려면 `make down-v` 입니다.
+AI 서버(관수량 추천)는 `make ai-test`로 테스트하고 `make ai-train`으로 재학습합니다 —
+[`ai-server/README.md`](ai-server/README.md) 참고.
+백엔드는 `localhost:5005` 에서 원격 디버거(JDWP)를 받습니다.
+버전 고정·디버깅·배포 스택 등 자세한 내용은 [`docs/docker_dev_environment.md`](docs/docker_dev_environment.md) 를 참고하세요.
+
+배포용 스택(빌드된 jar + nginx 정적 번들)은 다음과 같이 실행합니다.
 
 ```bash
 make prod-down

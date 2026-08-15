@@ -66,8 +66,19 @@ test: ## 백엔드 테스트 실행 (외부 DB 불필요, H2 + in-memory SQLite)
 	$(COMPOSE) run --rm --no-deps -e GRADLE_USER_HOME=/home/dev/.gradle/one-shot backend \
 		--project-cache-dir /home/dev/.gradle/one-shot-project test
 
+ai-test: ## AI 서버 테스트 실행 (모델 아티팩트만 있으면 됨)
+	$(COMPOSE) run --rm --no-deps --entrypoint python ai-server -m pytest tests -q
+
+ai-train: ## 관수량 회귀 모델 재학습 (models/ 아티팩트를 덮어쓴다)
+	# 데이터는 커밋하지 않는다. 시드가 같으면 같은 데이터셋이 재현된다 (D25).
+	$(COMPOSE) run --rm --no-deps --entrypoint python ai-server \
+		tools/train_irrigation_regressor.py --samples 40000 --seed 42
+
 backend-sh: ## 백엔드 컨테이너 셸
 	$(COMPOSE) exec backend bash
+
+ai-sh: ## AI 서버 컨테이너 셸
+	$(COMPOSE) exec ai-server bash
 
 frontend-sh: ## 프론트엔드 컨테이너 셸
 	$(COMPOSE) exec frontend bash

@@ -421,13 +421,14 @@ P1-8의 예산 계산에 **실행 결과**를 공급한다. 이게 없으면 Gov
 ### P3-3. AI 서버 구축
 브랜치: `feature/ai-server`
 
-- [ ] `ai-server/` 신설 — FastAPI 권장
-- [ ] 관수량 회귀 모델 학습 스크립트 + 모델 아티팩트
-- [ ] 전처리 로직을 학습/추론 간 공유하도록 모듈화
-- [ ] `POST /predict/irrigation` + `/health`
-- [ ] 인증 방식 결정 (내부 네트워크 전용 vs API 키)
-- [ ] Dockerfile + docker-compose 편입
-- [ ] 예측 테스트 및 입력 검증
+- [x] `ai-server/` 신설 — FastAPI
+- [x] 관수량 회귀 모델 학습 스크립트 + 모델 아티팩트 (`irrigation_reg_v1.joblib`, 1.9MB)
+- [x] 전처리 로직을 학습/추론 간 공유하도록 모듈화 — `terrabyte_ai/features.py` + Pipeline 동봉,
+      학습 종료 시 skew 자동 검증
+- [x] `POST /predict/irrigation` + `/health`
+- [x] 인증 방식 결정 — 기본 무인증, `AI_API_KEY` 설정 시에만 `X-Api-Key` 검증 (D26)
+- [x] Dockerfile + docker-compose 편입 — `backend`의 `depends_on`은 `service_started`
+- [x] 예측 테스트 및 입력 검증 — pytest 65건
 
 ### P3-4. 백엔드 ↔ AI 서버 연동
 브랜치: `feature/backend-ai-client`
