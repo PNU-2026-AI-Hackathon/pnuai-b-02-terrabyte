@@ -1,0 +1,8 @@
+# 런타임(서빙) 의존성. Python 3.12 기준 — 3.14는 휠 문제로 부적합하다.
+fastapi==0.141.1
+uvicorn[standard]==0.52.3
+pydantic==2.13.4
+scikit-learn==1.9.0
+numpy==2.5.2
+pandas==3.0.5
+joblib==1.5.3

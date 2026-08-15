@@ -20,6 +20,14 @@ backend/gradle.properties
 !gradle/wrapper/gradle-wrapper.jar
 *.war
 
+# === Python (ai-server, edge/pi) ===
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+# 학습 데이터는 커밋하지 않는다 — 생성기와 시드로 재현한다 (D25)
+ai-server/data/
+
 # === Embedded / Firmware (edge) ===
 edge/.pio/
 edge/build/
