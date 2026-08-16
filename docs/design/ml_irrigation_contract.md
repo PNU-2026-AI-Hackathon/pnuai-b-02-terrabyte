@@ -35,7 +35,7 @@ Arduino      물리적 최종 방어.
 | 피처 | 단위 | 허용 범위 | 결측 시 동작 | 출처 |
 |---|---|---|---|---|
 | `soil_moisture_pct` | % | 0 – 100 | **422 거부** | Influx `telemetry_sample` |
-| `soil_temperature_c` | ℃ | −20 – 80 | `20.0` 대치 + `imputed[]` 기록 | Influx (envelope v2 대기) |
+| `soil_temperature_c` | ℃ | −20 – 80 | `20.0` 대치 + `imputed[]` 기록 | Influx (envelope v2에서 추가, **선택 필드**) |
 | `air_temperature_c` | ℃ | −50 – 100 | **422 거부** | Influx |
 | `air_humidity_pct` | % | 0 – 100 | **422 거부** | Influx |
 | `plant_light_ppfd_umol_m2_s` | μmol/m²/s | 0 – 5000 | `0.0` 대치(야간 간주) + 기록 | Influx |
@@ -266,7 +266,8 @@ volume_ml    = clip(volume_ml, 0, 500)
 
 | # | 내용 | 해소 시점 |
 |---|---|---|
-| G1 | **`soil_temperature_c`를 백엔드가 수집하지 않는다.** envelope v2(P1-6) 전까지 항상 대치값이 들어가므로 실질 피처는 7개다 | P1-6 |
+| G1 | **`soil_temperature_c`는 envelope v2에서도 선택 필드다.** #78 병합으로 `MeasurementMetric.SOIL_TEMPERATURE_C`와 −20~80 검증이 들어왔고 범위는 이 계약과 일치한다. 다만 토양 프로브가 없는 노드에서는 계속 결측이므로 **대치 경로는 임시방편이 아니라 상시 동작하는 경로다** | 부분 해소 (수집 경로는 열렸고, 결측은 상시) |
+| G1b | **envelope v2에서 `soil_moisture_pct`가 nullable이 됐다.** 값이 없으면 관수량을 계산할 근거가 없으므로 **백엔드가 AI를 호출하지 말고 폴백해야 한다.** AI 서버는 이 경우 422로 거부한다 | 백엔드 연동 PR |
 | G2 | **`pot` 테이블에 용적 컬럼이 없다.** 그전까지 호출자가 `substrate_volume_ml`을 직접 넣어야 하며, 폴백 표도 적용할 수 없다 | 백엔드 연동 PR |
 | G3 | `crop_score_profile`에 **목표 토양수분이 없다** (온도·습도·PPFD만 있음). AI 서버가 자체 작물별 목표 수분표를 들고 있다 — 언젠가 한쪽으로 합쳐야 한다 | 미정 |
 | G4 | 배지 보수력 0.45, 관수 효율 0.85, 목표 수분 35 %는 문헌 기반 가정이다. 펌프 정격 유량과 실제 배지가 확정되면 재보정 → **라벨 공식이 바뀌므로 재학습 필요** | 하드웨어 확정 시 |
