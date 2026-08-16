@@ -1,88 +1,233 @@
 # TerraByte
 
-도심 유휴 공간이 스마트팜에 적합한지 설치 전에 진단하고, 설치 후에는 센서 데이터를 지속적으로 모니터링하는 통합 서비스입니다. 온도, 습도, 광량(PPFD), 토양 수분 등의 측정값을 작물별 권장 범위와 비교해 적합도와 개선 방향을 제공합니다.
+### 1. 프로젝트 소개
 
-## 주요 기능
+#### 1.1. 개발배경 및 필요성
 
-- 회원가입·로그인과 JWT 기반 사용자 인증
+기후 위기와 식량 안보 문제로 스마트팜이 주목받고 있으며, 옥상·지하 공간·공실과 같은 도심 유휴 공간을 농업 생산 공간으로 활용하려는 시도가 늘고 있습니다. 그러나 기존 스마트팜 솔루션은 구축 이후의 환경 제어와 모니터링에 집중하는 경우가 많아, 설비 투자 전에 후보 공간이 작물 재배에 적합한지 판단하기 어렵습니다.
+
+공간 특성을 충분히 고려하지 않은 설비 투자는 초기 비용과 에너지 사용량을 증가시킬 수 있습니다. TerraByte는 스마트팜 설치 전 환경 데이터를 수집하고 작물별 기준과 비교하여 공간의 적합성을 진단하며, 설치 후에도 같은 플랫폼에서 재배 환경을 지속적으로 확인할 수 있도록 개발한 서비스입니다.
+<br/>
+
+#### 1.2. 개발목표 및 주요내용
+
+TerraByte의 목표는 도심 유휴 공간의 스마트팜 전환 가능성을 데이터로 진단하고, 구축 이후의 환경 모니터링까지 연결하는 것입니다.
+
+- 단일 하드웨어 키트에서 대기 온습도, PPFD, 토양 온도, 토양 수분을 측정
+- 센서 장치가 측정한 온도, 습도, 광량(PPFD), 토양 수분 등의 환경 데이터 수집
+- 수집한 측정값과 작물별 권장 생육 범위를 비교한 환경 적합도 계산
+- 사용자, 재배 공간, 장치, 화분 정보를 연계한 통합 관리
+- 최신 센서값과 측정 이력을 확인할 수 있는 웹 대시보드 제공
+- 토양 프로필을 기반으로 한 추천 정보 제공
+- 복잡한 환경 데이터를 점수, 그래프, 색상과 관리 지침으로 변환하여 비전문가의 재배 위험 감소
+<br/>
+
+#### 1.3. 세부내용
+
+- 회원가입·로그인 및 JWT 기반 사용자 인증
 - 재배 공간, 장치, 화분 등록 및 조회
-- 센서 텔레메트리 수집과 최신값·이력 조회
-- 작물별 환경 적합도 계산과 항목별 점수 표시
-- 토양 프로필 기반 추천 정보 제공
-- Expo Web 대시보드와 Storybook 컴포넌트 카탈로그
-- Swagger UI를 통한 API 명세 확인 및 호출
+- 대기 온습도, PPFD, 토양 온도, 토양 수분 텔레메트리 수집과 시계열 데이터 저장
+- 장치·화분별 최신 측정값 및 측정 이력 조회
+- 작물별 환경 기준에 따른 항목별 점수와 종합 적합도 계산
+- 토양 추천 정보 및 적합도 계산 기준 제공
+- Expo Web 기반 사용자 화면과 Storybook 기반 UI 컴포넌트 관리
+- Swagger UI를 통한 API 명세 확인
+<br/>
 
-## 시스템 구성
+#### 1.4. 기존 서비스(상품) 대비 차별성
+
+- 스마트팜 구축 이후뿐 아니라 설치 이전의 후보 공간 진단을 지원합니다.
+- 단순 센서 수치 나열이 아니라 작물별 권장 범위와의 차이를 점수로 제공합니다.
+- 하나의 통합 키트로 공간 분석과 토양 상태 측정을 수행하고, 진단 데이터와 실제 재배 단계의 모니터링 데이터를 한 서비스에서 연계합니다.
+- PostgreSQL, SQLite, InfluxDB를 데이터 특성에 따라 분리하여 업무 데이터, 점수 기준, 센서 시계열 데이터를 관리합니다.
+<br/>
+
+#### 1.5. 사회적가치 도입 계획
+
+- 도심 유휴 공간의 농업적 활용 가능성을 데이터로 확인하여 도시 공간의 부가가치 창출을 지원합니다.
+- 비전문가도 환경 상태와 개선 우선순위를 이해할 수 있도록 진입 장벽을 낮춥니다.
+- 설치 전 진단을 통해 불필요한 설비 투자와 에너지 낭비를 줄이는 것을 목표로 합니다.
+- 도심 농업 참여를 확대하여 지역 단위 로컬푸드 생태계 형성에 기여하는 것을 목표로 합니다.
+<br/>
+
+### 2. 상세설계
+
+#### 2.1. 시스템 구성도
 
 ```mermaid
 flowchart LR
-    Sensor[센서 장치] -->|HTTP telemetry| API[Spring Boot API]
-    Web[Expo / React Native Web] -->|REST + JWT| API
-    API --> PG[(PostgreSQL)]
-    API --> SQLite[(SQLite)]
-    API --> Influx[(InfluxDB)]
+    Sensor[센서 장치] -->|HTTP Telemetry| Backend[Spring Boot Backend]
+    Frontend[Expo / React Native Web] -->|REST API + JWT| Backend
+    Backend --> PostgreSQL[(PostgreSQL)]
+    Backend --> SQLite[(SQLite)]
+    Backend --> InfluxDB[(InfluxDB)]
 ```
 
-- PostgreSQL: 사용자, 공간, 장치 등 업무 데이터
-- SQLite: 작물별 환경 점수 프로필과 계산용 기준 데이터
-- InfluxDB: 센서 시계열 데이터
+| 구성 요소 | 역할 |
+| --- | --- |
+| 센서 장치 | 온도, 습도, 광량, 토양 수분 등의 환경 데이터 측정 및 전송 |
+| Expo Web | 사용자 인증, 장치·화분 관리, 측정값과 적합도 시각화 |
+| Spring Boot | REST API, 인증, 데이터 처리, 환경 점수 계산 |
+| PostgreSQL | 사용자, 공간, 장치 등 업무 데이터 저장 |
+| SQLite | 작물별 점수 프로필과 계산 기준 데이터 저장 |
+| InfluxDB | 센서 시계열 데이터 저장 및 조회 |
+<br/>
 
-## 기술 스택
+#### 2.3. 사용기술
 
-| 영역 | 기술 | 현재 기준 |
-| --- | --- | --- |
-| Frontend | TypeScript, Expo, React Native, React Native Web | Expo 57, React 19, React Native 0.86 |
-| Backend | Java, Spring Boot, Gradle | Java 소스 호환 17, 컨테이너 JDK 21, Spring Boot 3.5.16, Gradle 8.14.3 |
-| Database | PostgreSQL, SQLite, InfluxDB | PostgreSQL 17, InfluxDB 2.7 |
-| Edge | Orange Pi, Arduino/ESP 계열 센서 보드 | Python, C/C++ |
-| Infra | Docker, Docker Compose, nginx | Compose v2, nginx 1.27 |
+| 구분 | 기술 | 버전 |
+|:---:|:---:|:---:|
+| Frontend | TypeScript | 6.0 |
+| Frontend | Expo | 57 |
+| Frontend | React | 19.2 |
+| Frontend | React Native | 0.86 |
+| Backend | Java | 소스 호환 17 / 컨테이너 JDK 21 |
+| Backend | Spring Boot | 3.5.16 |
+| Backend | Gradle Wrapper | 8.14.3 |
+| Database | PostgreSQL | 17 |
+| Database | InfluxDB | 2.7 |
+| Infra | Node.js | 24 |
+| Infra | nginx | 1.27 |
+| Infra | Docker Compose | v2 |
+| Edge | Python, C/C++ | - |
+| AI Coding Tools | GitHub Copilot, ChatGPT, Claude, Gemini, v0.dev | - |
+| IDE·협업 | GitHub, IntelliJ IDEA, CLion | - |
+<br/>
 
-> 과거 README의 Next.js 14 표기는 현재 구현과 달랐습니다. 프론트엔드는 `frontend/app`의 Expo SDK 57 애플리케이션입니다.
+### 3. 개발결과
 
-## 디렉터리 구조
+#### 3.1. 전체시스템 흐름도
+
+```mermaid
+sequenceDiagram
+    participant Device as 센서 장치
+    participant API as Spring Boot API
+    participant Influx as InfluxDB
+    participant Web as Expo Web
+    participant User as 사용자
+
+    Device->>API: 환경 측정 데이터 전송
+    API->>Influx: 시계열 데이터 저장
+    User->>Web: 대시보드 접속
+    Web->>API: 최신 측정값·이력 요청
+    API->>Influx: 측정 데이터 조회
+    Influx-->>API: 측정 결과 반환
+    API-->>Web: 측정값·적합도 반환
+    Web-->>User: 그래프와 점수 표시
+```
+<br/>
+
+#### 3.2. 기능설명
+
+##### `회원가입 및 로그인`
+
+- 이메일, 비밀번호, 닉네임을 입력해 계정을 생성합니다.
+- 이메일 형식과 비밀번호 조건을 검증합니다.
+- 로그인 성공 시 발급받은 JWT를 이후 API 요청에 사용합니다.
+<br/>
+
+##### `초기 설정 및 장치 등록`
+
+- 로그인한 사용자가 재배 공간과 장치를 등록합니다.
+- 장치 코드와 공간 정보를 사용자 계정에 연결합니다.
+- 등록한 장치와 화분 정보를 조회할 수 있습니다.
+<br/>
+
+##### `실시간 환경 대시보드`
+
+- 온도, 습도, 광량(PPFD), 토양 수분의 최신 측정값을 표시합니다.
+- 측정 이력을 조회하여 환경 변화를 확인합니다.
+- 센서 데이터가 없는 항목은 임의의 0이 아니라 값이 없는 상태로 처리합니다.
+<br/>
+
+##### `공간 적합도 분석`
+
+- 측정값과 작물별 권장 환경 범위를 비교합니다.
+- 항목별 점수와 종합 적합도를 제공합니다.
+- 적합도 계산 기준을 화면에서 확인할 수 있습니다.
+<br/>
+
+##### `토양 추천`
+
+- 장치 또는 화분에 연결된 환경 정보를 기준으로 토양 추천 정보를 조회합니다.
+<br/>
+
+#### 3.3. 기능명세서
+
+| 구분 | 기능 | 상세 |
+|:---:|:---|:---|
+| S1 | 회원가입 | 이메일, 비밀번호, 닉네임 입력값 검증 후 계정 생성 |
+| S2 | 로그인 | 이메일과 비밀번호 검증 후 JWT 발급 |
+| S3 | 사용자 정보 조회 | 인증된 사용자의 기본 정보 조회 |
+| S4 | 재배 공간 관리 | 사용자의 재배 공간 등록 및 목록 조회 |
+| S5 | 장치 관리 | 장치 코드 등록, 목록 및 상세 정보 조회 |
+| S6 | 화분 관리 | 사용자에게 연결된 화분 목록 및 상세 정보 조회 |
+| S7 | 텔레메트리 수집 | 장치 키를 검증하고 센서 측정값 수신 |
+| S8 | 최신 측정값 조회 | 장치 또는 화분의 최신 센서값 조회 |
+| S9 | 측정 이력 조회 | 지정한 기간의 센서 시계열 데이터 조회 |
+| S10 | 환경 적합도 | 작물별 기준을 적용한 항목별·종합 점수 조회 |
+| S11 | 토양 추천 | 장치 또는 화분 기준 토양 추천 정보 조회 |
+| S12 | API 문서 | Swagger UI와 OpenAPI 문서 제공 |
+<br/>
+
+#### 3.4. 디렉토리 구조
 
 ```text
 .
 ├── backend/                  # Spring Boot API, DB 마이그레이션, 자동 테스트
+│   ├── db/                   # SQLite 스키마와 마이그레이션
+│   ├── gradle/               # Gradle Wrapper
+│   └── src/                  # 백엔드 소스와 테스트
 ├── frontend/
-│   └── app/                 # Expo 앱, 화면·컴포넌트, Storybook
+│   └── app/                  # Expo 앱, 화면·컴포넌트, Storybook
 ├── edge/
-│   ├── arduino/             # 센서 보드 펌웨어
-│   ├── fusion_scripts/      # 센서 데이터 처리 스크립트
-│   └── pi/                  # Orange Pi 수집·전송 코드
-├── docs/                    # 설계, 개발 환경, 프로젝트 문서
-├── docker-compose.yml       # 개발 스택
-├── docker-compose.prod.yml  # 프로덕션 유사 스택
-├── .env.example             # 로컬 환경 변수 예시
-└── Makefile                 # 자주 쓰는 Compose 명령 단축키
+│   ├── arduino/              # 센서 보드 펌웨어
+│   ├── fusion_scripts/       # 센서 데이터 처리 스크립트
+│   └── pi/                   # Orange Pi 수집·전송 코드
+├── docs/                     # 설계, 개발 환경, 프로젝트 문서
+├── docker-compose.yml        # 개발용 Docker Compose 스택
+├── docker-compose.prod.yml   # 프로덕션 유사 Docker Compose 스택
+├── .env.example              # 로컬 환경 변수 예시
+└── Makefile                  # 개발 명령 단축키
 ```
+<br/>
 
-## Docker로 시작하기
+#### 3.5. AI 도구 활용
 
-Docker 방식은 호스트에 Java, Gradle, Node.js, PostgreSQL, InfluxDB를 별도로 설치하지 않아도 되어 권장합니다. Docker Compose v2와 Buildx가 필요합니다.
+- GitHub Copilot을 실시간 코드 작성 보조, 반복 코드 생성, 예외 처리 검토에 활용했습니다.
+- ChatGPT와 Claude를 기술 문서 및 API 명세 작성, 설계 대안 검토, 코드 리뷰에 활용했습니다.
+- Gemini를 구현 아이디어와 데이터 처리 방식 검토에 활용했습니다.
+- v0.dev를 대시보드 화면과 UI 컴포넌트 프로토타이핑에 활용했습니다.
+- 생성된 결과를 그대로 반영하지 않고 기존 코드 구조, API 계약, 테스트 결과를 기준으로 검토했습니다.
+<br/>
 
-### 1. Docker 설치
+### 4. 설치 및 사용 방법
 
-#### Windows 10/11
+Docker를 사용하면 Java, Gradle, Node.js, PostgreSQL, InfluxDB를 호스트에 별도로 설치하지 않아도 됩니다. Docker Compose v2와 Buildx가 필요합니다.
+
+#### 4.1. Docker 설치
+
+##### Windows 10/11
 
 1. [Docker Desktop for Windows 공식 설치 안내](https://docs.docker.com/desktop/setup/install/windows-install/)에서 설치 파일을 내려받아 실행합니다.
-2. 설치 과정에서 WSL 2 기반 엔진을 사용합니다. WSL이 없다면 관리자 PowerShell에서 `wsl --install`을 실행하고 재부팅합니다.
-3. Docker Desktop을 시작한 뒤 **Settings > General > Use WSL 2 based engine**이 활성화되어 있는지 확인합니다.
-4. WSL 터미널에서 개발한다면 **Settings > Resources > WSL Integration**에서 사용할 배포판을 활성화합니다.
+2. WSL이 설치되어 있지 않다면 관리자 PowerShell에서 `wsl --install`을 실행한 뒤 재부팅합니다.
+3. Docker Desktop에서 WSL 2 기반 엔진과 사용할 WSL 배포판 연동을 활성화합니다.
+4. Linux 컨테이너 모드인지 확인합니다.
 
-Windows에서는 Linux 컨테이너 모드를 사용해야 합니다. WSL을 사용할 경우 저장소를 `/mnt/c/...`보다 WSL 내부 파일 시스템(예: `~/git-hub/...`)에 두면 bind mount 성능이 더 좋습니다.
+##### macOS
 
-#### macOS
+1. [Docker Desktop for Mac 공식 설치 안내](https://docs.docker.com/desktop/setup/install/mac-install/)에서 Mac 칩에 맞는 설치 파일을 내려받습니다.
+2. Docker를 Applications로 옮겨 실행하고 초기 설정을 완료합니다.
 
-1. Mac 칩에 맞는 Docker Desktop을 [공식 설치 안내](https://docs.docker.com/desktop/setup/install/mac-install/)에서 내려받습니다.
-2. `Docker.dmg`를 열고 Docker를 Applications로 옮긴 뒤 실행합니다.
-3. 첫 실행 설정을 완료하고 메뉴 막대의 Docker 아이콘이 준비 상태인지 확인합니다.
+Homebrew를 사용하는 경우:
 
-Homebrew를 사용한다면 `brew install --cask docker` 후 Applications에서 Docker를 한 번 실행해도 됩니다.
+```bash
+brew install --cask docker
+```
 
-#### Ubuntu Linux
+##### Ubuntu Linux
 
-배포판 저장소의 오래된 `docker.io` 대신 [Docker Engine 공식 Ubuntu 설치 절차](https://docs.docker.com/engine/install/ubuntu/)를 따르는 것을 권장합니다. Docker 공식 apt 저장소를 등록한 뒤 다음 패키지를 설치합니다.
+[Docker Engine 공식 Ubuntu 설치 안내](https://docs.docker.com/engine/install/ubuntu/)에 따라 Docker의 apt 저장소를 먼저 등록한 뒤 아래 패키지를 설치합니다.
 
 ```bash
 sudo apt update
@@ -91,15 +236,13 @@ sudo systemctl enable --now docker
 sudo docker run --rm hello-world
 ```
 
-매번 `sudo`를 쓰지 않으려면 사용자를 `docker` 그룹에 추가한 뒤 로그아웃·로그인합니다. `docker` 그룹은 root 수준 권한을 줄 수 있으므로 공유 서버에서는 보안 정책을 먼저 확인하세요.
+일반 사용자로 Docker를 실행하려면 사용자를 `docker` 그룹에 추가한 뒤 다시 로그인합니다.
 
 ```bash
 sudo usermod -aG docker "$USER"
 ```
 
-### 2. 설치 확인
-
-새 터미널에서 아래 명령이 모두 성공해야 합니다. `docker-compose`(하이픈)가 아니라 `docker compose`(공백) 형식의 Compose v2를 사용합니다.
+설치 확인:
 
 ```bash
 docker --version
@@ -108,32 +251,24 @@ docker buildx version
 docker run --rm hello-world
 ```
 
-권장 자원은 CPU 4코어, 메모리 8GB 이상입니다. Docker Desktop에서 빌드가 반복해서 종료되면 **Settings > Resources**에서 할당량을 늘립니다.
-
-### 3. 저장소 받기
+#### 4.2. 저장소 받기
 
 ```bash
 git clone https://github.com/PNU-2026-AI-Hackathon/pnuai-b-02-terrabyte.git
 cd pnuai-b-02-terrabyte
 ```
 
-### 4. 한 줄로 개발 스택 실행
+#### 4.3. Make를 사용해 한 번에 실행(권장)
 
-Make 사용 여부에 따라 다음 두 방식 중 하나를 선택합니다. 두 방식 모두 `.env`가 없을 때만 `.env.example`을 복사하며, PostgreSQL·InfluxDB·백엔드·프론트엔드를 백그라운드에서 한 번에 빌드하고 실행합니다.
-
-#### 방식 A: Make 사용(권장)
-
-macOS, Linux 또는 Make가 설치된 Windows 환경에서 사용합니다.
+macOS, Linux 또는 Make가 설치된 Windows 환경에서는 아래 한 줄을 실행합니다. `.env`가 없으면 자동으로 생성하고 전체 개발 스택을 백그라운드에서 빌드·실행합니다.
 
 ```bash
 make up-d
 ```
 
-`make up-d`는 내부적으로 `.env` 준비와 `docker compose up -d --build`를 차례로 실행합니다. 사용할 수 있는 전체 단축 명령은 `make help`로 확인합니다.
+#### 4.4. Docker Compose로 직접 한 번에 실행
 
-#### 방식 B: Docker Compose 직접 사용
-
-Make를 설치하지 않아도 됩니다. 사용하는 셸에 맞는 한 줄 명령을 실행합니다.
+Make가 없는 환경에서는 사용하는 셸에 맞는 명령을 실행합니다.
 
 macOS/Linux:
 
@@ -147,69 +282,44 @@ Windows PowerShell:
 if (!(Test-Path .env)) { Copy-Item .env.example .env }; docker compose up -d --build
 ```
 
-`.env.example`의 기본 계정과 비밀키는 로컬 개발 전용입니다. 일반적인 로컬 실행은 그대로 사용할 수 있지만 외부에 노출되는 환경에는 절대 사용하지 마세요. Linux에서는 bind mount 파일 권한을 맞추기 위해 `.env`의 값을 다음 결과로 변경할 수 있습니다.
+`.env.example`의 계정과 비밀키는 로컬 개발 전용입니다. 외부에 공개되는 환경에서는 반드시 안전한 값으로 교체해야 합니다.
+
+#### 4.5. 실행 확인
+
+| 서비스 | 주소 |
+| --- | --- |
+| 프론트엔드 | http://localhost:8081 |
+| 백엔드 상태 확인 | http://localhost:8080/actuator/health |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| InfluxDB UI | http://localhost:8086 |
+| PostgreSQL | `localhost:5432` |
+| 백엔드 원격 디버그 | `localhost:5005` |
 
 ```bash
-id -u
-id -g
-# 위 결과를 각각 DOCKER_UID, DOCKER_GID에 입력
-```
+make ps
+make logs
 
-### 5. 실행 상태 확인
-
-처음 실행할 때 이미지를 받고 Gradle/npm 의존성을 설치하므로 몇 분 걸릴 수 있습니다. 다음 명령으로 상태와 로그를 확인합니다.
-
-```bash
-make ps                                       # 또는 docker compose ps
-make logs                                     # 또는 docker compose logs -f
-```
-
-포그라운드에서 로그를 보며 실행하려면 기존 스택을 내린 뒤 다음 명령 중 하나를 사용합니다.
-
-```bash
-make down && make up
-# 또는
-docker compose down && docker compose up --build
-```
-
-`Ctrl+C`를 누르면 포그라운드 실행이 중단됩니다. 백그라운드 실행에서 `docker compose logs -f`를 사용한 경우에는 로그 보기만 종료됩니다.
-
-| 서비스 | 기본 주소/포트 | 확인 방법 |
-| --- | --- | --- |
-| 프론트엔드 (Expo Web) | http://localhost:8081 | 브라우저 접속 |
-| 백엔드 API | http://localhost:8080 | `/actuator/health` |
-| Swagger UI | http://localhost:8080/swagger-ui.html | 브라우저 접속 |
-| PostgreSQL | `localhost:5432` | `docker compose exec postgres pg_isready -U terrabyte` |
-| InfluxDB UI | http://localhost:8086 | `terrabyte` / `terrabyte-admin-password` |
-| 백엔드 원격 디버그 | `localhost:5005` | IDE의 Remote JVM Debug 연결 |
-
-모든 서비스가 준비됐는지 확인합니다.
-
-```bash
+# Make를 사용하지 않는 경우
 docker compose ps
+docker compose logs -f
+```
+
+백엔드와 InfluxDB 상태 확인:
+
+```bash
 curl --fail http://localhost:8080/actuator/health
 curl --fail http://localhost:8086/health
 ```
 
-`backend`가 `healthy`가 될 때까지 첫 실행 기준 1~2분 이상 걸릴 수 있습니다. 문제가 있으면 서비스별 로그를 확인합니다.
+#### 4.6. 테스트
 
-```bash
-docker compose logs --tail=200 backend
-docker compose logs --tail=200 frontend
-docker compose logs --tail=200 postgres influxdb
-```
-
-## 테스트 방법
-
-### 백엔드 자동 테스트
-
-외부 PostgreSQL/InfluxDB 없이 H2와 메모리 SQLite 구성을 사용해 전체 백엔드 테스트를 실행합니다. 개발 스택이 실행 중이어도 별도의 일회성 컨테이너에서 실행할 수 있습니다.
+백엔드 전체 자동 테스트:
 
 ```bash
 make test
 ```
 
-`make`가 없는 환경에서는 Makefile과 동일하게 Gradle 캐시 경로를 분리해 실행합니다.
+Make를 사용하지 않는 경우:
 
 ```bash
 docker compose run --rm --no-deps \
@@ -217,28 +327,14 @@ docker compose run --rm --no-deps \
   backend --project-cache-dir /home/dev/.gradle/one-shot-project test
 ```
 
-성공 기준은 마지막에 `BUILD SUCCESSFUL`이 출력되고 명령이 종료 코드 0으로 끝나는 것입니다.
-
-### 프론트엔드 정적 검사와 Storybook 빌드
-
-현재 프론트엔드에는 별도의 단위 테스트 스크립트가 없으므로 TypeScript 검사와 Storybook 정적 빌드를 기본 검증으로 사용합니다.
+프론트엔드 TypeScript 검사와 Storybook 정적 빌드:
 
 ```bash
 docker compose exec frontend npx tsc --noEmit
 docker compose exec frontend npm run build-storybook
 ```
 
-컴포넌트를 브라우저에서 확인하려면 Storybook 프로필을 실행합니다.
-
-```bash
-docker compose --profile storybook up -d storybook
-docker compose logs -f storybook
-# http://localhost:6006
-```
-
-### API 스모크 테스트
-
-스택 실행 후 다음 요청으로 회원가입·로그인까지 빠르게 확인할 수 있습니다. 같은 이메일이 이미 존재하면 이메일 값을 바꾸거나 아래의 DB 초기화 절차를 사용합니다.
+API 스모크 테스트:
 
 ```bash
 curl -i -X POST http://localhost:8080/api/auth/signup \
@@ -250,79 +346,75 @@ curl -i -X POST http://localhost:8080/api/auth/login \
   -d '{"email":"docker-test@terrabyte.local","password":"password1"}'
 ```
 
-센서 데이터 전송을 포함한 통합 시나리오와 전체 JSON 예시는 [백엔드 가이드](backend/README.md)를 참고하세요. API 요청·응답 스키마는 실행 중인 [Swagger UI](http://localhost:8080/swagger-ui.html)에서 확인할 수 있습니다.
-
-## 자주 쓰는 Docker Compose 명령
-
-같은 작업을 Make 단축 명령이나 Docker Compose 원본 명령 중 원하는 방식으로 실행할 수 있습니다.
+#### 4.7. 자주 사용하는 명령
 
 | 작업 | Make 사용 | Docker Compose 직접 사용 |
 | --- | --- | --- |
-| 환경 파일 준비 | `make init` | `test -f .env \|\| cp .env.example .env` |
+| 환경 파일 준비 | `make init` | `cp .env.example .env` |
 | 포그라운드 실행 | `make up` | `docker compose up --build` |
 | 백그라운드 실행 | `make up-d` | `docker compose up -d --build` |
 | 상태 확인 | `make ps` | `docker compose ps` |
 | 전체 로그 | `make logs` | `docker compose logs -f` |
 | 백엔드 로그 | `make logs-backend` | `docker compose logs -f backend` |
 | 백엔드 재시작 | `make restart` | `docker compose restart backend` |
-| 이미지 빌드 | `make build` | `docker compose build` |
 | 캐시 없이 재빌드 | `make rebuild` | `docker compose build --no-cache` |
-| 백엔드 테스트 | `make test` | [백엔드 자동 테스트](#백엔드-자동-테스트)의 전체 명령 |
-| 스택 중지 | `make down` | `docker compose down` |
+| 백엔드 테스트 | `make test` | 4.6절의 전체 명령 |
+| 중지 | `make down` | `docker compose down` |
 | 중지 및 DB 초기화 | `make down-v` | `docker compose down -v` |
 
-컨테이너 셸이나 DB 콘솔에 직접 들어갈 때는 다음 명령을 사용합니다.
+`docker compose down -v`와 `make down-v`는 PostgreSQL과 InfluxDB 데이터를 삭제하므로 초기화가 필요할 때만 사용합니다.
+
+#### 4.8. 프로덕션 유사 스택
+
+`.env`의 `POSTGRES_PASSWORD`, `INFLUX_PASSWORD`, `INFLUX_TOKEN`, `TELEMETRY_DEVICE_KEY`, `JWT_SECRET`을 안전한 값으로 변경한 뒤 실행합니다.
 
 ```bash
-docker compose exec backend bash               # 백엔드 컨테이너 셸
-docker compose exec frontend bash              # 프론트엔드 컨테이너 셸
-docker compose exec postgres psql -U terrabyte -d terrabyte
-```
+make prod-up
 
-`docker compose down -v`는 PostgreSQL과 InfluxDB 데이터를 삭제하므로 초기화가 필요할 때만 실행하세요.
-
-## 프로덕션 유사 스택
-
-개발 스택과 달리 소스를 mount하지 않고, 백엔드 jar와 Expo Web 정적 번들을 이미지에 빌드합니다. `.env`의 `POSTGRES_PASSWORD`, `INFLUX_PASSWORD`, `INFLUX_TOKEN`, `TELEMETRY_DEVICE_KEY`, `JWT_SECRET`을 안전한 값으로 반드시 교체한 뒤 실행합니다.
-
-```bash
-docker compose -f docker-compose.prod.yml config
+# Make를 사용하지 않는 경우
 docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml ps
-curl --fail http://localhost:8088/actuator/health
-# 웹: http://localhost:8088
 ```
 
-중지할 때는 다음 명령을 사용합니다. 데이터까지 삭제하려는 경우에만 끝에 `-v`를 추가합니다.
+| 서비스 | 주소 |
+| --- | --- |
+| 프로덕션 유사 웹 | http://localhost:8088 |
+| 상태 확인 | http://localhost:8088/actuator/health |
+
+중지:
 
 ```bash
+make prod-down
+
+# Make를 사용하지 않는 경우
 docker compose -f docker-compose.prod.yml down
 ```
 
-프로덕션 유사 스택은 로컬 검증용 기본 구성입니다. 실제 공개 배포에서는 TLS, 방화벽, 비밀 관리, 백업, 관측성 설정을 별도로 적용해야 합니다.
+더 자세한 원격 디버깅, DB 접속, 모바일 기기 연결 방법은 [Docker 개발·배포 환경 가이드](docs/docker_dev_environment.md)를 참고합니다.
+<br/>
 
-## 문제 해결
+### 5. 소개 및 시연영상
 
-| 증상 | 확인 및 해결 |
-| --- | --- |
-| Docker daemon 연결 오류 | Docker Desktop/Engine이 실행 중인지 확인하고 `docker info` 실행 |
-| `docker compose` 명령이 없음 | Compose v2 플러그인 설치. [공식 Compose 설치 안내](https://docs.docker.com/compose/install/) 참고 |
-| `port is already allocated` | `.env`의 `BACKEND_PORT`, `FRONTEND_PORT`, `POSTGRES_PORT`, `INFLUX_PORT` 등을 미사용 포트로 변경 |
-| 백엔드가 DB/Flyway 오류로 종료 | 로그 확인 후 로컬 데이터 삭제가 가능하면 `docker compose down -v`로 초기화 |
-| 프론트엔드 모듈 오류 | `docker compose restart frontend`; 계속되면 `docker compose build --no-cache frontend` |
-| 수정한 코드가 반영되지 않음 | 백엔드는 `docker compose restart backend`, 프론트는 `docker compose restart frontend` |
-| Linux에서 생성 파일이 root 소유 | `.env`의 `DOCKER_UID`/`DOCKER_GID`를 `id -u`/`id -g`에 맞추고 이미지 재빌드 |
-| 빌드 중 메모리 부족/강제 종료 | Docker에 할당한 메모리를 8GB 이상으로 늘리고 다시 빌드 |
+<br/>
 
-더 자세한 버전 고정, 원격 디버깅, DB 접속, 모바일 기기 연결 방법은 [Docker 개발·배포 환경 가이드](docs/docker_dev_environment.md)에 있습니다.
-
-## Docker 없이 실행
-
-호스트에서 직접 실행하려면 JDK 17 이상, Node.js/npm, PostgreSQL, InfluxDB 2.x가 필요합니다. 백엔드는 [backend/README.md](backend/README.md), Expo 앱과 iOS/Android 실행은 [frontend/README.md](frontend/README.md)를 참고하세요.
-
-## 팀
+### 6. 팀 소개
 
 | LEADER | MEMBER1 | MEMBER2 | MEMBER3 | MEMBER4 |
 |:---:|:---:|:---:|:---:|:---:|
 | [김동현](https://github.com/cnvxlns) | [김민서](https://github.com/oesmln) | [김효빈](https://github.com/iris11132-max) | [문성현](https://github.com/7hyunii) | [박태훈](https://github.com/Reighnex) |
+| okmac03@pusan.ac.kr | kmmlns@gmail.com | irisrla@naver.com | 7sonicx@gmail.com | pth4241@pusan.ac.kr |
 | HW 설계 | 백엔드 및 DevOps | 기획·도메인 분석 | 풀스택 개발 | 공간 진단 알고리즘 설계 |
+<br/>
+
+### 7. 해커톤 참여 후기
+
+#### 김동현
+
+#### 김민서
+
+#### 김효빈
+
+#### 문성현
+
+#### 박태훈
+
+<br/>
