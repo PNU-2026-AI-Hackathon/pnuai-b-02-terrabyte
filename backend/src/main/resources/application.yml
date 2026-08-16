@@ -66,6 +66,19 @@ app:
       success-url: ${TOSS_PAYMENTS_SUCCESS_URL:http://localhost:8081/payment/success}
       fail-url: ${TOSS_PAYMENTS_FAIL_URL:http://localhost:8081/payment/fail}
   ai:
+    # Two unrelated services share this namespace. app.ai.* is the irrigation
+    # volume regressor, which only ever suggests a number that the Governor then
+    # validates. app.ai.gemini.* is the advisory care-plan agent, which produces
+    # text for the user and touches no actuator. They are bound by separate
+    # @ConfigurationProperties records (app.ai and app.ai.gemini), so neither
+    # sees the other's keys.
+    enabled: ${AI_ENABLED:false}
+    base-url: ${AI_BASE_URL:http://localhost:8000}
+    api-key: ${AI_API_KEY:}
+    timeout: ${AI_TIMEOUT:PT0.8S}
+    expected-schema-version: ${AI_EXPECTED_SCHEMA_VERSION:1}
+    hard-ceiling-ml: ${AI_HARD_CEILING_ML:500}
+    min-confidence: ${AI_MIN_CONFIDENCE:0.5}
     gemini:
       enabled: ${GEMINI_ENABLED:false}
       api-key: ${GEMINI_API_KEY:}
