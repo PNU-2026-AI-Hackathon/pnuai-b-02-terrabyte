@@ -29,14 +29,69 @@ class Event:
     air_temperature_c: float
     relative_humidity_pct: float
     ppfd_umol_m2_s: float
+    # Optional: the DS18B20 and the capacitive probe are physically optional,
+    # and the firmware only emits these fields when they are compiled in.
+    # Defaulted so an event queued by an older build still deserialises from
+    # the outbox — the SQLite payload is a JSON blob, so old rows simply lack
+    # these keys.
+    soil_temperature_c: float | None = None
+    soil_moisture_pct: float | None = None
+    soil_moisture_raw_adc: int | None = None
 
-    def backend_body(self) -> dict[str, object]:
+    @property
+    def has_soil_reading(self) -> bool:
+        return self.soil_temperature_c is not None or self.soil_moisture_pct is not None
+
+    def envelope_v2(self, *, gateway_id: str) -> dict[str, object]:
+        """Build a telemetry.sample envelope v2 body (one node per envelope).
+
+        ``gateway_id`` is a transport-time parameter rather than a stored
+        field: it is deployment-wide config (``Settings.device_id``), not a
+        property of a single sensor reading, so passing it in here avoids
+        duplicating it into every queued outbox row and avoids changing the
+        SQLite outbox schema (an explicit design constraint — see
+        docs/design/device_model_and_telemetry_contract.md §6.1).
+
+        Field names below must match the backend ``MeasurementMetric`` enum
+        literally. Soil metrics are omitted entirely rather than sent as null
+        or zero when the probes are absent: a 0.0 would reach the irrigation
+        path as a confident "bone dry", which is the one reading that must
+        never be fabricated.
+        """
+        measurements: dict[str, object] = {
+            "air_temperature_c": self.air_temperature_c,
+            "air_humidity_pct": self.relative_humidity_pct,
+            "plant_light_ppfd_umol_m2_s": self.ppfd_umol_m2_s,
+        }
+        if self.soil_temperature_c is not None:
+            measurements["soil_temperature_c"] = self.soil_temperature_c
+        if self.soil_moisture_pct is not None:
+            measurements["soil_moisture_pct"] = self.soil_moisture_pct
+        if self.soil_moisture_raw_adc is not None:
+            measurements["soil_moisture_raw_adc"] = self.soil_moisture_raw_adc
+
         return {
-            "capturedAtUtc": self.captured_at_utc,
-            "airTemperatureC": self.air_temperature_c,
-            "relativeHumidityPct": self.relative_humidity_pct,
-            "ppfdUmolM2S": self.ppfd_umol_m2_s,
-            "inputContract": "perfect_calibrated_v1",
+            "schema_version": 2,
+            "event_type": "telemetry.sample",
+            "gateway_id": gateway_id,
+            "event_id": self.event_id,
+            "observed_at": self.captured_at_utc,
+            "nodes": [
+                {
+                    "node_id": self.node_id,
+                    "sequence": self.sequence,
+                    "measurements": measurements,
+                    "quality": {
+                        # Ranges were already enforced by parse_line() before
+                        # this Event was constructed, so every reading present
+                        # here is valid by construction. An absent soil probe
+                        # reports false, matching "unusable for irrigation".
+                        "air_sensor_valid": True,
+                        "light_sensor_valid": True,
+                        "soil_sensor_valid": self.has_soil_reading,
+                    },
+                }
+            ],
         }
 
     def to_record(self) -> dict[str, object]:
@@ -50,6 +105,9 @@ class Event:
             "air_temperature_c": self.air_temperature_c,
             "relative_humidity_pct": self.relative_humidity_pct,
             "ppfd_umol_m2_s": self.ppfd_umol_m2_s,
+            "soil_temperature_c": self.soil_temperature_c,
+            "soil_moisture_pct": self.soil_moisture_pct,
+            "soil_moisture_raw_adc": self.soil_moisture_raw_adc,
         }
 
     @classmethod
@@ -78,6 +136,27 @@ def _reading(
     if not math.isfinite(reading) or not minimum <= reading <= maximum:
         raise ProtocolError(f"{name} is outside canonical range")
     return reading
+
+
+def _optional_reading(
+    message: dict[str, Any], name: str, minimum: float, maximum: float
+) -> float | None:
+    """Read a field the firmware only emits when that probe is compiled in.
+
+    Absent means "no probe", which is legitimate. Present but out of range is
+    a fault, and is rejected rather than clamped: a bad soil reading silently
+    coerced into range would feed the irrigation decision as if it were real.
+    """
+
+    if name not in message:
+        return None
+    return _reading(message, name, minimum, maximum)
+
+
+def _optional_uint32(message: dict[str, Any], name: str) -> int | None:
+    if name not in message:
+        return None
+    return _uint32(message, name)
 
 
 def parse_line(
@@ -142,4 +221,11 @@ def parse_line(
             message, "relative_humidity_pct", 0.0, 100.0
         ),
         ppfd_umol_m2_s=_reading(message, "ppfd_umol_m2_s", 0.0, 5000.0),
+        soil_temperature_c=_optional_reading(
+            message, "soil_temperature_c", -20.0, 80.0
+        ),
+        soil_moisture_pct=_optional_reading(
+            message, "soil_moisture_pct", 0.0, 100.0
+        ),
+        soil_moisture_raw_adc=_optional_uint32(message, "soil_moisture_raw_adc"),
     )

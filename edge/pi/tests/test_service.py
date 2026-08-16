@@ -1,9 +1,9 @@
 from types import SimpleNamespace
 import unittest
 
-from terrabyte_edge.backend import Delivery, DeliveryResult
 from terrabyte_edge.outbox import OutboxItem
 from terrabyte_edge.protocol import Event
+from terrabyte_edge.publisher import Delivery, DeliveryResult
 from terrabyte_edge.service import BridgeService
 
 
@@ -50,19 +50,23 @@ class FakeOutbox:
         raise AssertionError("unexpected dead-letter")
 
 
-class FakeBackend:
+class FakePublisher:
     def __init__(self) -> None:
         self.sent: list[str] = []
+        self.closed = False
 
     def send(self, item: Event) -> DeliveryResult:
         self.sent.append(item.event_id)
         return DeliveryResult(Delivery.RETRY, "offline")
 
+    def close(self) -> None:
+        self.closed = True
+
 
 class ServiceTests(unittest.TestCase):
     def test_retry_stops_newer_delivery_to_preserve_order(self) -> None:
         outbox = FakeOutbox()
-        backend = FakeBackend()
+        publisher = FakePublisher()
         settings = SimpleNamespace(
             upload_batch_size=20,
             http_timeout_seconds=1.0,
@@ -70,14 +74,31 @@ class ServiceTests(unittest.TestCase):
         service = BridgeService(
             settings,
             outbox=outbox,
-            backend=backend,
+            publisher=publisher,
             serial_reader=object(),
         )
 
         self.assertEqual(service._upload_once(), 1)
-        self.assertEqual(backend.sent, ["oldest"])
+        self.assertEqual(publisher.sent, ["oldest"])
         self.assertEqual(outbox.retried, ["oldest"])
         self.assertEqual(outbox.delivered, [])
+
+    def test_join_closes_the_publisher(self) -> None:
+        outbox = FakeOutbox()
+        publisher = FakePublisher()
+        settings = SimpleNamespace(
+            upload_batch_size=20,
+            http_timeout_seconds=1.0,
+        )
+        service = BridgeService(
+            settings,
+            outbox=outbox,
+            publisher=publisher,
+            serial_reader=object(),
+        )
+
+        service.join()
+        self.assertTrue(publisher.closed)
 
 
 if __name__ == "__main__":

@@ -64,3 +64,6 @@ desktop.ini
 .claude/
 HANDOFF.md
 docs/superpowers/
+
+# 합성 벤치 캡처는 tools/make_bench_capture.py로 재생성한다.
+edge/pi/data/raw/

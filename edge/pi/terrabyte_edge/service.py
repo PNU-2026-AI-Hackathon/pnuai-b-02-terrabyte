@@ -5,14 +5,38 @@ from __future__ import annotations
 import logging
 from threading import Event, Thread
 
-from .backend import BackendClient, Delivery
+from .backend import HttpPublisher
 from .config import Settings
+from .mqtt_publisher import MqttPublisher
 from .outbox import Outbox, OutboxFullError
 from .protocol import NonTelemetryMessage, ProtocolError, parse_line
+from .publisher import Delivery, Publisher
 from .serial_reader import SerialLineReader
 
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _build_publisher(settings: Settings) -> Publisher:
+    if settings.transport == "mqtt":
+        return MqttPublisher(
+            host=settings.mqtt_host,
+            port=settings.mqtt_port,
+            gateway_id=settings.device_id,
+            topic_prefix=settings.mqtt_topic_prefix,
+            username=settings.mqtt_username,
+            password=settings.mqtt_password,
+            tls=settings.mqtt_tls,
+            tls_ca_cert=settings.mqtt_tls_ca_cert,
+            keepalive_seconds=settings.mqtt_keepalive_seconds,
+            publish_timeout_seconds=settings.mqtt_publish_timeout_seconds,
+        )
+    return HttpPublisher(
+        telemetry_url=settings.telemetry_url,
+        device_id=settings.device_id,
+        token=settings.device_token,
+        timeout_seconds=settings.http_timeout_seconds,
+    )
 
 
 class BridgeService:
@@ -21,7 +45,7 @@ class BridgeService:
         settings: Settings,
         *,
         outbox: Outbox | None = None,
-        backend: BackendClient | None = None,
+        publisher: Publisher | None = None,
         serial_reader: SerialLineReader | None = None,
     ) -> None:
         self.settings = settings
@@ -32,12 +56,7 @@ class BridgeService:
             retry_max_seconds=settings.retry_max_seconds,
             max_rows=settings.outbox_max_rows,
         )
-        self.backend = backend or BackendClient(
-            url_for_context=settings.observations_url,
-            device_id=settings.device_id,
-            token=settings.device_token,
-            timeout_seconds=settings.http_timeout_seconds,
-        )
+        self.publisher = publisher or _build_publisher(settings)
         self.serial_reader = serial_reader or SerialLineReader(
             port=settings.serial_port,
             baudrate=settings.serial_baud,
@@ -66,6 +85,7 @@ class BridgeService:
             thread.join(self.settings.http_timeout_seconds + 2.0)
             if thread.is_alive():
                 LOGGER.warning("worker did not stop in time name=%s", thread.name)
+        self.publisher.close()
 
     def worker_failed(self) -> bool:
         return bool(self._threads) and any(
@@ -117,7 +137,7 @@ class BridgeService:
         for item in items:
             if self.stop_event.is_set():
                 break
-            result = self.backend.send(item.event)
+            result = self.publisher.send(item.event)
             processed += 1
             event_id = item.event.event_id
             if result.outcome is Delivery.DELIVERED:

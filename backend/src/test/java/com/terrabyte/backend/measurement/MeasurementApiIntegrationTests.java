@@ -3,10 +3,12 @@ package com.terrabyte.backend.measurement;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -33,14 +35,14 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = "app.telemetry.http-ingest.enabled=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class MeasurementApiIntegrationTests {
 
-    private static final String DEVICE_KEY = "terrabyte-local-device-key";
     private static final String HARDWARE_ID = "orangepi-pro-01";
     private static final String SERIAL_CODE = "483920";
+    private static final String NODE_ID = "pot-01";
 
     private final MockMvc mockMvc;
     private final ObjectMapper objectMapper;
@@ -71,6 +73,7 @@ class MeasurementApiIntegrationTests {
                 """);
         jdbcTemplate.update("UPDATE pot SET node_id=NULL,crop_code=NULL,crop_selected_at=NULL,status='OFFLINE',last_seen_at=NULL");
         jdbcTemplate.update("DELETE FROM app_user");
+        jdbcTemplate.update("DELETE FROM telemetry_event");
     }
 
     @Test
@@ -78,9 +81,8 @@ class MeasurementApiIntegrationTests {
         Instant observedAt = Instant.now().minusSeconds(5);
 
         mockMvc.perform(post("/api/telemetry")
-                        .header("X-Device-Key", DEVICE_KEY)
                         .contentType(APPLICATION_JSON)
-                        .content(telemetryBody(HARDWARE_ID, observedAt, 1042, 58.0)))
+                        .content(telemetryBody(HARDWARE_ID, UUID.randomUUID().toString(), observedAt, NODE_ID, 1042, 58.0)))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.accepted").value(true))
                 .andExpect(jsonPath("$.hardwareDeviceId").value(HARDWARE_ID))
@@ -95,20 +97,19 @@ class MeasurementApiIntegrationTests {
     }
 
     @Test
-    void rejectsInvalidDeviceKeyAndInvalidMeasurement() throws Exception {
+    void rejectsSchemaVersionOneAndInvalidMeasurement() throws Exception {
         Instant observedAt = Instant.now().minusSeconds(5);
 
         mockMvc.perform(post("/api/telemetry")
-                        .header("X-Device-Key", "wrong-key")
                         .contentType(APPLICATION_JSON)
-                        .content(telemetryBody(HARDWARE_ID, observedAt, 1042, 58.0)))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_DEVICE_KEY"));
+                        .content(telemetryBody(
+                                1, HARDWARE_ID, UUID.randomUUID().toString(), observedAt, NODE_ID, 1042, 58.0)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
 
         mockMvc.perform(post("/api/telemetry")
-                        .header("X-Device-Key", DEVICE_KEY)
                         .contentType(APPLICATION_JSON)
-                        .content(telemetryBody(HARDWARE_ID, observedAt, 1042, 101.0)))
+                        .content(telemetryBody(HARDWARE_ID, UUID.randomUUID().toString(), observedAt, NODE_ID, 1042, 101.0)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
@@ -116,11 +117,129 @@ class MeasurementApiIntegrationTests {
     @Test
     void rejectsUnknownHardwareDevice() throws Exception {
         mockMvc.perform(post("/api/telemetry")
-                        .header("X-Device-Key", DEVICE_KEY)
                         .contentType(APPLICATION_JSON)
-                        .content(telemetryBody("unknown-device", Instant.now().minusSeconds(5), 1, 58.0)))
+                        .content(telemetryBody(
+                                "unknown-device", UUID.randomUUID().toString(),
+                                Instant.now().minusSeconds(5), NODE_ID, 1, 58.0)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("DEVICE_NOT_FOUND"));
+    }
+
+    @Test
+    void ignoresDuplicateEventIdWithoutWritingASecondSample() throws Exception {
+        Instant observedAt = Instant.now().minusSeconds(5);
+        String eventId = UUID.randomUUID().toString();
+        String body = telemetryBody(HARDWARE_ID, eventId, observedAt, NODE_ID, 1042, 58.0);
+
+        mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.accepted").value(true));
+        mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.accepted").value(true));
+
+        verify(measurementStore, times(1)).write(any(TelemetrySample.class));
+    }
+
+    @Test
+    void acceptsEnvelopeWithoutSoilMoistureRawAdc() throws Exception {
+        Instant observedAt = Instant.now().minusSeconds(5);
+        String body = objectMapper.writeValueAsString(new TelemetryEnvelope(
+                2,
+                "telemetry.sample",
+                HARDWARE_ID,
+                UUID.randomUUID().toString(),
+                observedAt,
+                List.of(new TelemetryEnvelope.Node(
+                        NODE_ID,
+                        1,
+                        new TelemetryEnvelope.Measurements(
+                                27.1, 58.0, 230.5, null, null, null),
+                        new TelemetryEnvelope.Quality(true, true, null)))));
+
+        mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.accepted").value(true));
+
+        verify(measurementStore).write(any(TelemetrySample.class));
+    }
+
+    @Test
+    void bindsOnePotPerNodeForAMultiNodeEnvelope() throws Exception {
+        String token = signupAndGetToken();
+        long deviceId = registerAndGetDeviceId(token);
+        Instant observedAt = Instant.now().minusSeconds(5);
+
+        String body = objectMapper.writeValueAsString(new TelemetryEnvelope(
+                2,
+                "telemetry.sample",
+                HARDWARE_ID,
+                UUID.randomUUID().toString(),
+                observedAt,
+                List.of(
+                        node("node-a", 1),
+                        node("node-b", 2))));
+
+        mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.sequence").value(2));
+
+        List<String> nodeIds = jdbcTemplate.queryForList(
+                "SELECT node_id FROM pot WHERE device_id = ? ORDER BY node_id", String.class, deviceId);
+        assertThat(nodeIds).containsExactly("node-a", "node-b");
+        verify(measurementStore, times(2)).write(any(TelemetrySample.class));
+    }
+
+    @Test
+    void carriesSoilTemperatureFromEnvelopeThroughToTheStoredSample() throws Exception {
+        Instant observedAt = Instant.now().minusSeconds(5);
+        String body = objectMapper.writeValueAsString(new TelemetryEnvelope(
+                2,
+                "telemetry.sample",
+                HARDWARE_ID,
+                UUID.randomUUID().toString(),
+                observedAt,
+                List.of(new TelemetryEnvelope.Node(
+                        NODE_ID,
+                        1,
+                        new TelemetryEnvelope.Measurements(
+                                27.1, 58.0, 230.5, 19.4, 45.0, 1847L),
+                        new TelemetryEnvelope.Quality(true, true, true)))));
+
+        mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted());
+
+        org.mockito.ArgumentCaptor<TelemetrySample> captor =
+                org.mockito.ArgumentCaptor.forClass(TelemetrySample.class);
+        verify(measurementStore).write(captor.capture());
+        assertThat(captor.getValue().soilTemperatureC()).isEqualTo(19.4);
+    }
+
+    @Test
+    void treatsAnAbsentSoilTemperatureAsNullRatherThanZero() throws Exception {
+        Instant observedAt = Instant.now().minusSeconds(5);
+        String body = objectMapper.writeValueAsString(new TelemetryEnvelope(
+                2,
+                "telemetry.sample",
+                HARDWARE_ID,
+                UUID.randomUUID().toString(),
+                observedAt,
+                List.of(new TelemetryEnvelope.Node(
+                        NODE_ID,
+                        1,
+                        new TelemetryEnvelope.Measurements(
+                                27.1, 58.0, 230.5, null, null, null),
+                        new TelemetryEnvelope.Quality(true, true, null)))));
+
+        mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
+                .andExpect(status().isAccepted());
+
+        org.mockito.ArgumentCaptor<TelemetrySample> captor =
+                org.mockito.ArgumentCaptor.forClass(TelemetrySample.class);
+        verify(measurementStore).write(captor.capture());
+        // Must be null, not 0.0 — a confident 0°C is indistinguishable from a
+        // real cold reading, whereas null correctly says "no probe wired in".
+        assertThat(captor.getValue().soilTemperatureC()).isNull();
     }
 
     @Test
@@ -129,7 +248,7 @@ class MeasurementApiIntegrationTests {
         long deviceId = registerAndGetDeviceId(token);
         long potId = jdbcTemplate.queryForObject("SELECT MIN(id) FROM pot WHERE device_id=?", Long.class, deviceId);
         selectCrop(token, deviceId, "lettuce");
-        TelemetrySample sample = sample(Instant.now().minusSeconds(5));
+        TelemetrySample sample = sample(potId, deviceId, Instant.now().minusSeconds(5));
         when(measurementStore.findLatest(potId)).thenReturn(java.util.Optional.of(sample));
         when(measurementStore.findPoints(
                 eq(potId),
@@ -145,6 +264,7 @@ class MeasurementApiIntegrationTests {
                 .andExpect(jsonPath("$.hardwareDeviceId").value(HARDWARE_ID))
                 .andExpect(jsonPath("$.measurements.airTemperatureC").value(27.1))
                 .andExpect(jsonPath("$.measurements.plantLightPpfdUmolM2S").value(230.5))
+                .andExpect(jsonPath("$.measurements.soilTemperatureC").value(21.0))
                 .andExpect(jsonPath("$.quality.airSensorValid").value(true));
 
         mockMvc.perform(get("/api/devices/{deviceId}/measurements", deviceId)
@@ -155,6 +275,21 @@ class MeasurementApiIntegrationTests {
                 .andExpect(jsonPath("$.metric").value("air_temperature_c"))
                 .andExpect(jsonPath("$.unit").value("℃"))
                 .andExpect(jsonPath("$.points[0].value").value(27.1));
+
+        when(measurementStore.findPoints(
+                eq(potId),
+                eq(MeasurementMetric.SOIL_TEMPERATURE_C),
+                any(Instant.class)))
+                .thenReturn(List.of(new MeasurementPoint(sample.observedAt(), 21.0)));
+
+        mockMvc.perform(get("/api/devices/{deviceId}/measurements", deviceId)
+                        .header("Authorization", bearer(token))
+                        .queryParam("metric", "soil_temperature_c")
+                        .queryParam("range", "24h"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.metric").value("soil_temperature_c"))
+                .andExpect(jsonPath("$.unit").value("℃"))
+                .andExpect(jsonPath("$.points[0].value").value(21.0));
 
         mockMvc.perform(get("/api/devices/{deviceId}/score", deviceId)
                         .header("Authorization", bearer(token)))
@@ -181,39 +316,63 @@ class MeasurementApiIntegrationTests {
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_METRIC"));
     }
 
-    private String telemetryBody(
-            String hardwareId,
-            Instant observedAt,
-            long sequence,
-            double humidity) throws Exception {
-        TelemetrySampleRequest request = new TelemetrySampleRequest(
-                1,
-                "telemetry.sample",
-                hardwareId,
-                observedAt,
+    private TelemetryEnvelope.Node node(String nodeId, long sequence) {
+        return new TelemetryEnvelope.Node(
+                nodeId,
                 sequence,
-                new TelemetrySampleRequest.Context(
-                        "pnu-lab", "pot-01", "loam", "basil", "soil-v2"),
-                new TelemetrySampleRequest.Measurements(31.2, 1847L, 27.1, humidity, 230.5),
-                new TelemetrySampleRequest.Quality(true, true, true));
-        return objectMapper.writeValueAsString(request);
+                new TelemetryEnvelope.Measurements(27.0, 58.0, 230.0, 21.0, 40.0, 1000L),
+                new TelemetryEnvelope.Quality(true, true, true));
     }
 
-    private TelemetrySample sample(Instant observedAt) {
+    private String telemetryBody(
+            String hardwareId,
+            String eventId,
+            Instant observedAt,
+            String nodeId,
+            long sequence,
+            double humidity) throws Exception {
+        return telemetryBody(2, hardwareId, eventId, observedAt, nodeId, sequence, humidity);
+    }
+
+    private String telemetryBody(
+            int schemaVersion,
+            String hardwareId,
+            String eventId,
+            Instant observedAt,
+            String nodeId,
+            long sequence,
+            double humidity) throws Exception {
+        TelemetryEnvelope envelope = new TelemetryEnvelope(
+                schemaVersion,
+                "telemetry.sample",
+                hardwareId,
+                eventId,
+                observedAt,
+                List.of(new TelemetryEnvelope.Node(
+                        nodeId,
+                        sequence,
+                        new TelemetryEnvelope.Measurements(
+                                27.1, humidity, 230.5, 31.2, 45.0, 1847L),
+                        new TelemetryEnvelope.Quality(true, true, true))));
+        return objectMapper.writeValueAsString(envelope);
+    }
+
+    private TelemetrySample sample(long potId, long deviceId, Instant observedAt) {
         return new TelemetrySample(
+                potId,
+                deviceId,
+                NODE_ID,
+                "lettuce",
                 HARDWARE_ID,
+                UUID.randomUUID().toString(),
                 observedAt,
                 1042,
-                "pnu-lab",
-                "pot-01",
-                "loam",
-                "basil",
-                "soil-v2",
-                31.2,
+                58.0,
                 1847,
                 27.1,
                 58.0,
                 230.5,
+                21.0,
                 true,
                 true,
                 true);
