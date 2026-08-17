@@ -64,7 +64,8 @@ public class EnvironmentScoreService {
                 sample.hardwareDeviceId(), sample.eventId(), average.latestObservedAt(), sample.sequence(),
                 average.soilMoisturePct(), sample.soilMoistureRawAdc(),
                 average.airTemperatureC(), average.airHumidityPct(), average.plantLightPpfdUmolM2S(),
-                average.soilTemperatureC(), average.hasSoil(), average.hasAir(), average.hasLight());
+                average.soilTemperatureC(), average.hasSoil(), average.hasAir(), average.hasLight(),
+                sample.irrigationSuggestion());
         if (!sample.airSensorValid() || !sample.lightSensorValid()) {
             throw new ApiException(
                     HttpStatus.UNPROCESSABLE_ENTITY,
