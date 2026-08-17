@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -73,6 +74,41 @@ public class DeviceCommandRepository {
                 WHERE pot_id = ? AND state IN ('ISSUED', 'ACCEPTED') AND expires_at > ?
                 """, Integer.class, potId, Timestamp.from(now));
         return count != null && count > 0;
+    }
+
+    /**
+     * When the outstanding command stops blocking, for the refusal message.
+     *
+     * <p>A refusal that only says "no" leaves the user tapping the button
+     * again; telling them when it will work is the difference between a
+     * safeguard and a fault.
+     */
+    public Optional<Instant> outstandingExpiresAt(long potId, Instant now) {
+        List<Timestamp> rows = jdbcTemplate.queryForList("""
+                SELECT expires_at FROM device_command
+                WHERE pot_id = ? AND state IN ('ISSUED', 'ACCEPTED') AND expires_at > ?
+                ORDER BY expires_at DESC
+                """, Timestamp.class, potId, Timestamp.from(now));
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0).toInstant());
+    }
+
+    /**
+     * The issue time of the oldest command still counted against the budget.
+     *
+     * <p>Budget is a rolling 24-hour window, so this is the moment the window
+     * starts to release volume: {@code oldest + 24h} is the earliest the pot
+     * can be watered again on budget grounds.
+     */
+    public Optional<Instant> oldestCountedIssuedAt(long potId, Instant since) {
+        List<Timestamp> rows = jdbcTemplate.queryForList("""
+                SELECT issued_at FROM device_command
+                WHERE pot_id = ?
+                  AND actuator = 'pump'
+                  AND issued_at >= ?
+                  AND state <> 'REJECTED'
+                ORDER BY issued_at ASC
+                """, Timestamp.class, potId, Timestamp.from(since));
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0).toInstant());
     }
 
     /** Gate 4: when this pot was last actually watered, or empty if it never was. */

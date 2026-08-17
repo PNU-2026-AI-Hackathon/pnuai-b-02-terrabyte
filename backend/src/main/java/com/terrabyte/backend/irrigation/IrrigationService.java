@@ -105,7 +105,8 @@ public class IrrigationService {
             AuthorizationResult result, IrrigationVolumeResolver.ResolvedVolume resolved) {
 
         if (result instanceof AuthorizationResult.Denied denied) {
-            return IrrigationOutcome.denied(denied.reason(), denied.detail());
+            return IrrigationOutcome.denied(
+                    denied.reason(), denied.detail(), denied.nextAvailableAt());
         }
 
         AuthorizationResult.Granted granted = (AuthorizationResult.Granted) result;

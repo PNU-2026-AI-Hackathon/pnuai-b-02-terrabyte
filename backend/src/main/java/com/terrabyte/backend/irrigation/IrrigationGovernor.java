@@ -76,14 +76,14 @@ public class IrrigationGovernor {
         // invent a number the caller never asked for.
         if (request.requestedMl() <= 0) {
             return deny(request, now, DenyReason.AI_OUT_OF_RANGE,
-                    "requested volume must be positive: " + request.requestedMl(), null);
+                    "requested volume must be positive: " + request.requestedMl(), null, null);
         }
         if (request.cooldownOverride()
                 && (request.overrideReason() == null || request.overrideReason().isBlank())) {
             // The override is the one place a human can weaken a safeguard, so
             // it does not happen anonymously.
             return deny(request, now, DenyReason.COOLDOWN,
-                    "cooldown override requires a reason", null);
+                    "cooldown override requires a reason", null, null);
         }
 
         Optional<TelemetrySample> latest = measurementStore.findLatest(request.potId());
@@ -92,24 +92,24 @@ public class IrrigationGovernor {
         // about the present.
         if (latest.isEmpty()) {
             return deny(request, now, DenyReason.INPUT_STALE,
-                    "no telemetry has ever been recorded for this pot", null);
+                    "no telemetry has ever been recorded for this pot", null, null);
         }
         TelemetrySample sample = latest.get();
         if (sample.observedAt().isBefore(now.minus(properties.maxSampleAge()))) {
             return deny(request, now, DenyReason.INPUT_STALE,
-                    "latest sample is older than " + properties.maxSampleAge(), sample);
+                    "latest sample is older than " + properties.maxSampleAge(), sample, null);
         }
 
         // Gate 2 — sensor validity. A probe that reports itself broken, or a
         // value outside the physical range, cannot support a watering decision.
         if (!sample.soilSensorValid()) {
             return deny(request, now, DenyReason.SENSOR_INVALID,
-                    "soil sensor reported itself invalid", sample);
+                    "soil sensor reported itself invalid", sample, null);
         }
         double moisture = sample.soilMoisturePct();
         if (moisture < 0.0 || moisture > 100.0 || Double.isNaN(moisture)) {
             return deny(request, now, DenyReason.SENSOR_INVALID,
-                    "soil moisture out of range: " + moisture, sample);
+                    "soil moisture out of range: " + moisture, sample, null);
         }
 
         // Gate 3 — implausible jump. Soil moisture cannot move tens of points in
@@ -117,7 +117,7 @@ public class IrrigationGovernor {
         // yanked out of the pot, and neither is a state to irrigate from.
         Optional<String> jump = detectImplausibleJump(request.potId(), sample, now);
         if (jump.isPresent()) {
-            return deny(request, now, DenyReason.IMPLAUSIBLE_JUMP, jump.get(), sample);
+            return deny(request, now, DenyReason.IMPLAUSIBLE_JUMP, jump.get(), sample, null);
         }
 
         // Gate 4 — cooldown. Manual requests may skip this one, and only this
@@ -126,16 +126,21 @@ public class IrrigationGovernor {
             Optional<Instant> lastCompleted = commandRepository.lastCompletedAt(request.potId());
             if (lastCompleted.isPresent()
                     && lastCompleted.get().isAfter(now.minus(properties.minInterval()))) {
+                Instant availableAt = lastCompleted.get().plus(properties.minInterval());
                 return deny(request, now, DenyReason.COOLDOWN,
-                        "last completed irrigation was at " + lastCompleted.get(), sample);
+                        "last completed irrigation was at " + lastCompleted.get(),
+                        sample, availableAt);
             }
         }
 
         // Gate 5 — in flight. An outstanding command may still be running; a
         // second one would stack on top of it.
-        if (commandRepository.hasOutstanding(request.potId(), now)) {
+        Optional<Instant> outstandingUntil =
+                commandRepository.outstandingExpiresAt(request.potId(), now);
+        if (outstandingUntil.isPresent()) {
             return deny(request, now, DenyReason.IN_FLIGHT,
-                    "a command for this pot is still outstanding", sample);
+                    "a command for this pot is still outstanding", sample,
+                    outstandingUntil.get());
         }
 
         // Gate 6 — daily budget, measured from what was actually reported as
@@ -147,7 +152,7 @@ public class IrrigationGovernor {
         if (remaining <= 0) {
             return deny(request, now, DenyReason.DAILY_BUDGET,
                     "24h budget exhausted: " + consumed + "/" + properties.dailyBudgetMl() + "mL",
-                    sample);
+                    sample, budgetFreesAt(request.potId(), now));
         }
 
         // Gate 7 — clamp. Not a refusal: the request is honoured, smaller.
@@ -167,7 +172,7 @@ public class IrrigationGovernor {
             // above just said was not there.
             return deny(request, now, DenyReason.DAILY_BUDGET,
                     "remaining budget " + remaining + "mL is below the minimum dose",
-                    sample);
+                    sample, budgetFreesAt(request.potId(), now));
         }
 
         return grant(request, now, sample, granted, clampReason);
@@ -225,12 +230,21 @@ public class IrrigationGovernor {
         return new AuthorizationResult.Granted(issued, clampReason);
     }
 
+    /** When the budget window releases enough volume for another dose. */
+    private Instant budgetFreesAt(long potId, Instant now) {
+        return commandRepository
+                .oldestCountedIssuedAt(potId, now.minus(properties.budgetWindow()))
+                .map(oldest -> oldest.plus(properties.budgetWindow()))
+                .orElse(null);
+    }
+
     private AuthorizationResult deny(
             IrrigationRequest request,
             Instant now,
             DenyReason reason,
             String detail,
-            TelemetrySample sample) {
+            TelemetrySample sample,
+            Instant nextAvailableAt) {
 
         decisionRepository.save(IrrigationDecision.denied(
                 request.potId(),
@@ -242,8 +256,8 @@ public class IrrigationGovernor {
                 now));
 
         LOGGER.info(
-                "irrigation denied pot_id={} reason={} detail={} source={}",
-                request.potId(), reason, detail, request.source());
-        return new AuthorizationResult.Denied(reason, detail);
+                "irrigation denied pot_id={} reason={} detail={} next_available_at={} source={}",
+                request.potId(), reason, detail, nextAvailableAt, request.source());
+        return new AuthorizationResult.Denied(reason, detail, nextAvailableAt);
     }
 }
