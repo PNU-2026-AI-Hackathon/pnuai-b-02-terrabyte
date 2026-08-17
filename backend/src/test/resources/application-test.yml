@@ -1,6 +1,11 @@
 app:
   admin:
     api-key: terrabyte-test-admin-key
+  irrigation:
+    sweep:
+      # No background thread may mutate device_command while a test is asserting
+      # on it. The sweep's logic is covered by calling sweepOnce() directly.
+      enabled: false
   security:
     jwt:
       secret: terrabyte-test-secret-must-be-at-least-32-bytes

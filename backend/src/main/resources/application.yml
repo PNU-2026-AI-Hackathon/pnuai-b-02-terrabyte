@@ -60,6 +60,13 @@ app:
       # starts moving water: the backend stops recording authorised commands and
       # starts publishing them to tb/v2/{gatewayId}/dn/command.
       enabled: ${MQTT_COMMAND_DISPATCH_ENABLED:false}
+  irrigation:
+    sweep:
+      # On by default: without it a lost acknowledgement holds a pot's in-flight
+      # gate open forever. Only the test profile turns it off.
+      enabled: ${IRRIGATION_SWEEP_ENABLED:true}
+      interval-ms: ${IRRIGATION_SWEEP_INTERVAL_MS:30000}
+      initial-delay-ms: ${IRRIGATION_SWEEP_INITIAL_DELAY_MS:10000}
   telemetry:
     http-ingest:
       enabled: ${TELEMETRY_HTTP_INGEST_ENABLED:false}
