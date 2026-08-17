@@ -208,7 +208,7 @@ class IrrigationGovernorTests {
         commands.consumedMl = 600;
 
         IrrigationRequest manual = new IrrigationRequest(
-                POT_ID, 100, CommandSource.MANUAL, "evt-1", true, "데모 시연");
+                POT_ID, 100, CommandSource.MANUAL, "evt-1", true, "데모 시연", null, null);
 
         assertThat(denyReason(governor.authorize(manual))).isEqualTo(DenyReason.DAILY_BUDGET);
     }
@@ -218,7 +218,7 @@ class IrrigationGovernorTests {
         commands.lastCompleted = NOW.minusSeconds(60);
 
         IrrigationRequest manual = new IrrigationRequest(
-                POT_ID, 100, CommandSource.MANUAL, "evt-1", true, "데모 시연");
+                POT_ID, 100, CommandSource.MANUAL, "evt-1", true, "데모 시연", null, null);
 
         assertThat(governor.authorize(manual)).isInstanceOf(AuthorizationResult.Granted.class);
     }
@@ -228,7 +228,7 @@ class IrrigationGovernorTests {
         commands.lastCompleted = NOW.minusSeconds(60);
 
         IrrigationRequest manual = new IrrigationRequest(
-                POT_ID, 100, CommandSource.MANUAL, "evt-1", true, "  ");
+                POT_ID, 100, CommandSource.MANUAL, "evt-1", true, "  ", null, null);
 
         assertThat(denyReason(governor.authorize(manual))).isEqualTo(DenyReason.COOLDOWN);
     }
@@ -279,6 +279,55 @@ class IrrigationGovernorTests {
 
         assertThat(denied.reason()).isEqualTo(DenyReason.SENSOR_INVALID);
         assertThat(denied.nextAvailableAt()).isNull();
+    }
+
+    // -- AI 귀책 기록 (#55) ------------------------------------------------
+
+    @Test
+    void theModelAndItsNumberAreRecordedOnAGrant() {
+        governor.authorize(IrrigationRequest.fromModel(
+                POT_ID, 120, CommandSource.RULE_AI, "evt-1", "irrigation-reg-v1", 120));
+
+        IrrigationDecision decision = decisions.saved.get(0);
+        assertThat(decision.aiModelVersion()).isEqualTo("irrigation-reg-v1");
+        assertThat(decision.aiRequestedMl()).isEqualTo(120);
+        assertThat(decision.grantedMl()).isEqualTo(120);
+    }
+
+    @Test
+    void aClampedGrantKeepsWhatTheModelOriginallyAsked() {
+        // Without this pairing there is no way to tell afterwards whether the
+        // model is oversized or the envelope is undersized.
+        governor.authorize(IrrigationRequest.fromModel(
+                POT_ID, 260, CommandSource.RULE_AI, "evt-1", "irrigation-reg-v1", 260));
+
+        IrrigationDecision decision = decisions.saved.get(0);
+        assertThat(decision.aiRequestedMl()).isEqualTo(260);
+        assertThat(decision.grantedMl()).isEqualTo(200);
+        assertThat(decision.clampReason()).isEqualTo(ClampReason.MAX_DOSE);
+    }
+
+    @Test
+    void aRefusalAlsoRecordsWhatTheModelAsked() {
+        commands.consumedMl = 600;
+
+        governor.authorize(IrrigationRequest.fromModel(
+                POT_ID, 150, CommandSource.RULE_AI, "evt-1", "irrigation-reg-v1", 150));
+
+        IrrigationDecision decision = decisions.saved.get(0);
+        assertThat(decision.denyReason()).isEqualTo(DenyReason.DAILY_BUDGET);
+        assertThat(decision.aiModelVersion()).isEqualTo("irrigation-reg-v1");
+        assertThat(decision.aiRequestedMl()).isEqualTo(150);
+    }
+
+    @Test
+    void aManualRequestCarriesNoModelAttribution() {
+        governor.authorize(new IrrigationRequest(
+                POT_ID, 100, CommandSource.MANUAL, "evt-1", false, null, null, null));
+
+        IrrigationDecision decision = decisions.saved.get(0);
+        assertThat(decision.aiModelVersion()).isNull();
+        assertThat(decision.aiRequestedMl()).isNull();
     }
 
     // -- the failure condition -------------------------------------------

@@ -39,7 +39,16 @@ public class IrrigationVolumeResolver {
      *                     decided. Written to {@code irrigation_decision.ai_model_version}
      *                     on every decision, including the ones the AI lost
      */
-    public record ResolvedVolume(int volumeMl, AiOutcome outcome, String modelVersion) {
+    /**
+     * @param volumeMl   what the caller should request — the model's number, a
+     *                   fallback, or the conservative minimum of the two
+     * @param aiVolumeMl what the model actually said, or null when it said
+     *                   nothing usable. Kept even when it was rejected as
+     *                   out of range: recording a 99999 is how a broken model
+     *                   gets blamed after the fact
+     */
+    public record ResolvedVolume(
+            int volumeMl, Integer aiVolumeMl, AiOutcome outcome, String modelVersion) {
 
         /** True when the model's own number was used unmodified. */
         public boolean fromModel() {
@@ -56,7 +65,7 @@ public class IrrigationVolumeResolver {
         try {
             IrrigationAiClient.Result result = aiClient.predictIrrigation(features);
             if (result.prediction() == null) {
-                return new ResolvedVolume(fallback, result.outcome(), null);
+                return new ResolvedVolume(fallback, null, result.outcome(), null);
             }
 
             IrrigationPredictionResponse prediction = result.prediction();
@@ -65,7 +74,7 @@ public class IrrigationVolumeResolver {
             if (result.outcome() != AiOutcome.OK) {
                 // Schema mismatch, mainly. The body parsed, but its features are not
                 // the features we sent, so its number means nothing.
-                return new ResolvedVolume(fallback, result.outcome(), modelVersion);
+                return new ResolvedVolume(fallback, null, result.outcome(), modelVersion);
             }
 
             int ml = prediction.volumeMl();
@@ -77,7 +86,7 @@ public class IrrigationVolumeResolver {
                 // fault visible in OUT_OF_RANGE while the plant still gets water.
                 log.warn("AI volume {} mL outside [0, {}] — falling back to {} mL (model {})",
                         ml, properties.hardCeilingMl(), fallback, modelVersion);
-                return new ResolvedVolume(fallback, AiOutcome.OUT_OF_RANGE, modelVersion);
+                return new ResolvedVolume(fallback, ml, AiOutcome.OUT_OF_RANGE, modelVersion);
             }
 
             if (prediction.confidence() < properties.minConfidence()) {
@@ -87,16 +96,16 @@ public class IrrigationVolumeResolver {
                 int conservative = Math.min(ml, fallback);
                 log.info("AI confidence {} below {} — using conservative {} mL of ({}, {})",
                         prediction.confidence(), properties.minConfidence(), conservative, ml, fallback);
-                return new ResolvedVolume(conservative, AiOutcome.OK, modelVersion);
+                return new ResolvedVolume(conservative, ml, AiOutcome.OK, modelVersion);
             }
 
-            return new ResolvedVolume(ml, AiOutcome.OK, modelVersion);
+            return new ResolvedVolume(ml, ml, AiOutcome.OK, modelVersion);
         } catch (Exception e) {
             // The client already swallows its own failures; this catch covers the
             // rest of this method, because there is no failure here worth escalating
             // into "the plant does not get watered".
             log.warn("Volume resolution failed, falling back to {} mL: {}", fallback, e.getMessage());
-            return new ResolvedVolume(fallback, AiOutcome.ERROR, null);
+            return new ResolvedVolume(fallback, null, AiOutcome.ERROR, null);
         }
     }
 
