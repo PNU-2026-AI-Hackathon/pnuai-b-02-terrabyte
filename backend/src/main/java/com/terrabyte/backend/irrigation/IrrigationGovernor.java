@@ -219,6 +219,8 @@ public class IrrigationGovernor {
                 request.source(),
                 sample.observedAt(),
                 sample.soilMoisturePct(),
+                request.aiModelVersion(),
+                request.aiRequestedMl(),
                 grantedMl,
                 clampReason,
                 commandId,
@@ -246,12 +248,18 @@ public class IrrigationGovernor {
             TelemetrySample sample,
             Instant nextAvailableAt) {
 
+        // The AI attribution is recorded on refusals too: "the model asked for
+        // 260 mL and the budget refused" is exactly the pairing you want when
+        // deciding whether the model or the envelope needs adjusting.
         decisionRepository.save(IrrigationDecision.denied(
                 request.potId(),
                 request.correlationId(),
                 request.source(),
                 sample == null ? now : sample.observedAt(),
                 sample == null ? null : sample.soilMoisturePct(),
+                IrrigationDecision.VERDICT_NEEDED,
+                request.aiModelVersion(),
+                request.aiRequestedMl(),
                 reason,
                 now));
 

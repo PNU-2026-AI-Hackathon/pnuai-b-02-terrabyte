@@ -83,8 +83,9 @@ public class IrrigationService {
         CommandSource source =
                 resolved.outcome() == AiOutcome.OK ? CommandSource.RULE_AI : CommandSource.RULE;
 
-        AuthorizationResult result = governor.authorize(
-                IrrigationRequest.automatic(potId, resolved.volumeMl(), source, correlationId));
+        AuthorizationResult result = governor.authorize(IrrigationRequest.fromModel(
+                potId, resolved.volumeMl(), source, correlationId,
+                resolved.modelVersion(), resolved.aiVolumeMl()));
 
         return complete(result, resolved);
     }
@@ -96,7 +97,8 @@ public class IrrigationService {
         requirePot(potId);
         AuthorizationResult result = governor.authorize(new IrrigationRequest(
                 potId, requestedMl, CommandSource.MANUAL,
-                "manual-" + clock.instant().toEpochMilli(), cooldownOverride, overrideReason));
+                "manual-" + clock.instant().toEpochMilli(), cooldownOverride, overrideReason,
+                null, null));
 
         return complete(result, null);
     }
