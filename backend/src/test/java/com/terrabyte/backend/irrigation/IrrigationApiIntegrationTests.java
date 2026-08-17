@@ -127,6 +127,12 @@ class IrrigationApiIntegrationTests {
         assertThat(outcome.granted()).isTrue();
         assertThat(outcome.grantedMl()).isEqualTo(100);
         assertThat(outcome.commandId()).isNotBlank();
+        // Asserted, not ignored. The test profile leaves app.mqtt.enabled false,
+        // so the fallback LoggingCommandDispatcher is what runs and nothing is
+        // delivered. Every integration test used to pass quietly on this value
+        // without stating it, which meant switching on a real transport would
+        // have changed observable behaviour with no test moving.
+        assertThat(outcome.dispatched()).isFalse();
 
         assertThat(decisions.findRecentByPotId(POT_ID, 10)).hasSize(1);
         assertThat(jdbcTemplate.queryForObject(
@@ -174,6 +180,7 @@ class IrrigationApiIntegrationTests {
 
         assertThat(outcome.granted()).isTrue();
         assertThat(outcome.grantedMl()).isEqualTo(118);
+        assertThat(outcome.dispatched()).isFalse();
         assertThat(outcome.volumeSource()).isEqualTo(VolumeSource.EDGE_SUGGESTION);
         assertThat(outcome.aiModelVersion()).isEqualTo("water-balance-v1");
 
