@@ -42,10 +42,10 @@ export type EnvironmentScore = {
   factors: ScoreFactor[];
 };
 
-export function getLatestMeasurements(deviceId: number) {
-  return authenticatedRequest<LatestMeasurements>(`/api/devices/${deviceId}/measurements/latest`);
+export function getLatestMeasurements(potId: number) {
+  return authenticatedRequest<LatestMeasurements>(`/api/pots/${potId}/measurements/latest`);
 }
 
-export function getEnvironmentScore(deviceId: number) {
-  return authenticatedRequest<EnvironmentScore>(`/api/devices/${deviceId}/score`);
+export function getEnvironmentScore(potId: number) {
+  return authenticatedRequest<EnvironmentScore>(`/api/pots/${potId}/score`);
 }

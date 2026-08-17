@@ -19,8 +19,8 @@ export function getCrops(query = '') {
   return authenticatedRequest<CropResponse[]>(`/api/crops${search}`);
 }
 
-export function selectDeviceCrop(deviceId: number, cropCode: string) {
-  return authenticatedRequest<CropSelectionResponse>(`/api/devices/${deviceId}/crop`, {
+export function selectPotCrop(potId: number, cropCode: string) {
+  return authenticatedRequest<CropSelectionResponse>(`/api/pots/${potId}/crop`, {
     method: 'PATCH',
     body: JSON.stringify({ cropCode }),
   });

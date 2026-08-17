@@ -12,6 +12,17 @@ export type DeviceResponse = {
     spaceType: string;
     areaSquareMeters: number;
   };
+  pots?: PotResponse[];
+};
+
+export type PotResponse = {
+  id: number;
+  deviceId: number;
+  nodeId?: string;
+  label: string;
+  cropCode?: string;
+  status: 'ONLINE' | 'OFFLINE';
+  lastSeenAt?: string;
 };
 
 export type RegisterDeviceInput = {
@@ -26,4 +37,8 @@ export async function registerDevice(input: RegisterDeviceInput) {
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+export function getDevice(deviceId: number) {
+  return authenticatedRequest<DeviceResponse>(`/api/devices/${deviceId}`);
 }

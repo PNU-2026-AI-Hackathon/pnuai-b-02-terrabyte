@@ -22,6 +22,6 @@ export type SoilRecommendation = {
   assumptionNotice: string[];
 };
 
-export function getSoilRecommendation(deviceId: number) {
-  return authenticatedRequest<SoilRecommendation>(`/api/devices/${deviceId}/soil-recommendation`);
+export function getSoilRecommendation(potId: number) {
+  return authenticatedRequest<SoilRecommendation>(`/api/pots/${potId}/soil-recommendation`);
 }

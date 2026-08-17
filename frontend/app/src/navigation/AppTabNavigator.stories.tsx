@@ -15,6 +15,12 @@ const meta = {
     selectedCrop: 0,
     onLogout: fn(),
     onSelectCrop: fn(),
+    onSelectPot: fn(),
+    pots: [
+      { id: 1, deviceId: 1, label: '화분 1', cropCode: 'cherry_tomato', status: 'ONLINE' },
+      { id: 2, deviceId: 1, label: '화분 2', cropCode: 'basil', status: 'OFFLINE' },
+    ],
+    selectedPotId: 1,
   },
 } satisfies Meta<typeof AppTabNavigator>;
 

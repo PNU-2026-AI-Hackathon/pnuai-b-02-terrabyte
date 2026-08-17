@@ -146,8 +146,6 @@ export const sensors: Sensor[] = [
   { label: '조도 센서', model: 'BH1750' },
   { label: '토양수분 센서', model: 'EF04027' },
   { label: '토양 온도 센서', model: 'DS18B20' },
-  { label: '소음 센서', model: 'SEN0232' },
-  { label: '미세먼지 센서', model: 'PMS5003' },
   { label: 'CO₂ 센서', model: 'SCD40' },
 ];
 
@@ -383,30 +381,6 @@ export const latest = [
     color: '#557a68',
     sub: '권장 범위 (400~1,000ppm)',
     sparkline: [690, 705, 721, 734, 755, 768, 750, 739, 728, 745, 751, 742],
-  },
-  {
-    label: '미세먼지',
-    emoji: '',
-    value: '14 ㎍/㎥',
-    baseValue: 14,
-    unit: '㎍/㎥',
-    decimals: 0,
-    jitter: 2,
-    color: '#6a8fa0',
-    sub: 'PM2.5 · 좋음',
-    sparkline: [12, 13, 12, 14, 15, 14, 16, 15, 14, 13, 14, 14],
-  },
-  {
-    label: '소음',
-    emoji: '',
-    value: '42 dB',
-    baseValue: 42,
-    unit: 'dB',
-    decimals: 0,
-    jitter: 2,
-    color: '#7a708f',
-    sub: '주간 운영 기준 이내',
-    sparkline: [39, 41, 40, 42, 44, 43, 41, 42, 45, 43, 42, 42],
   },
 ];
 

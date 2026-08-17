@@ -8,8 +8,9 @@ import { scaleTypography } from '../appTheme/scaleTypography';
 import { ensureBrandFontLoaded } from '../appTheme/webFont';
 import { clearAccessToken, getMe, loadAccessToken, type MeResponse } from '../auth/authApi';
 import { BrandMark } from '../components/BrandMark';
-import { selectDeviceCrop } from '../crop/cropApi';
+import { selectPotCrop } from '../crop/cropApi';
 import { crops } from '../data';
+import { getDevice, type DeviceResponse } from '../device/deviceApi';
 import { Login } from '../onboarding/Login';
 import { SetupFlow } from '../onboarding/SetupFlow';
 import { AppTabNavigator } from './AppTabNavigator';
@@ -23,12 +24,16 @@ export default function RootShell() {
   const [restoringSession, setRestoringSession] = useState(true);
   const [selectedCropCode, setSelectedCropCode] = useState(crops[0].code);
   const [deviceId, setDeviceId] = useState<number | undefined>();
+  const [device, setDevice] = useState<DeviceResponse | null>(null);
+  const [selectedPotId, setSelectedPotId] = useState<number | undefined>();
   const { width } = useWindowDimensions();
   const compact = width < 900;
   const selectedCrop = Math.max(0, crops.findIndex((crop) => crop.code === selectedCropCode));
 
   const applyAuthenticatedFlow = (me: MeResponse) => {
     setDeviceId(me.device?.id);
+    setDevice(null);
+    setSelectedPotId(undefined);
     if (me.device?.cropCode) setSelectedCropCode(me.device.cropCode);
     if (!me.hasDevice) {
       setFlow('device');
@@ -40,9 +45,21 @@ export default function RootShell() {
   };
 
   const changeSelectedCrop = async (cropCode: string) => {
-    if (!deviceId) throw new Error('작물을 선택할 기기 정보를 찾을 수 없습니다.');
-    const selection = await selectDeviceCrop(deviceId, cropCode);
+    if (!selectedPotId) throw new Error('작물을 선택할 화분 정보를 찾을 수 없습니다.');
+    const selection = await selectPotCrop(selectedPotId, cropCode);
     setSelectedCropCode(selection.crop.code);
+    setDevice((current) => current ? {
+      ...current,
+      pots: (current.pots ?? []).map((pot) => pot.id === selectedPotId ? { ...pot, cropCode: selection.crop.code } : pot),
+    } : current);
+  };
+
+  const applyRegisteredDevice = (registered: DeviceResponse) => {
+    const firstPot = (registered.pots ?? [])[0];
+    setDeviceId(registered.id);
+    setDevice(registered);
+    setSelectedPotId(firstPot?.id);
+    if (firstPot?.cropCode) setSelectedCropCode(firstPot.cropCode);
   };
 
   useEffect(() => {
@@ -64,6 +81,30 @@ export default function RootShell() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!deviceId || device?.id === deviceId) return undefined;
+    let active = true;
+    void getDevice(deviceId)
+      .then((nextDevice) => {
+        if (!active) return;
+        setDevice(nextDevice);
+        setSelectedPotId((current) => (nextDevice.pots ?? []).some((pot) => pot.id === current)
+          ? current
+          : (nextDevice.pots ?? [])[0]?.id);
+      })
+      .catch(() => {
+        // 기기 상세 재조회 실패는 각 화면의 데이터 상태에서 안전하게 표시한다.
+      });
+    return () => {
+      active = false;
+    };
+  }, [deviceId, device?.id]);
+
+  useEffect(() => {
+    const selectedPot = (device?.pots ?? []).find((pot) => pot.id === selectedPotId);
+    setSelectedCropCode(selectedPot?.cropCode ?? crops[0].code);
+  }, [device, selectedPotId]);
 
   if (restoringSession) {
     return (
@@ -102,9 +143,10 @@ export default function RootShell() {
         <GlassBackdrop />
         <SetupFlow
           deviceId={deviceId}
+          selectedPotId={selectedPotId}
           onBack={() => setFlow(previousStage[flow])}
           onCropSelected={setSelectedCropCode}
-          onDeviceRegistered={setDeviceId}
+          onDeviceRegistered={applyRegisteredDevice}
           onNext={() => setFlow(nextStage[flow])}
           selectedCropCode={selectedCropCode}
           stage={flow}
@@ -120,15 +162,19 @@ export default function RootShell() {
       <AppTabNavigator
         compact={compact}
         cropName={(crops[selectedCrop] ?? crops[0]).name}
-        deviceId={deviceId}
+        onSelectPot={setSelectedPotId}
         onLogout={() => {
           void clearAccessToken();
           setDeviceId(undefined);
+          setDevice(null);
+          setSelectedPotId(undefined);
           setSelectedCropCode(crops[0].code);
           setFlow('auth');
         }}
         onSelectCrop={changeSelectedCrop}
+        pots={(device?.pots ?? []).slice(0, 4)}
         selectedCrop={selectedCrop}
+        selectedPotId={selectedPotId}
       />
       <StatusBar style="dark" />
     </View>

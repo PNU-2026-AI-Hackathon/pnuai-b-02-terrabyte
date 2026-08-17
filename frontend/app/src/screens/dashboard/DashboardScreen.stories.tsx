@@ -68,7 +68,7 @@ const meta = {
   },
   render: (args) => (
     <DeviceEnvironmentProvider
-      deviceId={1}
+      potId={1}
       fetchMeasurements={async () => mockMeasurements}
       fetchScore={async () => mockScore}
     >

@@ -7,9 +7,9 @@ import { scaleTypography } from '../appTheme/scaleTypography';
 import { ActionButton } from '../components/ActionButton';
 import { BrandMark } from '../components/BrandMark';
 import { Surface } from '../components/Surface';
-import { getCrops, selectDeviceCrop, type CropResponse } from '../crop/cropApi';
+import { getCrops, selectPotCrop, type CropResponse } from '../crop/cropApi';
 import { crops } from '../data';
-import { registerDevice } from '../device/deviceApi';
+import { registerDevice, type DeviceResponse } from '../device/deviceApi';
 import type { FlowStage } from '../navigation/types';
 
 type AreaUnit = 'SQUARE_METERS' | 'PYEONG';
@@ -92,6 +92,7 @@ function convertToSquareMeters(value: number, unit: AreaUnit) {
 
 export function SetupFlow({
   deviceId,
+  selectedPotId,
   onBack,
   onCropSelected,
   onDeviceRegistered,
@@ -100,9 +101,10 @@ export function SetupFlow({
   stage,
 }: {
   deviceId?: number;
+  selectedPotId?: number;
   onBack: () => void;
   onCropSelected: (cropCode: string) => void;
-  onDeviceRegistered: (deviceId: number) => void;
+  onDeviceRegistered: (device: DeviceResponse) => void;
   onNext: () => void;
   selectedCropCode: string;
   stage: Exclude<FlowStage, 'auth' | 'app'>;
@@ -167,7 +169,7 @@ export function SetupFlow({
         spaceType: spaceType.trim(),
         areaSquareMeters: parsedArea,
       });
-      onDeviceRegistered(registered.id);
+      onDeviceRegistered(registered);
       onNext();
     } catch (requestError) {
       setDeviceError(requestError instanceof Error ? requestError.message : '기기를 등록하지 못했습니다.');
@@ -209,14 +211,14 @@ export function SetupFlow({
   }, [cropQuery, stage]);
 
   const submitCrop = async () => {
-    if (!deviceId) {
-      setCropError('작물을 선택할 기기 정보를 찾을 수 없습니다.');
+    if (!deviceId || !selectedPotId) {
+      setCropError('작물을 선택할 화분 정보를 찾을 수 없습니다.');
       return;
     }
     setCropError(null);
     setSelectingCrop(true);
     try {
-      const selection = await selectDeviceCrop(deviceId, selectedCropCode);
+      const selection = await selectPotCrop(selectedPotId, selectedCropCode);
       onCropSelected(selection.crop.code);
       onNext();
     } catch (error) {

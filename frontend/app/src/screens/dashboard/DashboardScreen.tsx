@@ -26,8 +26,6 @@ function makeWavePoints(seed: number, amplitude: number, center: number): number
 const extendedMetricSensors: Array<[label: string, model: string]> = [
   ['토양 온도', 'DS18B20'],
   ['CO₂', 'SCD40'],
-  ['미세먼지', 'PMS5003'],
-  ['소음', 'SEN0232'],
 ];
 
 export function DashboardScreen({

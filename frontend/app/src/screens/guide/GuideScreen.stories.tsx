@@ -97,7 +97,7 @@ const meta = {
   },
   render: (args) => (
     <DeviceEnvironmentProvider
-      deviceId={1}
+      potId={1}
       fetchMeasurements={async () => mockMeasurements}
       fetchScore={async () => mockScore}
       fetchSoilRecommendation={async () => mockSoilRecommendation}
@@ -115,7 +115,7 @@ export const Default: Story = {};
 export const WithPreChecks: Story = {
   render: (args) => (
     <DeviceEnvironmentProvider
-      deviceId={1}
+      potId={1}
       fetchMeasurements={async () => mockMeasurements}
       fetchScore={async () => mockScore}
       fetchSoilRecommendation={async () => ({
