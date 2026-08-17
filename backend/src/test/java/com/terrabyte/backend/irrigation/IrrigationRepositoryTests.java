@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -85,7 +86,13 @@ class IrrigationRepositoryTests {
 
     @Test
     void countsACompletedCommandByItsReportedVolume() {
-        Instant issuedAt = Instant.now().minus(Duration.ofHours(2));
+        // Truncated to milliseconds because this is the one assertion here that
+        // compares a stored instant for equality, and TIMESTAMP does not keep
+        // nanoseconds. Whether that mattered used to depend on the platform:
+        // Instant.now() returns microsecond precision on macOS and nanosecond
+        // precision on Linux, so the test passed locally and failed inside the
+        // container.
+        Instant issuedAt = Instant.now().truncatedTo(ChronoUnit.MILLIS).minus(Duration.ofHours(2));
         String commandId = insert(CommandState.ISSUED, 100, null, issuedAt, issuedAt.plusSeconds(120));
 
         int updated = commandRepository.markCompleted(
