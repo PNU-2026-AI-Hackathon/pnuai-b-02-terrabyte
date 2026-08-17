@@ -254,3 +254,15 @@
 #if defined(ARDUINO) && (TB_PUMP_ON_LEVEL == TB_PUMP_OFF_LEVEL)
 #error "TB_PUMP_ON_LEVEL and TB_PUMP_OFF_LEVEL must differ"
 #endif
+
+// Inbound serial line buffer. The longest line the contract defines is a pump
+// command carrying a full 26-character ULID, around 80 bytes; the remainder is
+// headroom for optional keys. This is sized independently of the dataset
+// logger's 16-byte verb buffer, which cannot hold a JSON line at all.
+#ifndef TB_SERIAL_RX_LINE_MAX
+#define TB_SERIAL_RX_LINE_MAX 96
+#endif
+
+#if TB_SERIAL_RX_LINE_MAX < 80
+#error "TB_SERIAL_RX_LINE_MAX must hold a full pump command line"
+#endif

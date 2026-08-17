@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "../include/ActuatorGuard.h"
+#include "../include/CommandParser.h"
 #include "../include/SensorAdapter.h"
 #include "../include/TelemetryConfig.h"
 
@@ -20,6 +22,14 @@ bool nodeIdIsValid = false;
 // tracks only what the pin was last driven to, so telemetry never has to read
 // the decision back out of the hardware.
 bool pumpIsOn = false;
+
+tb::ActuatorGuard actuatorGuard;
+
+// Inbound line assembly. The pattern is the one dataset_logger.cpp uses, but the
+// buffer is sized for JSON rather than for a single-letter verb.
+char inboundLine[TB_SERIAL_RX_LINE_MAX];
+size_t inboundLength = 0;
+bool inboundOverflowed = false;
 
 bool isAllowedNodeIdCharacter(const char character) {
   return isalnum(static_cast<unsigned char>(character)) || character == '-' ||
@@ -194,6 +204,160 @@ void emitTelemetry(const uint32_t sequence, const uint32_t uptimeMs,
   Serial.println('}');
 }
 
+// The ack envelope uses the short keys of the serial contract, not the
+// `message_type` envelope of the telemetry records above. The two families are
+// deliberately asymmetric: the Orange Pi is a translator and re-wraps acks into
+// the long-key MQTT schema.
+void printAckStart(const char* commandId, const __FlashStringHelper* phase) {
+  Serial.print(F("{\"t\":\"ack\",\"id\":\""));
+  Serial.print(commandId);
+  Serial.print(F("\",\"ph\":\""));
+  Serial.print(phase);
+  Serial.print('"');
+}
+
+// Firmware-local diagnostic tokens. The same word can mean something different
+// one layer up (the server's `cooldown` is a pre-publish denial, this one is a
+// post-publish refusal), so upstream keys its state machine off `ph` and treats
+// `r` as free text.
+const __FlashStringHelper* rejectReasonToken(const tb::RejectReason reason) {
+  switch (reason) {
+    case tb::RejectReason::kBadRequest:
+      return F("bad_request");
+    case tb::RejectReason::kDuplicate:
+      return F("duplicate");
+    case tb::RejectReason::kBusy:
+      return F("busy");
+    case tb::RejectReason::kCooldown:
+      return F("cooldown");
+    case tb::RejectReason::kNone:
+      break;
+  }
+  return F("unknown");
+}
+
+const __FlashStringHelper* stopCauseToken(const tb::StopCause cause) {
+  switch (cause) {
+    case tb::StopCause::kVolumeReached:
+      return F("volume_reached");
+    case tb::StopCause::kMaxRuntime:
+      return F("max_runtime");
+    case tb::StopCause::kWatchdog:
+      return F("watchdog");
+    case tb::StopCause::kNone:
+      break;
+  }
+  return F("unknown");
+}
+
+void emitAckAccepted(const char* commandId) {
+  printAckStart(commandId, F("accepted"));
+  Serial.println('}');
+}
+
+void emitAckRejected(const char* commandId, const tb::RejectReason reason) {
+  printAckStart(commandId, F("rejected"));
+  Serial.print(F(",\"r\":\""));
+  Serial.print(rejectReasonToken(reason));
+  Serial.println(F("\"}"));
+}
+
+void emitAckRunEnded(const char* commandId, const tb::PumpStop& stop) {
+  // A run cut short by the dead-man watchdog did not deliver its dose, so it is
+  // an abort. Every other ending ran to the deadline it was granted.
+  const bool aborted = stop.cause == tb::StopCause::kWatchdog;
+  printAckStart(commandId, aborted ? F("aborted") : F("completed"));
+  Serial.print(F(",\"ms\":"));
+  Serial.print(stop.runtimeMs);
+  Serial.print(F(",\"stop\":\""));
+  Serial.print(stopCauseToken(stop.cause));
+  Serial.println(F("\"}"));
+}
+
+void writePumpOutput(const bool on) {
+  digitalWrite(TB_PUMP_PIN, on ? TB_PUMP_ON_LEVEL : TB_PUMP_OFF_LEVEL);
+  pumpIsOn = on;
+}
+
+void handleInboundLine(const uint32_t nowMs) {
+  const tb::InboundMessage message = tb::parseInboundLine(inboundLine);
+
+  switch (message.kind) {
+    case tb::InboundKind::kKeepAlive:
+      // The bytes themselves already refreshed the dead-man window in
+      // pollHostSerial(); the tick carries no other instruction.
+      break;
+
+    case tb::InboundKind::kPumpCommand: {
+      const tb::PumpVerdict verdict =
+          actuatorGuard.requestPump(message.id, message.runtimeMs, nowMs);
+      if (!verdict.accepted) {
+        emitAckRejected(message.id, verdict.reason);
+        break;
+      }
+      // The pin moves before the ack is written. The guard has already started
+      // timing the run, and the ack costs milliseconds of serial output that
+      // would otherwise be charged to a pump that is not yet on.
+      writePumpOutput(true);
+      emitAckAccepted(message.id);
+      break;
+    }
+
+    case tb::InboundKind::kUnusableCommand:
+      // With no readable id there is nothing to address an ack to, and the
+      // command will expire upstream instead.
+      if (message.id[0] != '\0') {
+        emitAckRejected(message.id, tb::RejectReason::kBadRequest);
+      }
+      break;
+
+    case tb::InboundKind::kIgnored:
+      break;
+  }
+}
+
+void pollHostSerial(const uint32_t nowMs) {
+  while (Serial.available() > 0) {
+    const char character = static_cast<char>(Serial.read());
+
+    // G3 keys off bytes, not off their meaning. A host sending a line this
+    // firmware cannot parse is still a host that is alive, and treating a
+    // malformed line as silence would abort a run that is going fine.
+    actuatorGuard.noteHostActivity(nowMs);
+
+    if (character == '\n' || character == '\r') {
+      if (inboundLength > 0 && !inboundOverflowed) {
+        inboundLine[inboundLength] = '\0';
+        handleInboundLine(nowMs);
+      }
+      inboundLength = 0;
+      inboundOverflowed = false;
+      continue;
+    }
+
+    if (inboundLength + 1 < TB_SERIAL_RX_LINE_MAX) {
+      inboundLine[inboundLength++] = character;
+    } else {
+      // An over-long line is discarded whole rather than parsed as a truncated
+      // command. No diagnostic is written: the link is strict JSONL, and a
+      // dropped command becomes an upstream TTL expiry, which is visible there.
+      inboundOverflowed = true;
+    }
+  }
+}
+
+void serviceActuators(const uint32_t nowMs) {
+  const tb::PumpStop stop = actuatorGuard.tick(nowMs);
+  if (!stop.stopped) {
+    return;
+  }
+
+  // Output first, ack second. Writing about 60 bytes at 115200 baud takes
+  // several milliseconds, and none of them should be pumping.
+  writePumpOutput(false);
+  emitAckRunEnded(actuatorGuard.activeCommandId(), stop);
+}
+
 void sampleAndPublish(const uint32_t uptimeMs) {
   const uint32_t sequence = nextSequence++;
 
@@ -250,11 +414,23 @@ void setup() {
 
 void loop() {
   const uint32_t now = millis();
+
+  // Both of these run on every iteration, ahead of the sampling cadence. A pump
+  // deadline and a dead-man timeout are only as sharp as the interval between
+  // two consecutive tick() calls.
+  pollHostSerial(now);
+  serviceActuators(now);
+
   if (static_cast<int32_t>(now - nextSampleAtMs) < 0) {
     return;
   }
 
   sampleAndPublish(now);
+
+  // A DHT22 read blocks for hundreds of milliseconds, so the actuator state is
+  // re-evaluated against a fresh clock here instead of waiting for the next
+  // iteration. Without this, one sampling slot could be added to a run.
+  serviceActuators(millis());
 
   // Keep an anchored cadence, but skip missed slots instead of taking several
   // DHT22 readings back-to-back after a long blocking operation.
