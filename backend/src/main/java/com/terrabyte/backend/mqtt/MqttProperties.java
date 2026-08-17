@@ -34,6 +34,30 @@ public record MqttProperties(
     }
 
     /**
+     * The downlink topic for one named gateway. Never wildcarded: a command has
+     * exactly one recipient.
+     *
+     * <p>The gateway id is rejected rather than escaped when it contains a topic
+     * separator or a subscription wildcard. That is not defensive tidiness — a
+     * {@code hardware_id} of {@code +} would turn one pump command into a
+     * command every gateway matches, and {@code #} the same. The id reaches here
+     * from a database column, so it is not attacker-controlled today, but the
+     * cost of being wrong is watering every pot on the estate.
+     */
+    public String downlinkTopic(String gatewayId, String suffix) {
+        if (gatewayId == null || gatewayId.isBlank()) {
+            throw new IllegalArgumentException("gateway id must not be blank");
+        }
+        if (gatewayId.indexOf('/') >= 0
+                || gatewayId.indexOf('+') >= 0
+                || gatewayId.indexOf('#') >= 0) {
+            throw new IllegalArgumentException(
+                    "gateway id must not contain a topic separator or wildcard: " + gatewayId);
+        }
+        return "%s/%s/dn/%s".formatted(topicPrefix, gatewayId, suffix);
+    }
+
+    /**
      * Extract the gateway id from {@code tb/v2/{gatewayId}/up/...}.
      *
      * <p>This is the authenticated identity: the broker ACL only lets a gateway

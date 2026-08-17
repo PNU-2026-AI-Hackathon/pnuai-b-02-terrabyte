@@ -48,6 +48,18 @@ public class DeviceRepository {
         return queryOne(" WHERE id = ? AND user_id = ?", deviceId, userId);
     }
 
+    /**
+     * Ownership-free lookup, for callers that are not serving a user request.
+     *
+     * <p>The irrigation downlink needs {@code hardware_id} for a pot it already
+     * resolved, and there is no user in that path at all — the command may have
+     * come from the rule engine. {@link #findByIdAndUserId} is still the right
+     * method everywhere a request has an authenticated caller.
+     */
+    public Optional<Device> findById(long deviceId) {
+        return queryOne(" WHERE id = ?", deviceId);
+    }
+
     public Optional<Device> findByHardwareId(String hardwareId) {
         return queryOne(" WHERE hardware_id = ?", hardwareId);
     }

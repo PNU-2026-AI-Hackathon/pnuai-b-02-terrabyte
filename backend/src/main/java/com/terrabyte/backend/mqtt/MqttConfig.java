@@ -22,9 +22,21 @@ import org.springframework.context.annotation.Configuration;
 public class MqttConfig {
 
     /**
-     * The backend never publishes, so it has no outbound state to persist and
-     * {@link MemoryPersistence} is enough on the client side. Durability lives
-     * on the broker instead: see {@code cleanSession} below.
+     * {@link MemoryPersistence} is the correct choice, not a shortcut, and this
+     * comment exists so nobody "fixes" it with a file store.
+     *
+     * <p>The backend does publish now — irrigation commands go out on
+     * {@code dn/command} at QoS 1 — and a QoS 1 publish that a restart loses
+     * would normally be an argument for durable client-side persistence. It is
+     * the opposite here. Commands are never retained and live for two minutes,
+     * so a command that was in flight across a restart is a command that must
+     * <em>not</em> be redelivered afterwards: by the time the process is back the
+     * moisture reading behind the decision is stale, and the expiry sweep is
+     * already there to record the row as EXPIRED. Losing it is the intended
+     * behaviour.
+     *
+     * <p>Inbound durability is a separate question and is answered on the broker
+     * instead: see {@code cleanSession} below.
      */
     @Bean
     public MqttClient mqttClient(MqttProperties properties) throws MqttException {
