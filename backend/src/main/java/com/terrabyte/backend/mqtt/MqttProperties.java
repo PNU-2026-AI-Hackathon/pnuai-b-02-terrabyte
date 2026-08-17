@@ -20,12 +20,19 @@ public record MqttProperties(
         String topicPrefix,
         Duration connectionTimeout,
         Duration keepAlive,
-        boolean cleanSession) {
+        boolean cleanSession,
+        Duration publishTimeout) {
 
     public MqttProperties {
         topicPrefix = topicPrefix == null || topicPrefix.isBlank() ? "tb/v2" : topicPrefix;
         connectionTimeout = connectionTimeout == null ? Duration.ofSeconds(10) : connectionTimeout;
         keepAlive = keepAlive == null ? Duration.ofSeconds(30) : keepAlive;
+        // How long a downlink publish may wait for the broker's acknowledgement.
+        // Bounded because that wait happens on the thread serving a user's tap,
+        // and Paho's own default is to wait indefinitely. Well under the two
+        // minute command TTL, so a publish that needs longer than this has
+        // already lost its usefulness.
+        publishTimeout = publishTimeout == null ? Duration.ofSeconds(5) : publishTimeout;
     }
 
     /** Wildcard subscription across every gateway's uplink of one kind. */

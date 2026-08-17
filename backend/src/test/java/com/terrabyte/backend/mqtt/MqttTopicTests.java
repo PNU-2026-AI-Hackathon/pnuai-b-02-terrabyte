@@ -15,7 +15,7 @@ class MqttTopicTests {
 
     private static final MqttProperties PROPERTIES = new MqttProperties(
             true, "tcp://localhost:1883", "terrabyte-backend", "u", "p", "tb/v2",
-            Duration.ofSeconds(10), Duration.ofSeconds(30), false);
+            Duration.ofSeconds(10), Duration.ofSeconds(30), false, Duration.ofSeconds(5));
 
     @Test
     void buildsTheDownlinkTopicForOneNamedGateway() {

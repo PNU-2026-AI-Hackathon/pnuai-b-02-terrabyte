@@ -1,5 +1,10 @@
 package com.terrabyte.backend.mqtt;
 
+import java.time.Clock;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.terrabyte.backend.irrigation.CommandDispatcher;
+import com.terrabyte.backend.irrigation.CommandTargetResolver;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -8,6 +13,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 
 /**
  * Wires the Paho client used for the MQTT operational transport.
@@ -71,5 +77,44 @@ public class MqttConfig {
         // itself from the connectComplete callback to cover that gap.
         options.setAutomaticReconnect(true);
         return options;
+    }
+
+    /**
+     * The real downlink, off unless {@code app.mqtt.command-dispatch.enabled}.
+     *
+     * <p>Two annotations here are load-bearing and both record a specific trap.
+     *
+     * <p>The condition is on a {@code @Bean} method rather than on a
+     * {@code @Component}. On a component it is evaluated during scanning and
+     * simply never registers the bean — the failure {@code IrrigationConfig}
+     * documents from the other side, which surfaced as fifty-one context load
+     * failures and no dispatcher at all.
+     *
+     * <p>{@code @Primary} is what makes this win over the fallback, and it is not
+     * interchangeable with letting {@code IrrigationConfig}'s
+     * {@code @ConditionalOnMissingBean} yield. That annotation only sees beans
+     * registered before its own configuration class is parsed, and the order two
+     * user {@code @Configuration} classes are parsed in is not part of Spring's
+     * contract. With {@code irrigation} sorting ahead of {@code mqtt} the fallback
+     * is registered first, so the condition matches, and both dispatchers exist —
+     * an ambiguous injection point and a context that will not start. Declaring
+     * precedence explicitly means the outcome no longer depends on package names.
+     *
+     * <p>Off by default so this can be merged dark. Turning it on is what starts
+     * moving water, and it needs the end-to-end scenarios first.
+     */
+    @Bean
+    @Primary
+    @ConditionalOnProperty(
+            prefix = "app.mqtt.command-dispatch", name = "enabled", havingValue = "true")
+    public CommandDispatcher mqttCommandDispatcher(
+            MqttClient mqttClient,
+            MqttProperties properties,
+            ObjectMapper objectMapper,
+            CommandTargetResolver targetResolver,
+            Clock clock) {
+        return new MqttCommandDispatcher(
+                mqttClient, properties, objectMapper, targetResolver,
+                properties.publishTimeout(), clock);
     }
 }

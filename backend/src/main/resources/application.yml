@@ -54,6 +54,12 @@ app:
     connection-timeout: ${MQTT_CONNECTION_TIMEOUT:PT10S}
     keep-alive: ${MQTT_KEEP_ALIVE:PT30S}
     clean-session: ${MQTT_CLEAN_SESSION:false}
+    publish-timeout: ${MQTT_PUBLISH_TIMEOUT:PT5S}
+    command-dispatch:
+      # Off until the end-to-end scenarios have run. Turning this on is what
+      # starts moving water: the backend stops recording authorised commands and
+      # starts publishing them to tb/v2/{gatewayId}/dn/command.
+      enabled: ${MQTT_COMMAND_DISPATCH_ENABLED:false}
   telemetry:
     http-ingest:
       enabled: ${TELEMETRY_HTTP_INGEST_ENABLED:false}
