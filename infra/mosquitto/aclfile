@@ -17,6 +17,7 @@
 # 백엔드: 모든 게이트웨이의 uplink 를 구독하고, 모든 게이트웨이에 downlink 를 보낸다.
 # ---------------------------------------------------------------------------
 user terrabyte-backend
+topic read  $SYS/#
 topic read  tb/v2/+/up/#
 topic write tb/v2/+/dn/#
 
