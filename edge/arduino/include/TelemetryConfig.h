@@ -174,3 +174,56 @@
 #ifndef TB_MAX_SOIL_MOISTURE_PCT
 #define TB_MAX_SOIL_MOISTURE_PCT 100.0f
 #endif
+
+// ---------------------------------------------------------------------------
+// Actuator hard interlocks (G1-G3). See docs/design/edge_ai_hardening.md.
+//
+// These bounds exist so the pump stops on its own when the Orange Pi, the
+// broker, and the cloud are all dead. No inbound command can widen them: a
+// command asks for a duration and the firmware answers with a duration.
+// ---------------------------------------------------------------------------
+
+// G1 absolute maximum single run. A command asking for more is clamped, not
+// rejected, so a mis-scaled request still delivers water instead of nothing.
+#ifndef TB_PUMP_ABS_MAX_MS
+#define TB_PUMP_ABS_MAX_MS 30000UL
+#endif
+
+// G2 minimum interval between runs, measured from the last stop.
+#ifndef TB_PUMP_MIN_INTERVAL_MS
+#define TB_PUMP_MIN_INTERVAL_MS 600000UL
+#endif
+
+// G3 dead-man watchdog. While the pump runs, any inbound serial byte counts as
+// proof the host is alive; silence for this long stops the pump.
+#ifndef TB_HOST_TIMEOUT_MS
+#define TB_HOST_TIMEOUT_MS 3000UL
+#endif
+
+#if TB_PUMP_ABS_MAX_MS == 0UL
+#error "TB_PUMP_ABS_MAX_MS must be greater than zero"
+#endif
+
+#if TB_HOST_TIMEOUT_MS == 0UL
+#error "TB_HOST_TIMEOUT_MS must be greater than zero"
+#endif
+
+// The dead-man window has to outlast one host tick plus jitter, otherwise a
+// perfectly healthy link aborts every run.
+#if TB_HOST_TIMEOUT_MS < 1000UL
+#error "TB_HOST_TIMEOUT_MS must exceed the 1s host dead-man tick period"
+#endif
+
+// The firmware cooldown and the server cooldown (6h) are managed separately, so
+// they can drift apart. The firmware side must always be the shorter of the two
+// or the firmware rejects commands the server already approved, which reaches
+// the user as an unexplained failure. 6h is the ceiling, not a target.
+#if TB_PUMP_MIN_INTERVAL_MS >= 21600000UL
+#error "TB_PUMP_MIN_INTERVAL_MS must stay below the 6h server cooldown"
+#endif
+
+// A run must fit inside the cooldown window; otherwise the guard would be
+// asked to start a run that its own interval rule already forbids.
+#if TB_PUMP_ABS_MAX_MS >= TB_PUMP_MIN_INTERVAL_MS
+#error "TB_PUMP_ABS_MAX_MS must be shorter than TB_PUMP_MIN_INTERVAL_MS"
+#endif
