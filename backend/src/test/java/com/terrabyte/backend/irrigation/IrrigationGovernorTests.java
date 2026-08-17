@@ -142,7 +142,7 @@ class IrrigationGovernorTests {
 
     @Test
     void anOutstandingCommandBlocksAnother() {
-        commands.outstanding = true;
+        commands.outstandingUntil = NOW.plusSeconds(60);
         assertThat(denyReason(governor.authorize(request(100)))).isEqualTo(DenyReason.IN_FLIGHT);
     }
 
@@ -233,6 +233,54 @@ class IrrigationGovernorTests {
         assertThat(denyReason(governor.authorize(manual))).isEqualTo(DenyReason.COOLDOWN);
     }
 
+    // -- "다시 가능한 시간" (issue #48 완료 기준) --------------------------
+
+    @Test
+    void aCooldownRefusalSaysWhenItLifts() {
+        Instant lastWatered = NOW.minus(Duration.ofHours(2));
+        commands.lastCompleted = lastWatered;
+
+        AuthorizationResult.Denied denied = asDenied(governor.authorize(request(100)));
+
+        assertThat(denied.reason()).isEqualTo(DenyReason.COOLDOWN);
+        assertThat(denied.nextAvailableAt()).isEqualTo(lastWatered.plus(Duration.ofHours(6)));
+    }
+
+    @Test
+    void anInFlightRefusalSaysWhenTheCommandExpires() {
+        Instant expiry = NOW.plusSeconds(90);
+        commands.outstandingUntil = expiry;
+
+        AuthorizationResult.Denied denied = asDenied(governor.authorize(request(100)));
+
+        assertThat(denied.reason()).isEqualTo(DenyReason.IN_FLIGHT);
+        assertThat(denied.nextAvailableAt()).isEqualTo(expiry);
+    }
+
+    @Test
+    void aBudgetRefusalSaysWhenTheWindowReleasesVolume() {
+        Instant oldest = NOW.minus(Duration.ofHours(20));
+        commands.consumedMl = 600;
+        commands.oldestCounted = oldest;
+
+        AuthorizationResult.Denied denied = asDenied(governor.authorize(request(100)));
+
+        assertThat(denied.reason()).isEqualTo(DenyReason.DAILY_BUDGET);
+        assertThat(denied.nextAvailableAt()).isEqualTo(oldest.plus(Duration.ofHours(24)));
+    }
+
+    @Test
+    void aSensorRefusalHasNoTimeBecauseNoTimerFixesIt() {
+        // Stale and broken readings clear when good data arrives, which no
+        // clock can predict. Inventing a time would be a promise we cannot keep.
+        measurements.sample = sample(NOW.minusSeconds(30), 22.0, false);
+
+        AuthorizationResult.Denied denied = asDenied(governor.authorize(request(100)));
+
+        assertThat(denied.reason()).isEqualTo(DenyReason.SENSOR_INVALID);
+        assertThat(denied.nextAvailableAt()).isNull();
+    }
+
     // -- the failure condition -------------------------------------------
 
     @Test
@@ -295,6 +343,11 @@ class IrrigationGovernorTests {
 
     // -- helpers ---------------------------------------------------------
 
+    private static AuthorizationResult.Denied asDenied(AuthorizationResult result) {
+        assertThat(result).isInstanceOf(AuthorizationResult.Denied.class);
+        return (AuthorizationResult.Denied) result;
+    }
+
     private static DenyReason denyReason(AuthorizationResult result) {
         assertThat(result).isInstanceOf(AuthorizationResult.Denied.class);
         return ((AuthorizationResult.Denied) result).reason();
@@ -328,8 +381,9 @@ class IrrigationGovernorTests {
 
     private static final class FakeCommandRepository extends DeviceCommandRepository {
         private final List<DeviceCommand> saved = new ArrayList<>();
-        private boolean outstanding;
+        private Instant outstandingUntil;
         private Instant lastCompleted;
+        private Instant oldestCounted;
         private int consumedMl;
 
         private FakeCommandRepository() {
@@ -342,8 +396,13 @@ class IrrigationGovernorTests {
         }
 
         @Override
-        public boolean hasOutstanding(long potId, Instant now) {
-            return outstanding;
+        public Optional<Instant> outstandingExpiresAt(long potId, Instant now) {
+            return Optional.ofNullable(outstandingUntil);
+        }
+
+        @Override
+        public Optional<Instant> oldestCountedIssuedAt(long potId, Instant since) {
+            return Optional.ofNullable(oldestCounted);
         }
 
         @Override

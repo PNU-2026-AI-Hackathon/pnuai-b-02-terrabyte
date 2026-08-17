@@ -21,6 +21,8 @@ public record IrrigationOutcome(
         boolean dispatched,
         DenyReason denyReason,
         String detail,
+        /** When the refusal lifts, or null when it clears on new data instead. */
+        Instant nextAvailableAt,
         AiOutcome aiOutcome,
         String aiModelVersion) {
 
@@ -39,12 +41,15 @@ public record IrrigationOutcome(
                 dispatched,
                 null,
                 null,
+                null,
                 aiOutcome,
                 aiModelVersion);
     }
 
-    public static IrrigationOutcome denied(DenyReason reason, String detail) {
+    public static IrrigationOutcome denied(
+            DenyReason reason, String detail, Instant nextAvailableAt) {
         return new IrrigationOutcome(
-                false, null, null, null, null, false, reason, detail, null, null);
+                false, null, null, null, null, false,
+                reason, detail, nextAvailableAt, null, null);
     }
 }

@@ -1,5 +1,7 @@
 package com.terrabyte.backend.irrigation;
 
+import java.time.Instant;
+
 /**
  * The outcome of {@link IrrigationGovernor#authorize}.
  *
@@ -17,5 +19,22 @@ public sealed interface AuthorizationResult {
         }
     }
 
-    record Denied(DenyReason reason, String detail) implements AuthorizationResult {}
+    /**
+     * @param nextAvailableAt when this refusal will stop applying, or null when
+     *        that cannot be known from the clock alone. Cooldown, in-flight and
+     *        budget all expire at a computable time; a stale or broken sensor
+     *        clears when a good reading arrives, which no timer predicts.
+     */
+    record Denied(DenyReason reason, String detail, Instant nextAvailableAt)
+            implements AuthorizationResult {
+
+        public static Denied at(DenyReason reason, String detail, Instant nextAvailableAt) {
+            return new Denied(reason, detail, nextAvailableAt);
+        }
+
+        /** For refusals that clear on new data rather than on time. */
+        public static Denied untilDataImproves(DenyReason reason, String detail) {
+            return new Denied(reason, detail, null);
+        }
+    }
 }
