@@ -13,8 +13,12 @@
 #define TB_NODE_ID "UNCONFIGURED"
 #endif
 
+// 0.4.0 is the first version with an inbound command path, so the `hello`
+// record is how the Orange Pi tells whether it may send commands at all.
+// protocol_version stays 1: adding keys to telemetry is additive, and the MQTT
+// schema_version is a different namespace that the Orange Pi translates into.
 #ifndef TB_FIRMWARE_VERSION
-#define TB_FIRMWARE_VERSION "0.3.0"
+#define TB_FIRMWARE_VERSION "0.4.0"
 #endif
 
 #ifndef TB_SERIAL_BAUD

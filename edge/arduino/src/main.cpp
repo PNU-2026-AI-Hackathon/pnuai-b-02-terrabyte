@@ -201,6 +201,18 @@ void emitTelemetry(const uint32_t sequence, const uint32_t uptimeMs,
   Serial.print(F(",\"soil_moisture_pct\":"));
   Serial.print(sample.soilMoisturePct, 2);
 #endif
+  // Only the pump exists as an actuator, so only the pump is reported. The
+  // object form is what the contract specifies, which lets a light or heater be
+  // added later without changing the shape of the record.
+  Serial.print(F(",\"actuators\":{\"pump\":"));
+  Serial.print(pumpIsOn ? 1 : 0);
+
+  // Remaining lockout, not the configured interval. Emitting the setting here
+  // would tell the server the pump is permanently unavailable, and the two
+  // values are identical for exactly one instant, which is why the guard's unit
+  // tests pin the countdown rather than a single sample of it.
+  Serial.print(F("},\"pump_lockout_ms\":"));
+  Serial.print(actuatorGuard.pumpLockoutRemainingMs(uptimeMs));
   Serial.println('}');
 }
 
