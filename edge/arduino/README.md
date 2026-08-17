@@ -43,6 +43,56 @@ uses 115200 baud after the sketch starts.
   the final light source and geometry.
 - `NaN`, infinity, missing readings, and values outside configured ranges are
   rejected. Invalid samples are never sent as telemetry.
+- Actuator outputs are driven to their off level in the first three statements of
+  `setup()`, before serial starts. See the interlock section below.
+- The pump output defaults to the on-board LED, not to a relay pin, so firmware
+  flashed before its wiring is decided cannot energise an unknown load.
+
+## Actuator hard interlocks
+
+The firmware carries four defences that no inbound command can relax. They are
+the last line that survives when the Orange Pi, the broker, and the cloud are
+all dead, and they are specified in `docs/design/edge_ai_hardening.md`.
+
+| # | Defence | Default | Behaviour |
+| --- | --- | --- | --- |
+| G1 | Absolute maximum run | `TB_PUMP_ABS_MAX_MS` 30000 | A larger `ms` is clamped, and the completion reports `stop:"max_runtime"` |
+| G2 | Minimum interval between runs | `TB_PUMP_MIN_INTERVAL_MS` 600000 | Measured from the last stop; an earlier command is `rejected`, `r:"cooldown"` |
+| G3 | Dead-man watchdog | `TB_HOST_TIMEOUT_MS` 3000 | While the pump runs, silence from the host for this long stops it: `aborted`, `stop:"watchdog"` |
+| G4 | Boot safety | — | Outputs are driven off in the first three statements of `setup()`, before `Serial.begin()` |
+
+A ring of the last eight accepted command ids makes a redelivered command
+`rejected`, `r:"duplicate"` instead of dosing twice. Only accepted ids are
+remembered: a command that was refused never ran, so a redelivery is re-judged.
+
+Two boundaries are deliberately outside the firmware:
+
+- **TTL.** The board has no RTC and never compares wall clocks. It handles only
+  the relative `ms` in a command; expiry is decided by the Orange Pi.
+- **Volume.** There is no flow meter, so a run is timed, never metered. `ml`
+  travels with the command for reporting only.
+
+`TB_PUMP_MIN_INTERVAL_MS` must stay shorter than the server's 6-hour cooldown.
+The two are managed separately, and if the firmware were the stricter of the two
+it would refuse commands the server had already approved, which reaches the user
+as an unexplained failure. A compile-time check enforces the 6-hour ceiling.
+
+Relay polarity matters for G4. The design doc specifies "OUTPUT + LOW", which is
+only safe on an active-HIGH input; many low-cost relay modules are active LOW and
+would turn the pump **on** at boot. Set both levels when wiring such a module:
+
+```cpp
+#define TB_PUMP_PIN 7
+#define TB_PUMP_ON_LEVEL LOW
+#define TB_PUMP_OFF_LEVEL HIGH
+```
+
+**Verification status:** G1-G4 and the duplicate ring are proven by the unit
+tests under `test/`, including the 10-minute cooldown, ring eviction, and the
+49.7-day `millis()` rollover. No pump circuit exists yet, so **none of them has
+been verified against real hardware.** The bench scenarios in
+`docs/design/edge_ai_hardening.md` (forced stop at 30 s, USB unplugged mid-run,
+duplicate id, immediate re-command, reset mid-run) remain outstanding.
 
 ## Provisioning
 
@@ -200,6 +250,29 @@ arduino-cli upload --fqbn arduino:avr:nano:cpu=atmega328old --port COM5 .
 For a confirmed Nano Every, its Arduino CLI FQBN remains
 `arduino:megaavr:nona4809`.
 
+## Unit tests
+
+The interlock logic and the inbound parser are compiled for the host and tested
+off-device:
+
+```powershell
+pio test -e native
+```
+
+`[env:native]` compiles only the Arduino-free translation units, which is why
+`ActuatorGuard` and `CommandParser` must not include `<Arduino.h>` and why the
+guard takes `millis()` as an argument instead of calling it. Any new source file
+that includes the Arduino core has to be excluded from that environment's
+`build_src_filter` as well.
+
+Each suite is an ordinary program with its own `main()`, so it also runs without
+PlatformIO:
+
+```powershell
+g++ -std=gnu++17 -Wall -Wextra -o guard src/ActuatorGuard.cpp test/test_actuator_guard/test_actuator_guard.cpp
+g++ -std=gnu++17 -Wall -Wextra -o parser src/ActuatorGuard.cpp src/CommandParser.cpp test/test_command_parser/test_command_parser.cpp
+```
+
 ## Wire protocol
 
 Every record is one UTF-8-compatible ASCII JSON object followed by `\n`. The
@@ -209,14 +282,19 @@ objects.
 On each boot it first emits a hello record:
 
 ```json
-{"message_type":"hello","protocol_version":1,"node_id":"terrabyte-node-001","firmware_version":"0.3.0","serial_baud":115200,"telemetry_interval_ms":5000,"ready":true}
+{"message_type":"hello","protocol_version":1,"node_id":"terrabyte-node-001","firmware_version":"0.4.0","serial_baud":115200,"telemetry_interval_ms":5000,"ready":true}
 ```
 
 A complete, validated sample is emitted as:
 
 ```json
-{"message_type":"telemetry","protocol_version":1,"node_id":"terrabyte-node-001","sequence":42,"uptime_ms":215000,"air_temperature_c":24.30,"relative_humidity_pct":58.10,"ppfd_umol_m2_s":421.75,"illuminance_lux":18420.83,"soil_temperature_c":19.40,"soil_moisture_pct":63.25}
+{"message_type":"telemetry","protocol_version":1,"node_id":"terrabyte-node-001","sequence":42,"uptime_ms":215000,"air_temperature_c":24.30,"relative_humidity_pct":58.10,"ppfd_umol_m2_s":421.75,"illuminance_lux":18420.83,"soil_temperature_c":19.40,"soil_moisture_pct":63.25,"actuators":{"pump":0},"pump_lockout_ms":420000}
 ```
+
+`pump_lockout_ms` is the remaining time until a new pump command could be
+accepted, not the configured interval. It counts down to zero, and while a run is
+in progress it includes the remaining runtime, because the cooldown has not
+started yet. `protocol_version` stays `1`: both keys are additive.
 
 If any required field is unavailable or invalid, no telemetry is fabricated:
 
@@ -242,3 +320,44 @@ forwarding data; `node_id + sequence` is not a permanent idempotency key.
 Do not use the Arduino serial output for human-readable debug messages. Extra
 text would violate JSONL framing and should instead be represented as a typed
 JSON status record.
+
+### Inbound commands and acks
+
+The link is no longer one-way, and the two directions **do not share an envelope
+key**. Records the Orange Pi sends use `t`; telemetry records use `message_type`.
+The asymmetry is part of the frozen contract, and the parser matches keys with
+their surrounding quotes so that `message_type` and `air_temperature_c` cannot be
+mistaken for `t`.
+
+Short keys are used inbound because the ATmega328P has 2 KB of SRAM:
+
+```json
+{"t":"cmd","id":"01J8F3","act":"pump","ms":18000,"ml":120}
+{"t":"ka"}
+```
+
+`id` is required and may be up to 26 characters; a longer one is refused rather
+than truncated. `act` must be `pump`. `ms` is the run duration and is required.
+`ml` is optional and reported only. `{"t":"ka"}` is the **dead-man tick**, sent
+every second while the pump runs; it is unrelated to the 30-second MQTT
+`dn/heartbeat` despite both being called heartbeats elsewhere.
+
+Every command that carries a readable `id` is answered:
+
+```json
+{"t":"ack","id":"01J8F3","ph":"accepted"}
+{"t":"ack","id":"01J8F3","ph":"rejected","r":"cooldown"}
+{"t":"ack","id":"01J8F3","ph":"completed","ms":17950,"stop":"volume_reached"}
+{"t":"ack","id":"01J8F3","ph":"aborted","ms":3020,"stop":"watchdog"}
+```
+
+`r` is one of `bad_request`, `duplicate`, `busy`, `cooldown`. `stop` is one of
+`volume_reached` (ran the whole requested duration), `max_runtime` (G1 clamped
+it), or `watchdog` (G3). These are lower-case firmware-local tokens; the
+UPPER_SNAKE `reason` vocabulary belongs to the MQTT contract, and mapping between
+them is the Orange Pi's job. A word can mean different things at different
+layers, so upstream state should be keyed off `ph`, never off `r`.
+
+A line longer than `TB_SERIAL_RX_LINE_MAX` is discarded whole rather than parsed
+as a truncated command, and a command whose `id` could not be read is not acked
+at all; both surface upstream as a TTL expiry.

@@ -37,3 +37,19 @@
 // #define TB_SOIL_MOISTURE_ADC_PIN A1
 // #define TB_SOIL_MOISTURE_DRY_ADC 800
 // #define TB_SOIL_MOISTURE_WET_ADC 350
+
+// Pump output. The default is the on-board LED so that a board flashed before
+// its wiring exists cannot energise an unknown load. Point this at the relay
+// input once the circuit is built, and set both levels if the module is
+// active LOW: driving LOW at boot would otherwise turn the pump ON, which is the
+// opposite of what G4 is for.
+// #define TB_PUMP_PIN 7
+// #define TB_PUMP_ON_LEVEL LOW
+// #define TB_PUMP_OFF_LEVEL HIGH
+
+// Interlock bounds. Overriding these is a safety decision, not a tuning knob.
+// TB_PUMP_MIN_INTERVAL_MS must stay well under the server's 6-hour cooldown, or
+// the firmware refuses commands the server already approved.
+// #define TB_PUMP_ABS_MAX_MS 30000UL
+// #define TB_PUMP_MIN_INTERVAL_MS 600000UL
+// #define TB_HOST_TIMEOUT_MS 3000UL
