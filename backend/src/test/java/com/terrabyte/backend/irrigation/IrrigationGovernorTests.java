@@ -67,7 +67,7 @@ class IrrigationGovernorTests {
         return new TelemetrySample(
                 POT_ID, 1L, "node-1", "lettuce", "orangepi-pro-01", "evt-1",
                 observedAt, 1L, moisture, 0L, 24.0, 55.0, 300.0, 21.0,
-                valid, true, true);
+                valid, true, true, null);
     }
 
     private static IrrigationRequest request(int ml) {
@@ -419,6 +419,13 @@ class IrrigationGovernorTests {
         @Override
         public Optional<TelemetrySample> findLatest(long potId) {
             return Optional.ofNullable(sample);
+        }
+
+        @Override
+        public List<TelemetrySample> findSamples(long potId, Instant start) {
+            // The Governor reads the latest sample and the moisture series; the
+            // score path's bulk read has no bearing on an irrigation decision.
+            throw new UnsupportedOperationException();
         }
 
         @Override

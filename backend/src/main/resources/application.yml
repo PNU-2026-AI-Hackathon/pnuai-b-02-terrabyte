@@ -65,11 +65,3 @@ app:
       secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
       success-url: ${TOSS_PAYMENTS_SUCCESS_URL:http://localhost:8081/payment/success}
       fail-url: ${TOSS_PAYMENTS_FAIL_URL:http://localhost:8081/payment/fail}
-  ai:
-    enabled: ${AI_ENABLED:false}
-    base-url: ${AI_BASE_URL:http://localhost:8000}
-    api-key: ${AI_API_KEY:}
-    timeout: ${AI_TIMEOUT:PT0.8S}
-    expected-schema-version: ${AI_EXPECTED_SCHEMA_VERSION:1}
-    hard-ceiling-ml: ${AI_HARD_CEILING_ML:500}
-    min-confidence: ${AI_MIN_CONFIDENCE:0.5}
