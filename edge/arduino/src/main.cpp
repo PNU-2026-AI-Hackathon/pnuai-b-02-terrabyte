@@ -16,6 +16,11 @@ uint32_t nextSequence = 0;
 uint32_t nextSampleAtMs = 0;
 bool nodeIdIsValid = false;
 
+// Mirror of the pump output level. The guard owns the decision to run; this
+// tracks only what the pin was last driven to, so telemetry never has to read
+// the decision back out of the hardware.
+bool pumpIsOn = false;
+
 bool isAllowedNodeIdCharacter(const char character) {
   return isalnum(static_cast<unsigned char>(character)) || character == '-' ||
          character == '_' || character == '.' || character == ':';
@@ -211,6 +216,21 @@ void sampleAndPublish(const uint32_t uptimeMs) {
 }  // namespace
 
 void setup() {
+  // G4 boot safety. These three statements must stay the first thing setup()
+  // does. A reset while the pump was running re-enters setup() with the relay
+  // still energised, and Serial.begin() below can block for up to
+  // TB_SERIAL_READY_TIMEOUT_MS waiting for a host that may never arrive. Any
+  // work placed above this point is time the pump keeps running unattended.
+  //
+  // The write comes before pinMode on purpose, which is the reverse of the usual
+  // idiom: setting the port register while the pin is still an input only arms
+  // the pull-up, so switching to OUTPUT afterwards drives the off level with no
+  // intermediate glitch. Written the other way round, an active-LOW relay would
+  // see a brief ON pulse on every boot.
+  digitalWrite(TB_PUMP_PIN, TB_PUMP_OFF_LEVEL);
+  pinMode(TB_PUMP_PIN, OUTPUT);
+  pumpIsOn = false;
+
   Serial.begin(TB_SERIAL_BAUD);
   const uint32_t serialStartedAtMs = millis();
   while (!Serial &&

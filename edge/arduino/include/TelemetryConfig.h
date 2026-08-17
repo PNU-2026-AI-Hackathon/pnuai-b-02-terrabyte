@@ -227,3 +227,30 @@
 #if TB_PUMP_ABS_MAX_MS >= TB_PUMP_MIN_INTERVAL_MS
 #error "TB_PUMP_ABS_MAX_MS must be shorter than TB_PUMP_MIN_INTERVAL_MS"
 #endif
+
+// Pump output wiring. No pump circuit exists yet, so the default output is the
+// on-board LED: G4 and every state change stay observable on a bare board, and
+// no unknown load can be energised by a firmware that was flashed before its
+// wiring was decided. Point TB_PUMP_PIN at the relay input in the ignored local
+// header once the circuit is built.
+#ifndef TB_PUMP_PIN
+#define TB_PUMP_PIN LED_BUILTIN
+#endif
+
+// Relay polarity. The design doc specifies "OUTPUT + LOW" for G4, which is only
+// safe on an active-HIGH input; many low-cost relay modules are active LOW, and
+// on those, driving LOW at boot turns the pump ON. So the off level is named
+// rather than hard-coded, and it defaults to the documented LOW.
+#ifndef TB_PUMP_ON_LEVEL
+#define TB_PUMP_ON_LEVEL HIGH
+#endif
+
+#ifndef TB_PUMP_OFF_LEVEL
+#define TB_PUMP_OFF_LEVEL LOW
+#endif
+
+// Guarded by ARDUINO because HIGH and LOW do not exist in the host test build,
+// where both would preprocess to 0 and trip this check.
+#if defined(ARDUINO) && (TB_PUMP_ON_LEVEL == TB_PUMP_OFF_LEVEL)
+#error "TB_PUMP_ON_LEVEL and TB_PUMP_OFF_LEVEL must differ"
+#endif
