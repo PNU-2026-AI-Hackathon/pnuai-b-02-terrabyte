@@ -23,10 +23,6 @@ function cropName(cropCode?: string) {
   return crops.find((crop) => crop.code === cropCode)?.name ?? '작물 미등록';
 }
 
-function cropEmoji(cropCode?: string) {
-  return crops.find((crop) => crop.code === cropCode)?.emoji ?? '🪴';
-}
-
 export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, selectedPotId }: PotMenuProps) {
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>(null);
@@ -159,7 +155,6 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
                         }}
                         style={({ pressed }) => [styles.potSelectArea, pressed && styles.pressed]}
                       >
-                        <Text style={styles.potEmoji}>{cropEmoji(pot.cropCode)}</Text>
                         <View style={styles.potRowCopy}>
                           <Text numberOfLines={1} style={[styles.potLabel, selected && styles.potLabelSelected]}>{pot.label}</Text>
                           <Text style={styles.potCrop}>{cropName(pot.cropCode)}</Text>
@@ -216,7 +211,6 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
                             onPress={() => setCropCode(crop.code)}
                             style={({ pressed }) => [styles.cropOption, selected && styles.cropOptionSelected, pressed && styles.pressed]}
                           >
-                            <Text style={styles.cropOptionEmoji}>{crop.emoji}</Text>
                             <Text style={[styles.cropOptionText, selected && styles.cropOptionTextSelected]}>{crop.name}</Text>
                           </Pressable>
                         );
@@ -277,7 +271,6 @@ const styles = StyleSheet.create(scaleTypography({
   potRow: { alignItems: 'center', borderBottomColor: palette.line, borderBottomWidth: 1, flexDirection: 'row', gap: 8, minHeight: 76, paddingHorizontal: 12 },
   potRowSelected: { backgroundColor: palette.greenSoft },
   potSelectArea: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 11, minWidth: 0, paddingVertical: 11 },
-  potEmoji: { fontSize: 23, width: 30 },
   potRowCopy: { flex: 1, gap: 2, minWidth: 0 },
   potLabel: { color: palette.text, fontFamily: font, fontSize: 16, fontWeight: '900' },
   potLabelSelected: { color: palette.greenDark },
@@ -296,7 +289,6 @@ const styles = StyleSheet.create(scaleTypography({
   cropList: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   cropOption: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.22)', borderColor: palette.line, borderRadius: 9, borderWidth: 1, flexDirection: 'row', gap: 5, minHeight: 36, paddingHorizontal: 9 },
   cropOptionSelected: { backgroundColor: palette.greenSoft, borderColor: palette.green },
-  cropOptionEmoji: { fontSize: 15 },
   cropOptionText: { color: palette.secondary, fontFamily: font, fontSize: 12, fontWeight: '800' },
   cropOptionTextSelected: { color: palette.greenDark },
   errorText: { color: palette.red, fontFamily: font, fontSize: 13, fontWeight: '800' },
