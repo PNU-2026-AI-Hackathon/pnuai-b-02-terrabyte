@@ -29,6 +29,28 @@ const managementTasks = [
   },
 ] as const;
 
+const cultivationCriteria = [
+  {
+    label: '현재 단계',
+    title: '활착기 · 4일차',
+    body: '뿌리가 새 배지에 자리 잡는 기간입니다. 과습과 강한 빛 변화를 피하세요.',
+  },
+  {
+    label: '권장 환경',
+    title: '20~26℃ · 55~70%',
+    body: '보조 조명 4시간을 기준으로 관리합니다.',
+  },
+  {
+    label: '다음 점검',
+    title: '3일 후',
+    body: '새잎, 잎 말림, 줄기 웃자람 여부를 확인하고 환경을 다시 분석합니다.',
+  },
+] as const;
+
+function getProductCategoryLabel(category: ShopProduct['category']) {
+  return category === 'parts' ? '부품' : category === 'soil' ? '흙과 배지' : '씨앗';
+}
+
 export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
   const [completedTaskIds, setCompletedTaskIds] = useState<Record<string, boolean>>({});
   const { score } = useDeviceEnvironment();
@@ -80,32 +102,33 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
 
       <Surface flat style={styles.guidePanel}>
         <SectionHeader title="재배 단계별 기준" description="현재는 정식 후 활착 단계로, 급격한 환경 변화를 피해야 합니다." />
-        <View style={styles.guideStageGrid}>
-          <View style={styles.guideStageItem}>
-            <View style={styles.guideStageHeader}><View style={styles.guideStageIndex}><Text style={styles.guideStageIndexText}>01</Text></View><Text style={styles.guideStageLabel}>현재 단계</Text></View>
-            <Text style={styles.guideStageTitle}>활착기 · 4일차</Text>
-            <Text style={styles.guideStageBody}>뿌리가 새 배지에 자리 잡는 기간입니다. 과습과 강한 빛 변화를 피하세요.</Text>
-          </View>
-          <View style={styles.guideStageItem}>
-            <View style={styles.guideStageHeader}><View style={styles.guideStageIndex}><Text style={styles.guideStageIndexText}>02</Text></View><Text style={styles.guideStageLabel}>권장 환경</Text></View>
-            <Text style={styles.guideStageTitle}>20~26℃ · 55~70%</Text>
-            <Text style={styles.guideStageBody}>보조 조명 4시간을 기준으로 관리합니다.</Text>
-          </View>
-          <View style={styles.guideStageItem}>
-            <View style={styles.guideStageHeader}><View style={styles.guideStageIndex}><Text style={styles.guideStageIndexText}>03</Text></View><Text style={styles.guideStageLabel}>다음 점검</Text></View>
-            <Text style={styles.guideStageTitle}>3일 후</Text>
-            <Text style={styles.guideStageBody}>새잎, 잎 말림, 줄기 웃자람 여부를 확인하고 환경을 다시 분석합니다.</Text>
-          </View>
+        <View style={styles.guideTaskList}>
+          {cultivationCriteria.map((item, index) => (
+            <View key={item.label} style={[styles.guideTaskRow, compact && styles.guideTaskRowCompact]}>
+              <View style={styles.guideTaskNumber}><Text style={styles.guideTaskNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
+              <View style={styles.guideTaskCopy}>
+                <Text style={styles.guideTaskPriority}>{item.label}</Text>
+                <Text style={styles.guideTaskTitle}>{item.title}</Text>
+                <Text style={styles.guideTaskBody}>{item.body}</Text>
+              </View>
+            </View>
+          ))}
         </View>
       </Surface>
 
       <Surface flat style={styles.guideProductsPanel}>
         <SectionHeader title="현재 환경 추천 제품" description="현재 환경에서 보완이 필요한 지표를 기준으로 선정했습니다." />
-        <View style={[styles.guideProductGrid, compact && styles.stack]}>
-          {recommendedProducts.map((product) => (
-            <View key={product.id} style={styles.guideProductCard}>
-              <Text style={styles.guideProductReason}>{product.desc}</Text>
-              <Text style={styles.guideProductName}>{product.name}</Text>
+        <View style={styles.guideTaskList}>
+          {recommendedProducts.map((product, index) => (
+            <View key={product.id} style={[styles.guideTaskRow, compact && styles.guideTaskRowCompact]}>
+              <View style={styles.guideTaskNumber}><Text style={styles.guideTaskNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
+              <View style={styles.guideTaskCopy}>
+                <View style={styles.guideProductTitleRow}>
+                  <Text style={[styles.guideTaskTitle, styles.guideProductTitle]}>{product.name}</Text>
+                  <Text style={styles.guideProductCategory}>{getProductCategoryLabel(product.category)}</Text>
+                </View>
+                <Text style={styles.guideTaskBody}>{product.desc}</Text>
+              </View>
               <Text style={styles.guideProductPrice}>{product.price.toLocaleString('ko-KR')}원</Text>
             </View>
           ))}
@@ -130,6 +153,7 @@ const styles = StyleSheet.create(scaleTypography({
   guideProgressLabel: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '700' },
   guideTaskList: { gap: 0 },
   guideTaskRow: { alignItems: 'center', borderBottomColor: palette.lineStrong, borderBottomWidth: 1, flexDirection: 'row', gap: 20, padding: 23 },
+  guideTaskRowCompact: { alignItems: 'flex-start', flexDirection: 'column' },
   guideTaskRowCompleted: { backgroundColor: 'rgba(228,241,233,0.42)' },
   guideTaskRowPressed: { opacity: 0.78 },
   guideTaskNumber: { alignItems: 'center', backgroundColor: palette.greenSoft, borderRadius: 10, height: 46, justifyContent: 'center', width: 46 },
@@ -144,14 +168,9 @@ const styles = StyleSheet.create(scaleTypography({
   guideTaskCheck: { alignItems: 'center', borderColor: palette.greenDark, borderRadius: 8, borderWidth: 1.5, height: 32, justifyContent: 'center', width: 32 },
   guideTaskCheckCompleted: { backgroundColor: palette.green, borderColor: palette.green },
   guideTaskCheckText: { color: '#ffffff', fontFamily: font, fontSize: 20, fontWeight: '900', lineHeight: 24 },
-  guideStageGrid: { flexDirection: 'column', gap: 0 },
-  guideStageItem: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1, gap: 9, paddingVertical: 24 },
-  guideStageHeader: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  guideStageIndex: { alignItems: 'center', backgroundColor: palette.greenSoft, borderRadius: 8, height: 34, justifyContent: 'center', width: 42 },
-  guideStageIndexText: { color: palette.greenDark, fontFamily: font, fontSize: 13, fontWeight: '900' },
-  guideStageLabel: { color: palette.greenDark, fontFamily: font, fontSize: 15, fontWeight: '900' },
-  guideStageTitle: { color: palette.text, fontFamily: font, fontSize: 22, fontWeight: '900', lineHeight: 30 },
-  guideStageBody: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 26, maxWidth: 960 },
+  guideProductTitleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12 },
+  guideProductTitle: { flex: 1 },
+  guideProductCategory: { backgroundColor: palette.greenSoft, borderRadius: 999, color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '900', paddingHorizontal: 11, paddingVertical: 6 },
   soilMixRow: { gap: 6 },
   soilMixRatio: { color: palette.text, fontFamily: font, fontSize: 21, fontWeight: '900' },
   soilReason: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 24 },
@@ -167,9 +186,5 @@ const styles = StyleSheet.create(scaleTypography({
   soilPreCheckItem: { color: palette.secondary, fontFamily: font, fontSize: 14, lineHeight: 22 },
   soilAssumptionNotice: { color: palette.muted, fontFamily: font, fontSize: 12, lineHeight: 19 },
   guideProductsPanel: { gap: 28, padding: 36 },
-  guideProductGrid: { flexDirection: 'row', gap: 0 },
-  guideProductCard: { borderRightColor: palette.lineStrong, borderRightWidth: 1, flex: 1, gap: 8, minHeight: 190, padding: 22 },
-  guideProductReason: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '900' },
-  guideProductName: { color: palette.text, fontFamily: font, fontSize: 21, fontWeight: '900', lineHeight: 28 },
-  guideProductPrice: { color: palette.greenDark, fontFamily: font, fontSize: 20, fontWeight: '900', marginTop: 'auto' },
+  guideProductPrice: { color: palette.greenDark, fontFamily: font, fontSize: 20, fontWeight: '900', minWidth: 104, textAlign: 'right' },
 }));
