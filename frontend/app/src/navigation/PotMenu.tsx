@@ -228,8 +228,8 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
 
 const styles = StyleSheet.create(scaleTypography({
   pressed: { opacity: 0.76 },
-  controls: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  controlsCompact: { maxWidth: '100%' },
+  controls: { alignItems: 'center', flexDirection: 'row', gap: 10, marginRight: 20 },
+  controlsCompact: { marginRight: 0, maxWidth: '100%' },
   potSelector: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.34)', borderColor: palette.line, borderRadius: 13, borderWidth: 1, flexDirection: 'row', gap: 20, justifyContent: 'space-between', minHeight: 58, minWidth: 230, paddingHorizontal: 18 },
   potSelectorCopy: { flex: 1, gap: 1, minWidth: 0 },
   potSelectorCaption: { ...typeScale.caption, color: palette.muted, fontFamily: font },
