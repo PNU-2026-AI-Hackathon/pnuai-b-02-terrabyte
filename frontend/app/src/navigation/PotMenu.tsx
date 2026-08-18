@@ -231,7 +231,7 @@ const styles = StyleSheet.create(scaleTypography({
   controlsCompact: { marginRight: 0, maxWidth: '100%' },
   potSelector: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.34)', borderColor: palette.line, borderRadius: 13, borderWidth: 1, flexDirection: 'row', gap: 20, justifyContent: 'space-between', minHeight: 58, minWidth: 230, paddingHorizontal: 18 },
   potSelectorCopy: { flex: 1, gap: 1, minWidth: 0 },
-  potSelectorLabel: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontSize: 18, fontWeight: '500' },
+  potSelectorLabel: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontSize: 18, fontWeight: '700' },
   potSelectorChevron: { color: palette.secondary, fontFamily: font, fontSize: 24, fontWeight: '500', lineHeight: 23 },
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
   modalSurface: { maxHeight: '88%', maxWidth: 580, padding: 28, width: '100%' },

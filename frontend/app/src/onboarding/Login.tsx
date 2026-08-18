@@ -182,7 +182,7 @@ const styles = StyleSheet.create(scaleTypography({
   authTab: { alignItems: 'center', borderRadius: 6, flex: 1, paddingVertical: 9 },
   authTabActive: { backgroundColor: palette.panel, shadowColor: '#203329', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6 },
   authTabText: { ...typeScale.label, color: palette.muted, fontFamily: font },
-  authTabTextActive: { color: palette.greenDark, fontWeight: '500' },
+  authTabTextActive: { color: palette.greenDark, fontWeight: '700' },
   loginPanelTitle: { ...typeScale.sectionTitle, color: palette.text, fontFamily: font },
   loginPanelDescription: { ...typeScale.body, color: palette.secondary, fontFamily: font },
   authError: { ...typeScale.label, color: palette.red, fontFamily: font },

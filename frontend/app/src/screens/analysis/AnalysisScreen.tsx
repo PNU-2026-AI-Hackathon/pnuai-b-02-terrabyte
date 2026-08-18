@@ -328,7 +328,7 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
 
 const styles = StyleSheet.create(scaleTypography({
   pressed: { opacity: 0.78 },
-  authError: { color: palette.red, fontFamily: font, fontSize: 14, fontWeight: '500', lineHeight: 21 },
+  authError: { color: palette.red, fontFamily: font, fontSize: 14, fontWeight: '700', lineHeight: 21 },
   pageBody: { gap: 30, maxWidth: 1320, width: '100%' },
   stack: { flexDirection: 'column' },
   formulaLink: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 10, paddingVertical: 10 },
@@ -360,7 +360,7 @@ const styles = StyleSheet.create(scaleTypography({
   reportSummaryKickerGood: { color: palette.greenDark },
   reportSummaryKickerWarn: { color: palette.amber },
   reportScoreValueBlock: { gap: 4 },
-  reportAssessment: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font, fontWeight: '500' },
+  reportAssessment: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font, fontWeight: '700' },
   reportSummaryTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   reportSummaryBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
   reportSummaryFormula: { alignSelf: 'flex-start', marginTop: 'auto', paddingHorizontal: 0 },
@@ -376,7 +376,7 @@ const styles = StyleSheet.create(scaleTypography({
   reportFactorList: { gap: 0 },
   reportFactorRow: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1, gap: 22, padding: 30 },
   reportFactorHeader: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between' },
-  reportFactorName: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '500' },
+  reportFactorName: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '700' },
   reportFactorValue: { ...typeScale.metric, color: palette.text, fontFamily: font, marginTop: 6 },
   reportStatus: { ...typeScale.label, backgroundColor: palette.greenSoft, borderRadius: 999, color: palette.greenDark, fontFamily: font, overflow: 'hidden', paddingHorizontal: 13, paddingVertical: 8 },
   reportStatusWarn: { backgroundColor: palette.amberSoft, color: palette.amber },

@@ -52,7 +52,7 @@ const styles = StyleSheet.create(scaleTypography({
     color: colors.textSecondary,
     fontFamily: typography.fontFamily,
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: '700',
   },
   activeText: {
     color: '#fff',

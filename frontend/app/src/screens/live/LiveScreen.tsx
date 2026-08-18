@@ -99,7 +99,7 @@ const styles = StyleSheet.create(scaleTypography({
   stack: { flexDirection: 'column' },
   liveCard: { flexBasis: '47%', flexGrow: 1, gap: 14, minWidth: 280, padding: 34 },
   liveCardHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
-  liveLabel: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '500' },
+  liveLabel: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '700' },
   liveRange: { ...typeScale.caption, color: palette.muted, fontFamily: font, textAlign: 'right' },
   liveValue: { ...typeScale.metric, color: palette.text, fontFamily: font },
   liveCaption: { ...typeScale.body, color: palette.muted, fontFamily: font },
