@@ -102,20 +102,6 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
           </View>
           <Text style={styles.potSelectorChevron}>⌄</Text>
         </Pressable>
-        <Pressable
-          accessibilityLabel="화분 관리"
-          accessibilityRole="button"
-          onPress={openMenu}
-          style={({ pressed }) => [styles.potIconButton, pressed && styles.pressed]}
-        >
-          <View style={styles.potGlyph}>
-            <View style={styles.potStem} />
-            <View style={styles.potLeafLeft} />
-            <View style={styles.potLeafRight} />
-            <View style={styles.potRim} />
-            <View style={styles.potBody} />
-          </View>
-        </Pressable>
       </View>
 
       <Modal animationType="fade" onRequestClose={closeMenu} transparent visible={open}>
@@ -242,18 +228,11 @@ const styles = StyleSheet.create(scaleTypography({
   pressed: { opacity: 0.76 },
   controls: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   controlsCompact: { maxWidth: '100%' },
-  potSelector: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.34)', borderColor: palette.line, borderRadius: 11, borderWidth: 1, flexDirection: 'row', gap: 16, justifyContent: 'space-between', minHeight: 46, minWidth: 168, paddingHorizontal: 13 },
+  potSelector: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.34)', borderColor: palette.line, borderRadius: 13, borderWidth: 1, flexDirection: 'row', gap: 20, justifyContent: 'space-between', minHeight: 58, minWidth: 230, paddingHorizontal: 18 },
   potSelectorCopy: { flex: 1, gap: 1, minWidth: 0 },
-  potSelectorCaption: { color: palette.muted, fontFamily: font, fontSize: 10, fontWeight: '800' },
-  potSelectorLabel: { color: palette.text, fontFamily: font, fontSize: 14, fontWeight: '900' },
-  potSelectorChevron: { color: palette.secondary, fontFamily: font, fontSize: 20, fontWeight: '900', lineHeight: 19 },
-  potIconButton: { alignItems: 'center', height: 46, justifyContent: 'center', width: 40 },
-  potGlyph: { height: 27, position: 'relative', width: 27 },
-  potStem: { backgroundColor: palette.text, height: 10, left: 12, position: 'absolute', top: 3, width: 2 },
-  potLeafLeft: { backgroundColor: 'transparent', borderColor: palette.text, borderRadius: 8, borderWidth: 1.8, height: 9, left: 5, position: 'absolute', top: 1, transform: [{ rotate: '-30deg' }], width: 9 },
-  potLeafRight: { backgroundColor: 'transparent', borderColor: palette.text, borderRadius: 8, borderWidth: 1.8, height: 9, left: 14, position: 'absolute', top: 1, transform: [{ rotate: '30deg' }], width: 9 },
-  potRim: { backgroundColor: 'transparent', borderColor: palette.text, borderRadius: 2, borderWidth: 2, height: 4, left: 5, position: 'absolute', top: 13, width: 17 },
-  potBody: { backgroundColor: 'transparent', borderBottomColor: palette.text, borderBottomWidth: 2, borderLeftColor: palette.text, borderLeftWidth: 2, borderRightColor: palette.text, borderRightWidth: 2, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, height: 9, left: 7, position: 'absolute', top: 16, transform: [{ skewX: '-8deg' }], width: 13 },
+  potSelectorCaption: { color: palette.muted, fontFamily: font, fontSize: 11, fontWeight: '800' },
+  potSelectorLabel: { color: palette.text, fontFamily: font, fontSize: 16, fontWeight: '900' },
+  potSelectorChevron: { color: palette.secondary, fontFamily: font, fontSize: 24, fontWeight: '900', lineHeight: 23 },
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
   modalSurface: { maxHeight: '88%', maxWidth: 580, padding: 28, width: '100%' },
   modalScrollContent: { gap: 20, paddingBottom: 2 },
