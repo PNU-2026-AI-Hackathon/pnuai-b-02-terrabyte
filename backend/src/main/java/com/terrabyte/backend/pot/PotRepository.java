@@ -114,6 +114,13 @@ public class PotRepository {
                 potId);
     }
 
+    public int updateLabel(long potId, String label) {
+        return jdbcTemplate.update(
+                "UPDATE pot SET label = ? WHERE id = ?",
+                label,
+                potId);
+    }
+
     private Optional<Pot> query(String suffix, Object... arguments) {
         return jdbcTemplate.query(SELECT_COLUMNS + suffix, this::mapPot, arguments).stream().findFirst();
     }

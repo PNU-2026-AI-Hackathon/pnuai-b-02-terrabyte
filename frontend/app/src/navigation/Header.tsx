@@ -5,6 +5,8 @@ import { font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
 import { Surface } from '../components/Surface';
+import type { PotResponse } from '../device/deviceApi';
+import { PotMenu } from './PotMenu';
 import type { Page } from './types';
 
 type EnvironmentAlert = {
@@ -44,7 +46,17 @@ const pageCopy: Record<Page, { title: string; description: string }> = {
   shop: { title: '제품 추가 구매', description: '필요한 센서·장비·흙과 배지를 추가로 구매하세요.' },
 };
 
-export function Header({ compact, page }: { compact: boolean; page: Page }) {
+type HeaderProps = {
+  compact: boolean;
+  page: Page;
+  pots: PotResponse[];
+  selectedPotId?: number;
+  onSelectPot: (potId: number) => void;
+  onCreatePot: (label: string, cropCode: string) => Promise<void>;
+  onUpdatePot: (potId: number, label: string, cropCode: string) => Promise<void>;
+};
+
+export function Header({ compact, onCreatePot, onSelectPot, onUpdatePot, page, pots, selectedPotId }: HeaderProps) {
   const copy = pageCopy[page];
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [alerts, setAlerts] = useState<EnvironmentAlert[]>(initialAlerts);
@@ -62,6 +74,14 @@ export function Header({ compact, page }: { compact: boolean; page: Page }) {
           <Text style={styles.pageDescription}>{copy.description}</Text>
         </View>
         <View style={[styles.headerActions, compact && styles.headerActionsCompact]}>
+          <PotMenu
+            compact={compact}
+            onCreatePot={onCreatePot}
+            onSelectPot={onSelectPot}
+            onUpdatePot={onUpdatePot}
+            pots={pots}
+            selectedPotId={selectedPotId}
+          />
           <Pressable
             accessibilityLabel={`알림${unreadAlertCount ? ` ${unreadAlertCount}건` : ''}`}
             accessibilityRole="button"
@@ -125,7 +145,7 @@ const styles = StyleSheet.create(scaleTypography({
   headerCopy: { flex: 1, gap: 8, maxWidth: 820 },
   pageTitle: { color: palette.text, fontFamily: font, fontSize: 35, fontWeight: '900', letterSpacing: -1, lineHeight: 43 },
   pageDescription: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 25 },
-  headerActions: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, marginLeft: 'auto', paddingTop: 2 },
+  headerActions: { alignItems: 'center', flexDirection: 'row', gap: 12, marginLeft: 'auto', paddingTop: 2 },
   headerActionsCompact: { alignSelf: 'flex-end', marginLeft: 0, paddingTop: 0 },
   headerAlertButton: { alignItems: 'center', height: 46, justifyContent: 'center', position: 'relative', width: 46 },
   headerAlertCount: { backgroundColor: palette.text, borderRadius: 999, color: '#ffffff', fontFamily: font, fontSize: 11, fontWeight: '900', minWidth: 18, overflow: 'hidden', paddingHorizontal: 4, paddingVertical: 2, position: 'absolute', right: 0, textAlign: 'center', top: 0 },

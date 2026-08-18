@@ -2,10 +2,13 @@ package com.terrabyte.backend.pot;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -27,5 +30,13 @@ public class PotController {
     @GetMapping("/{potId}")
     public PotResponse findOne(@AuthenticationPrincipal Jwt jwt, @PathVariable long potId) {
         return potService.findOne(Long.parseLong(jwt.getSubject()), potId);
+    }
+
+    @PatchMapping("/{potId}")
+    public PotResponse update(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable long potId,
+            @Valid @RequestBody UpdatePotRequest request) {
+        return potService.update(Long.parseLong(jwt.getSubject()), potId, request);
     }
 }

@@ -15,7 +15,6 @@ import { LiveScreen } from '../screens/live/LiveScreen';
 import { ShopScreen } from '../screens/shop/ShopScreen';
 import { DeviceEnvironmentProvider } from '../shared/device-environment/DeviceEnvironmentProvider';
 import { Header } from './Header';
-import { PotManager } from './PotManager';
 import { Sidebar } from './Sidebar';
 import type { AppTabParamList, Page } from './types';
 
@@ -39,20 +38,28 @@ const pageByRouteName: Record<keyof AppTabParamList, Page> = {
   Shop: 'shop',
 };
 
-function ScreenLayout({ children, compact, onCreatePot, onSelectPot, page, pots, selectedPotId }: {
+function ScreenLayout({ children, compact, onCreatePot, onSelectPot, onUpdatePot, page, pots, selectedPotId }: {
   children: ReactNode;
   compact: boolean;
   onCreatePot: (label: string, cropCode: string) => Promise<void>;
   onSelectPot: (potId: number) => void;
+  onUpdatePot: (potId: number, label: string, cropCode: string) => Promise<void>;
   page: Page;
   pots: PotResponse[];
   selectedPotId?: number;
 }) {
   return (
     <View style={styles.workspace}>
-      <Header compact={compact} page={page} />
+      <Header
+        compact={compact}
+        onCreatePot={onCreatePot}
+        onSelectPot={onSelectPot}
+        onUpdatePot={onUpdatePot}
+        page={page}
+        pots={pots}
+        selectedPotId={selectedPotId}
+      />
       <ScrollView contentContainerStyle={[styles.workspaceScroll, compact && styles.workspaceScrollCompact]}>
-        <PotManager compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} pots={pots} selectedPotId={selectedPotId} />
         {children}
       </ScrollView>
     </View>
@@ -66,6 +73,7 @@ type AppTabNavigatorProps = {
   onCreatePot: (label: string, cropCode: string) => Promise<void>;
   onSelectCrop: (cropCode: string) => Promise<void>;
   onSelectPot: (potId: number) => void;
+  onUpdatePot: (potId: number, label: string, cropCode: string) => Promise<void>;
   pots: PotResponse[];
   selectedCrop: number;
   selectedPotId?: number;
@@ -73,7 +81,7 @@ type AppTabNavigatorProps = {
 
 const appShellFill = { flex: 1 };
 
-export function AppTabNavigator({ compact, cropName, onCreatePot, onLogout, onSelectCrop, onSelectPot, pots, selectedCrop, selectedPotId }: AppTabNavigatorProps) {
+export function AppTabNavigator({ compact, cropName, onCreatePot, onLogout, onSelectCrop, onSelectPot, onUpdatePot, pots, selectedCrop, selectedPotId }: AppTabNavigatorProps) {
   const navigationRef = useNavigationContainerRef<AppTabParamList>();
   const [page, setPage] = useState<Page>('dashboard');
   const [sidebarHidden, setSidebarHidden] = useState(false);
@@ -106,42 +114,42 @@ export function AppTabNavigator({ compact, cropName, onCreatePot, onLogout, onSe
           <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
             <Tab.Screen name="Dashboard">
               {() => (
-                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="dashboard" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} onUpdatePot={onUpdatePot} page="dashboard" pots={pots} selectedPotId={selectedPotId}>
                   <DashboardScreen compact={compact} onNavigate={goToPage} selectedCrop={selectedCrop} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="Analysis">
               {() => (
-                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="analysis" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} onUpdatePot={onUpdatePot} page="analysis" pots={pots} selectedPotId={selectedPotId}>
                   <AnalysisScreen compact={compact} onNavigate={goToPage} onSelectCrop={onSelectCrop} selectedCrop={selectedCrop} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="Live">
               {() => (
-                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="live" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} onUpdatePot={onUpdatePot} page="live" pots={pots} selectedPotId={selectedPotId}>
                   <LiveScreen compact={compact} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="History">
               {() => (
-                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="history" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} onUpdatePot={onUpdatePot} page="history" pots={pots} selectedPotId={selectedPotId}>
                   <HistoryScreen compact={compact} onNavigate={goToPage} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="Guide">
               {() => (
-                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="guide" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} onUpdatePot={onUpdatePot} page="guide" pots={pots} selectedPotId={selectedPotId}>
                   <GuideScreen compact={compact} onNavigate={goToPage} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="Shop">
               {() => (
-                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="shop" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} onUpdatePot={onUpdatePot} page="shop" pots={pots} selectedPotId={selectedPotId}>
                   <ShopScreen compact={compact} />
                 </ScreenLayout>
               )}

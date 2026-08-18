@@ -38,6 +38,11 @@ export type CreatePotInput = {
   cropCode?: string;
 };
 
+export type UpdatePotInput = {
+  label: string;
+  cropCode?: string;
+};
+
 export async function registerDevice(input: RegisterDeviceInput) {
   return authenticatedRequest<DeviceResponse>('/api/devices', {
     method: 'POST',
@@ -52,6 +57,13 @@ export function getDevice(deviceId: number) {
 export function createPot(deviceId: number, input: CreatePotInput) {
   return authenticatedRequest<PotResponse>(`/api/devices/${deviceId}/pots`, {
     method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function updatePot(potId: number, input: UpdatePotInput) {
+  return authenticatedRequest<PotResponse>(`/api/pots/${potId}`, {
+    method: 'PATCH',
     body: JSON.stringify(input),
   });
 }

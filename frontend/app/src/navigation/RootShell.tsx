@@ -10,7 +10,7 @@ import { clearAccessToken, getMe, loadAccessToken, type MeResponse } from '../au
 import { BrandMark } from '../components/BrandMark';
 import { selectPotCrop } from '../crop/cropApi';
 import { crops } from '../data';
-import { createPot, getDevice, type DeviceResponse } from '../device/deviceApi';
+import { createPot, getDevice, type DeviceResponse, updatePot as updatePotRequest } from '../device/deviceApi';
 import { Login } from '../onboarding/Login';
 import { SetupFlow } from '../onboarding/SetupFlow';
 import { AppTabNavigator } from './AppTabNavigator';
@@ -64,6 +64,16 @@ export default function RootShell() {
     } : current);
     setSelectedPotId(nextPot.id);
     setSelectedCropCode(nextPot.cropCode ?? crops[0].code);
+  };
+
+  const updatePot = async (potId: number, label: string, cropCode: string) => {
+    const updated = await updatePotRequest(potId, { cropCode, label });
+    const nextPot = { ...updated, cropCode: updated.cropCode ?? cropCode };
+    setDevice((current) => current ? {
+      ...current,
+      pots: (current.pots ?? []).map((pot) => pot.id === potId ? nextPot : pot),
+    } : current);
+    if (potId === selectedPotId) setSelectedCropCode(nextPot.cropCode ?? crops[0].code);
   };
 
   const applyRegisteredDevice = (registered: DeviceResponse) => {
@@ -176,6 +186,7 @@ export default function RootShell() {
         cropName={(crops[selectedCrop] ?? crops[0]).name}
         onCreatePot={addPot}
         onSelectPot={setSelectedPotId}
+        onUpdatePot={updatePot}
         onLogout={() => {
           void clearAccessToken();
           setDeviceId(undefined);

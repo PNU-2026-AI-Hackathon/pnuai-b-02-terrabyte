@@ -17,6 +17,11 @@ export const Dashboard: Story = {
   args: {
     compact: false,
     page: 'dashboard',
+    onCreatePot: async () => undefined,
+    onSelectPot: () => undefined,
+    onUpdatePot: async () => undefined,
+    pots: [{ id: 1, deviceId: 1, label: '화분 1', cropCode: 'cherry_tomato', status: 'ONLINE' }],
+    selectedPotId: 1,
   },
 };
 
@@ -24,5 +29,10 @@ export const Shop: Story = {
   args: {
     compact: false,
     page: 'shop',
+    onCreatePot: async () => undefined,
+    onSelectPot: () => undefined,
+    onUpdatePot: async () => undefined,
+    pots: [{ id: 1, deviceId: 1, label: '화분 1', cropCode: 'cherry_tomato', status: 'ONLINE' }],
+    selectedPotId: 1,
   },
 };

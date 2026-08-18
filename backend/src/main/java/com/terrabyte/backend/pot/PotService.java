@@ -39,6 +39,25 @@ public class PotService {
     }
 
     @Transactional
+    public PotResponse update(long userId, long potId, UpdatePotRequest request) {
+        Pot pot = potRepository.findOwned(potId, userId)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "POT_NOT_FOUND", "화분을 찾을 수 없습니다."));
+
+        potRepository.updateLabel(pot.id(), request.label().trim());
+
+        if (request.cropCode() != null && !request.cropCode().isBlank()) {
+            String cropCode = request.cropCode().trim().toLowerCase(Locale.ROOT);
+            Crop crop = cropRepository.findActiveByCode(cropCode)
+                    .orElseThrow(() -> new ApiException(
+                            HttpStatus.NOT_FOUND, "CROP_NOT_FOUND", "선택할 수 있는 작물을 찾을 수 없습니다."));
+            potRepository.selectCrop(pot.id(), crop.code(), Instant.now());
+        }
+
+        return findOne(userId, pot.id());
+    }
+
+    @Transactional
     public PotResponse create(long userId, long deviceId, CreatePotRequest request) {
         deviceRepository.findByIdAndUserId(deviceId, userId)
                 .orElseThrow(() -> new ApiException(
