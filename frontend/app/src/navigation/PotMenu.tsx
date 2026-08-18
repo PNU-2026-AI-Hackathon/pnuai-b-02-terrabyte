@@ -99,7 +99,6 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
           style={({ pressed }) => [styles.potSelector, pressed && styles.pressed]}
         >
           <View style={styles.potSelectorCopy}>
-            <Text style={styles.potSelectorCaption}>기준 화분</Text>
             <Text numberOfLines={1} style={styles.potSelectorLabel}>{selectedPot?.label ?? '화분 선택'}</Text>
           </View>
           <Text style={styles.potSelectorChevron}>⌄</Text>
@@ -232,7 +231,6 @@ const styles = StyleSheet.create(scaleTypography({
   controlsCompact: { marginRight: 0, maxWidth: '100%' },
   potSelector: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.34)', borderColor: palette.line, borderRadius: 13, borderWidth: 1, flexDirection: 'row', gap: 20, justifyContent: 'space-between', minHeight: 58, minWidth: 230, paddingHorizontal: 18 },
   potSelectorCopy: { flex: 1, gap: 1, minWidth: 0 },
-  potSelectorCaption: { ...typeScale.caption, color: palette.muted, fontFamily: font },
   potSelectorLabel: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '500' },
   potSelectorChevron: { color: palette.secondary, fontFamily: font, fontSize: 24, fontWeight: '500', lineHeight: 23 },
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
