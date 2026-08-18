@@ -78,46 +78,49 @@ export function DashboardScreen({
 
   return (
     <View style={styles.pageBody}>
-      <Surface style={styles.spaceIdentityPanel}>
-        <View style={[styles.spaceIdentityTop, compact && styles.stack]}>
-          <View style={styles.spaceIdentityCopy}>
-            <Text style={styles.reportLabel}>REGISTERED SPACE</Text>
-            <Text style={styles.spaceIdentityTitle}>부산 도심 옥상 A</Text>
-            <Text style={styles.spaceIdentityMeta}>옥상 · 42m² · 남동향 · 공간분석 세트 1대 · 토양분석 세트 1대</Text>
+      <Surface flat style={styles.dashboardIdentityPanel}>
+        <View style={styles.dashboardIdentitySection}>
+          <View style={[styles.spaceIdentityTop, compact && styles.stack]}>
+            <View style={styles.spaceIdentityCopy}>
+              <Text style={styles.spaceIdentityTitle}>부산 도심 옥상 A</Text>
+              <Text style={styles.spaceIdentityMeta}>옥상 · 42m² · 남동향 · 공간분석 세트 1대 · 토양분석 세트 1대</Text>
+            </View>
+            <View style={styles.spaceOperatingBadge}><View style={styles.onlineDot} /><Text style={styles.spaceOperatingText}>재배환경 모니터링 중</Text></View>
           </View>
-          <View style={styles.spaceOperatingBadge}><View style={styles.onlineDot} /><Text style={styles.spaceOperatingText}>재배환경 모니터링 중</Text></View>
-        </View>
-        <View style={[styles.serviceFlow, compact && styles.stack]}>
-          <View style={styles.serviceFlowStep}><Text style={styles.serviceFlowNumber}>01</Text><Text style={styles.serviceFlowLabel}>공간 등록</Text><Text style={styles.serviceFlowState}>완료</Text></View>
-          <View style={styles.serviceFlowLine} />
-          <View style={styles.serviceFlowStep}><Text style={styles.serviceFlowNumber}>02</Text><Text style={styles.serviceFlowLabel}>공간 진단</Text><Text style={styles.serviceFlowState}>완료</Text></View>
-          <View style={styles.serviceFlowLine} />
-          <View style={styles.serviceFlowStepActive}><Text style={styles.serviceFlowNumberActive}>03</Text><Text style={styles.serviceFlowLabel}>환경 모니터링</Text><Text style={styles.serviceFlowStateActive}>운영 중</Text></View>
+          <View style={[styles.serviceFlow, compact && styles.stack]}>
+            <View style={[styles.serviceFlowStep, compact && styles.serviceFlowStepCompact]}><Text style={styles.serviceFlowNumber}>01</Text><Text style={styles.serviceFlowLabel}>공간 등록</Text><Text style={styles.serviceFlowState}>완료</Text></View>
+            <View style={[styles.serviceFlowLine, compact && styles.serviceFlowLineCompact]} />
+            <View style={[styles.serviceFlowStep, compact && styles.serviceFlowStepCompact]}><Text style={styles.serviceFlowNumber}>02</Text><Text style={styles.serviceFlowLabel}>공간 진단</Text><Text style={styles.serviceFlowState}>완료</Text></View>
+            <View style={[styles.serviceFlowLine, compact && styles.serviceFlowLineCompact]} />
+            <View style={[styles.serviceFlowStepActive, compact && styles.serviceFlowStepCompact]}><Text style={styles.serviceFlowNumberActive}>03</Text><Text style={styles.serviceFlowLabel}>환경 모니터링</Text><Text style={styles.serviceFlowStateActive}>운영 중</Text></View>
+          </View>
         </View>
       </Surface>
 
-      <Surface style={[styles.scoreHero, compact && styles.scoreHeroCompact]}>
-        <View style={styles.scoreHeroCopy}>
-          <Text style={styles.scoreHeroEyebrow}>스마트팜 전환 적합도</Text>
-          <View style={styles.scoreHeroValueRow}>
-            <Text style={styles.scoreHeroValue}>{scoreData?.total ?? '--'}</Text>
-            <Text style={styles.scoreHeroUnit}>/ 100</Text>
+      <Surface flat style={styles.scoreHeroPanel}>
+        <View style={[styles.scoreHero, compact && styles.scoreHeroCompact]}>
+          <View style={styles.scoreHeroCopy}>
+            <Text style={styles.scoreHeroEyebrow}>스마트팜 전환 적합도</Text>
+            <View style={styles.scoreHeroValueRow}>
+              <Text style={styles.scoreHeroValue}>{scoreData?.total ?? '--'}</Text>
+              <Text style={styles.scoreHeroUnit}>/ 100</Text>
+            </View>
+            <Text style={styles.scoreHeroGrade}>{gradeText} · {scoreData?.cropName ?? currentCrop.name} 재배 기준</Text>
           </View>
-          <Text style={styles.scoreHeroGrade}>{gradeText} · {scoreData?.cropName ?? currentCrop.name} 재배 기준</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={formulaDisclosure.show}
+            style={({ pressed }) => [styles.formulaLink, styles.formulaLinkTop, pressed && styles.pressed]}
+          >
+            <Text style={styles.formulaLinkText}>적합도 계산식</Text>
+            <Text style={styles.formulaLinkArrow}>→</Text>
+          </Pressable>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          onPress={formulaDisclosure.show}
-          style={({ pressed }) => [styles.formulaLink, styles.formulaLinkTop, pressed && styles.pressed]}
-        >
-          <Text style={styles.formulaLinkText}>적합도 계산식</Text>
-          <Text style={styles.formulaLinkArrow}>→</Text>
-        </Pressable>
       </Surface>
 
       <SuitabilityFormulaModal onClose={formulaDisclosure.hide} scoreData={scoreData} visible={formulaDisclosure.open} />
 
-      <Surface style={styles.dashboardAlertPanel}>
+      <Surface flat style={styles.dashboardAlertPanel}>
         <View style={[styles.dashboardAlertHeader, compact && styles.stack]}>
           <View style={styles.dashboardAlertCopy}>
             <Text style={styles.dashboardAlertEyebrow}>현재 확인이 필요한 항목</Text>
@@ -137,7 +140,7 @@ export function DashboardScreen({
       </Surface>
 
       <View style={[styles.metricChartGrid, compact && styles.stack]}>
-        <Surface style={[styles.metricsColumn, compact && styles.fullWidth]}>
+        <Surface flat style={[styles.metricsColumn, compact && styles.fullWidth]}>
           {stats.map((item, index) => (
             <View key={item.label} style={[styles.statCardVertical, index < stats.length - 1 && styles.statCardDivider]}>
               <View>
@@ -148,7 +151,7 @@ export function DashboardScreen({
             </View>
           ))}
         </Surface>
-        <Surface style={styles.chartPanel}>
+        <Surface flat style={styles.chartPanel}>
           <SectionHeader
             action={(
               <View style={styles.rangeControl}>
@@ -174,7 +177,7 @@ export function DashboardScreen({
         </Surface>
       </View>
 
-      <Surface style={styles.soilTemperaturePanel}>
+      <Surface flat style={styles.soilTemperaturePanel}>
         <SectionHeader
           action={(
             <View style={styles.soilTemperatureCurrent}>
@@ -207,7 +210,7 @@ export function DashboardScreen({
       </Surface>
 
       <View style={[styles.dashboardBottomGrid, compact && styles.stack]}>
-        <Surface style={styles.tablePanel}>
+        <Surface flat style={styles.tablePanel}>
           <SectionHeader title="환경 상태" description="현재 측정값과 작물별 권장 범위 비교" />
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, styles.tableName]}>항목</Text>
@@ -229,7 +232,7 @@ export function DashboardScreen({
           ))}
         </Surface>
 
-        <Surface style={[styles.deviceStatusPanel, compact && styles.fullWidth]}>
+        <Surface flat style={[styles.deviceStatusPanel, compact && styles.fullWidth]}>
           <SectionHeader title="하드웨어 키트" description="공간분석 세트 + 토양분석 세트" />
           <SensorSummary sensors={sensors} statusLabel="정상 수신" />
         </Surface>
@@ -244,17 +247,21 @@ const styles = StyleSheet.create(scaleTypography({
   pageBody: { gap: 30, maxWidth: 1320, width: '100%' },
   stack: { flexDirection: 'column' },
   fullWidth: { flexBasis: 'auto', width: '100%' },
-  spaceIdentityPanel: { gap: 28, padding: 36 },
+  dashboardIdentityPanel: { overflow: 'hidden', padding: 0 },
+  scoreHeroPanel: { overflow: 'hidden' },
+  dashboardIdentitySection: { gap: 28, padding: 36 },
   spaceIdentityTop: { alignItems: 'flex-start', flexDirection: 'row', gap: 32, justifyContent: 'space-between' },
   spaceIdentityCopy: { flex: 1, gap: 7 },
   spaceIdentityTitle: { color: palette.text, fontFamily: font, fontSize: 25, fontWeight: '900', letterSpacing: -0.6 },
   spaceIdentityMeta: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 25, maxWidth: 820 },
   spaceOperatingBadge: { alignItems: 'center', backgroundColor: palette.greenSoft, borderColor: '#c9dfd1', borderRadius: 999, borderWidth: 1, flexDirection: 'row', gap: 8, paddingHorizontal: 15, paddingVertical: 9 },
   spaceOperatingText: { color: palette.greenDark, fontFamily: font, fontSize: 15, fontWeight: '900' },
-  serviceFlow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  serviceFlowStep: { backgroundColor: palette.panelMuted, borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, flex: 1, gap: 4, padding: 18 },
-  serviceFlowStepActive: { backgroundColor: palette.greenSoft, borderColor: '#b8d7c3', borderRadius: 12, borderWidth: 1, flex: 1, gap: 4, padding: 18 },
-  serviceFlowLine: { backgroundColor: '#b8d7c3', height: 1, width: 30 },
+  serviceFlow: { alignItems: 'stretch', flexDirection: 'row', gap: 0, overflow: 'hidden', padding: 0 },
+  serviceFlowStep: { flex: 1, gap: 4, padding: 18 },
+  serviceFlowStepCompact: { flex: 0, width: '100%' },
+  serviceFlowStepActive: { borderLeftColor: palette.green, borderLeftWidth: 2, flex: 1, gap: 4, padding: 18 },
+  serviceFlowLine: { alignSelf: 'center', backgroundColor: '#b8d7c3', height: 1, width: 30 },
+  serviceFlowLineCompact: { height: 30, width: 1 },
   serviceFlowNumber: { color: palette.muted, fontFamily: font, fontSize: 14, fontWeight: '900' },
   serviceFlowNumberActive: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '900' },
   serviceFlowLabel: { color: palette.text, fontFamily: font, fontSize: 17, fontWeight: '900' },
@@ -272,13 +279,13 @@ const styles = StyleSheet.create(scaleTypography({
   formulaLinkTop: { position: 'absolute', right: 28, top: 22 },
   formulaLinkText: { color: palette.greenDark, fontFamily: font, fontSize: 16, fontWeight: '500' },
   formulaLinkArrow: { color: palette.green, fontFamily: font, fontSize: 20, fontWeight: '500' },
-  dashboardAlertPanel: { backgroundColor: 'rgba(251,241,223,0.70)', borderColor: 'rgba(201,139,47,0.24)', gap: 24, padding: 30 },
+  dashboardAlertPanel: { borderTopColor: '#ead8b9', borderTopWidth: 1, gap: 24, padding: 30 },
   dashboardAlertHeader: { alignItems: 'center', flexDirection: 'row', gap: 24, justifyContent: 'space-between' },
   dashboardAlertCopy: { flex: 1, gap: 5 },
   dashboardAlertEyebrow: { color: '#8b5d1d', fontFamily: font, fontSize: 15, fontWeight: '900' },
   dashboardAlertTitle: { color: palette.text, fontFamily: font, fontSize: 26, fontWeight: '900' },
-  dashboardAlertRows: { flexDirection: 'row', gap: 14 },
-  dashboardAlertItem: { backgroundColor: 'rgba(255,255,255,0.46)', borderColor: 'rgba(201,139,47,0.18)', borderRadius: 12, borderWidth: 1, flex: 1, gap: 5, padding: 18 },
+  dashboardAlertRows: { flexDirection: 'row', gap: 0 },
+  dashboardAlertItem: { borderRightColor: 'rgba(201,139,47,0.24)', borderRightWidth: 1, flex: 1, gap: 5, padding: 18 },
   dashboardAlertItemLabel: { color: '#8b5d1d', fontFamily: font, fontSize: 15, fontWeight: '900' },
   dashboardAlertItemValue: { color: palette.text, fontFamily: font, fontSize: 30, fontWeight: '900' },
   dashboardAlertItemBody: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '500', lineHeight: 25 },
@@ -313,5 +320,4 @@ const styles = StyleSheet.create(scaleTypography({
   statusBadgeText: { color: palette.greenDark, fontFamily: font, fontSize: 15, fontWeight: '800' },
   statusBadgeTextWarn: { color: palette.amber },
   deviceStatusPanel: { flexBasis: 380, flexGrow: 0, gap: 26, padding: 32 },
-  reportLabel: { color: palette.greenDark, fontFamily: font, fontSize: 15, fontWeight: '900', letterSpacing: 1.2 },
 }));

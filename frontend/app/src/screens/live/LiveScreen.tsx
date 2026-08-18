@@ -49,7 +49,7 @@ export function LiveScreen({ compact }: { compact: boolean }) {
       </Pressable>
       <View style={[styles.liveGrid, compact && styles.stack]}>
         {liveMetrics.map((metric) => (
-          <Surface key={metric.label} style={styles.liveCard}>
+          <Surface flat key={metric.label} style={styles.liveCard}>
             <View style={styles.liveCardHeader}>
               <Text style={styles.liveLabel}>{metric.label}</Text>
               <Text style={styles.liveRange}>{metric.sub}</Text>
@@ -63,7 +63,7 @@ export function LiveScreen({ compact }: { compact: boolean }) {
             </View>
           </Surface>
         ))}
-        <Surface style={styles.liveCard}>
+        <Surface flat style={styles.liveCard}>
           <View style={styles.liveCardHeader}>
             <Text style={styles.liveLabel}>토양 온도</Text>
             <Text style={styles.liveRange}>최근 1시간</Text>
@@ -104,7 +104,6 @@ export function LiveScreen({ compact }: { compact: boolean }) {
           <Surface style={styles.infoModal}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
-                <Text style={styles.modalEyebrow}>DEVICE STATUS</Text>
                 <Text style={styles.modalTitle}>디바이스 상태</Text>
               </View>
               <Pressable onPress={() => setDeviceOpen(false)} style={styles.modalClose}>
@@ -121,7 +120,7 @@ export function LiveScreen({ compact }: { compact: boolean }) {
 
 const styles = StyleSheet.create(scaleTypography({
   pageBody: { gap: 30, maxWidth: 1320, width: '100%' },
-  liveToolbar: { alignItems: 'center', backgroundColor: palette.panel, borderColor: palette.line, borderRadius: 12, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
+  liveToolbar: { alignItems: 'center', borderBottomColor: palette.lineStrong, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0, paddingVertical: 15 },
   pressed: { opacity: 0.78 },
   deviceStatusRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
   onlineDot: { backgroundColor: '#3aad70', borderRadius: 999, height: 7, width: 7 },
@@ -143,7 +142,6 @@ const styles = StyleSheet.create(scaleTypography({
   infoModal: { gap: 22, maxHeight: '84%', maxWidth: 580, padding: 28, width: '100%' },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
   modalHeaderCopy: { flex: 1, gap: 5 },
-  modalEyebrow: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
   modalTitle: { color: palette.text, fontFamily: font, fontSize: 32, fontWeight: '900', letterSpacing: -0.8, lineHeight: 41 },
   modalClose: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 36, paddingHorizontal: 12 },
   modalCloseText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '800' },
