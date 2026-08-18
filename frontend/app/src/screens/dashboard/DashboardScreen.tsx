@@ -191,7 +191,7 @@ export function DashboardScreen({
             </View>
           ))}
         </Surface>
-        <Surface flat style={styles.chartPanel}>
+        <Surface flat style={[styles.chartPanel, compact && styles.chartPanelCompact]}>
           <SectionHeader
             action={(
               <View style={styles.rangeControl}>
@@ -341,19 +341,20 @@ const styles = StyleSheet.create(scaleTypography({
   dashboardAlertItemLabel: { ...typeScale.label, color: '#8b5d1d', fontFamily: font },
   dashboardAlertItemValue: { ...typeScale.metric, color: palette.text, fontFamily: font },
   dashboardAlertItemBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
-  metricChartGrid: { alignItems: 'stretch', flexDirection: 'row', gap: 24 },
+  metricChartGrid: { alignItems: 'flex-start', flexDirection: 'row', gap: 24 },
   metricsColumn: { overflow: 'hidden', paddingHorizontal: 30, width: 330 },
   statCardVertical: { gap: 12, justifyContent: 'center', minHeight: 142, paddingVertical: 24 },
   statCardDivider: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1 },
   statLabel: { ...typeScale.cardTitle, color: palette.secondary, fontFamily: font },
   statValue: { ...typeScale.metric, color: palette.text, fontFamily: font },
   statDetail: { ...typeScale.body, color: palette.muted, fontFamily: font },
-  chartPanel: { flex: 1, gap: 24, padding: 34 },
+  chartPanel: { alignSelf: 'flex-start', flex: 1, gap: 24, padding: 34 },
+  chartPanelCompact: { alignSelf: 'stretch', flex: 0, width: '100%' },
   chartStateText: { ...typeScale.body, color: palette.muted, paddingVertical: 28 },
   chartMetricFilter: { gap: 10 },
   chartMetricFilterLabel: { ...typeScale.label, color: palette.muted, fontFamily: font },
   chartMetricOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chartVisual: { marginTop: 14 },
+  chartVisual: { marginTop: 28 },
   chartMetricButton: { ...controlTokens.filter, paddingHorizontal: 13, paddingVertical: 7 },
   chartMetricButtonActive: { backgroundColor: palette.greenSoft, borderColor: '#aad2ba' },
   chartMetricButtonText: { ...typeScale.label, ...controlTextTokens.filter, fontFamily: font },
