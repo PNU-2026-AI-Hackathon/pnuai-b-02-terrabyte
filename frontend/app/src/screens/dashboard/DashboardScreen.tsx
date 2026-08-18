@@ -225,7 +225,7 @@ export function DashboardScreen({
               })}
             </View>
           </View>
-          <View style={styles.chartVisual}>
+          <View style={[styles.chartVisual, !compact && styles.chartVisualExpanded]}>
             {visibleChartSeries.length ? (
               <LineChart
                 axisLabels={selectedChartMetric === '토양 온도' && soilTemperatureSeries.points.length >= 2
@@ -316,7 +316,7 @@ const styles = StyleSheet.create(scaleTypography({
   serviceFlowLineCompact: { height: 30, width: 1 },
   serviceFlowNumber: { ...typeScale.caption, color: palette.muted, fontFamily: font, fontWeight: '600' },
   serviceFlowNumberActive: { ...typeScale.caption, color: palette.greenDark, fontFamily: font, fontWeight: '600' },
-  serviceFlowLabel: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '800' },
+  serviceFlowLabel: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '700' },
   serviceFlowState: { ...typeScale.label, color: palette.secondary, fontFamily: font },
   serviceFlowStateActive: { ...typeScale.label, color: palette.greenDark, fontFamily: font },
   scoreHero: { alignItems: 'center', flexDirection: 'row', gap: 44, justifyContent: 'space-between', padding: 38, position: 'relative' },
@@ -341,20 +341,21 @@ const styles = StyleSheet.create(scaleTypography({
   dashboardAlertItemLabel: { ...typeScale.label, color: '#8b5d1d', fontFamily: font },
   dashboardAlertItemValue: { ...typeScale.metric, color: palette.text, fontFamily: font },
   dashboardAlertItemBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
-  metricChartGrid: { alignItems: 'flex-start', flexDirection: 'row', gap: 24 },
+  metricChartGrid: { alignItems: 'stretch', flexDirection: 'row', gap: 24 },
   metricsColumn: { overflow: 'hidden', paddingHorizontal: 30, width: 330 },
   statCardVertical: { gap: 12, justifyContent: 'center', minHeight: 142, paddingVertical: 24 },
   statCardDivider: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1 },
   statLabel: { ...typeScale.cardTitle, color: palette.secondary, fontFamily: font, fontWeight: '700' },
   statValue: { ...typeScale.metric, color: palette.text, fontFamily: font },
   statDetail: { ...typeScale.body, color: palette.muted, fontFamily: font },
-  chartPanel: { alignSelf: 'flex-start', flex: 1, gap: 28, padding: 38 },
+  chartPanel: { alignSelf: 'stretch', flex: 1, gap: 28, padding: 38 },
   chartPanelCompact: { alignSelf: 'stretch', flex: 0, width: '100%' },
   chartStateText: { ...typeScale.body, color: palette.muted, paddingVertical: 28 },
   chartMetricFilter: { gap: 10 },
   chartMetricFilterLabel: { ...typeScale.label, color: palette.muted, fontFamily: font },
   chartMetricOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chartVisual: { marginTop: 36 },
+  chartVisualExpanded: { flex: 1, justifyContent: 'center' },
   chartMetricButton: { ...controlTokens.filter, paddingHorizontal: 13, paddingVertical: 7 },
   chartMetricButtonActive: { backgroundColor: palette.greenSoft, borderColor: '#aad2ba' },
   chartMetricButtonText: { ...typeScale.label, ...controlTextTokens.filter, fontFamily: font },
