@@ -220,17 +220,19 @@ export function DashboardScreen({
               })}
             </View>
           </View>
-          {visibleChartSeries.length ? (
-            <LineChart
-              axisLabels={selectedChartMetric === '토양 온도' && soilTemperatureSeries.points.length >= 2
-                ? makeAxisLabels(soilTemperatureSeries.points, chartRange)
-                : ['00:00', '06:00', '12:00', '18:00', '현재']}
-              height={180}
-              series={visibleChartSeries}
-            />
-          ) : (
-            <Text style={styles.chartStateText}>토양 온도 데이터를 불러오는 중이거나 아직 수집된 값이 없습니다.</Text>
-          )}
+          <View style={styles.chartVisual}>
+            {visibleChartSeries.length ? (
+              <LineChart
+                axisLabels={selectedChartMetric === '토양 온도' && soilTemperatureSeries.points.length >= 2
+                  ? makeAxisLabels(soilTemperatureSeries.points, chartRange)
+                  : ['00:00', '06:00', '12:00', '18:00', '현재']}
+                height={180}
+                series={visibleChartSeries}
+              />
+            ) : (
+              <Text style={styles.chartStateText}>토양 온도 데이터를 불러오는 중이거나 아직 수집된 값이 없습니다.</Text>
+            )}
+          </View>
         </Surface>
       </View>
 
@@ -336,6 +338,7 @@ const styles = StyleSheet.create(scaleTypography({
   chartMetricFilter: { gap: 10 },
   chartMetricFilterLabel: { color: palette.muted, fontFamily: font, fontSize: 14, fontWeight: '800' },
   chartMetricOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chartVisual: { marginTop: 14 },
   chartMetricButton: { borderColor: palette.lineStrong, borderRadius: 999, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 7 },
   chartMetricButtonActive: { backgroundColor: palette.greenSoft, borderColor: '#aad2ba' },
   chartMetricButtonText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '700' },
