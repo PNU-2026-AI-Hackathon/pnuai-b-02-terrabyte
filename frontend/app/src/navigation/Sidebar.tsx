@@ -74,20 +74,22 @@ export function Sidebar({ compact, cropName, onHide, onLogout, onNavigate, page 
       </View>
 
       <View style={styles.sidebarBottom}>
-        <Pressable accessibilityRole="button" onPress={() => setFarmInfoOpen(true)} style={({ pressed }) => [styles.devicePanel, pressed && styles.pressed]}>
+        <View style={styles.devicePanel}>
           <View style={styles.deviceStatusRow}>
             <View style={styles.onlineDot} />
             <Text style={styles.deviceStatus}>정상 연결</Text>
           </View>
           <Text style={styles.deviceTitle}>내 스마트팜</Text>
           <Text style={styles.deviceDetail}>마지막 수신 방금 전</Text>
-          <Text style={styles.devicePanelAction}>스마트팜 정보 보기</Text>
+        </View>
+        <Pressable accessibilityRole="button" onPress={() => setFarmInfoOpen(true)} style={({ pressed }) => [styles.sidebarActionButton, pressed && styles.pressed]}>
+          <Text style={styles.sidebarActionText}>스마트팜 정보 보기</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => setDeviceStatusOpen(true)} style={({ pressed }) => [styles.deviceStatusButton, pressed && styles.pressed]}>
-          <Text style={styles.deviceStatusButtonText}>디바이스 상태 보기</Text>
+        <Pressable accessibilityRole="button" onPress={() => setDeviceStatusOpen(true)} style={({ pressed }) => [styles.sidebarActionButton, pressed && styles.pressed]}>
+          <Text style={styles.sidebarActionText}>디바이스 상태 보기</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={onLogout} style={styles.logoutButton}>
-          <Text style={styles.logoutText}>로그아웃</Text>
+        <Pressable accessibilityRole="button" onPress={onLogout} style={({ pressed }) => [styles.sidebarActionButton, pressed && styles.pressed]}>
+          <Text style={styles.sidebarActionTextMuted}>로그아웃</Text>
         </Pressable>
       </View>
     </View>
@@ -158,11 +160,9 @@ const styles = StyleSheet.create(scaleTypography({
   deviceStatus: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '700' },
   deviceTitle: { color: palette.text, fontFamily: font, fontSize: 19, fontWeight: '800', marginTop: 12 },
   deviceDetail: { color: palette.muted, fontFamily: font, fontSize: 14, marginTop: 5 },
-  devicePanelAction: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800', marginTop: 16 },
-  deviceStatusButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, paddingVertical: 11 },
-  deviceStatusButtonText: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800' },
-  logoutButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, paddingVertical: 10 },
-  logoutText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '700' },
+  sidebarActionButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, minHeight: 46, justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 10 },
+  sidebarActionText: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800' },
+  sidebarActionTextMuted: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '700' },
   mobileNav: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.48)', borderBottomColor: palette.line, borderBottomWidth: 1, flexDirection: 'row', gap: 20, minHeight: 68, paddingHorizontal: 22, zIndex: 2 },
   mobileBrandName: { color: palette.text, fontFamily: font, fontSize: 18, fontWeight: '900' },
   mobileNavItems: { alignItems: 'center', gap: 18 },
