@@ -175,7 +175,7 @@ const styles = StyleSheet.create(scaleTypography({
   alertSeverityWarning: { backgroundColor: 'rgba(196,94,85,0.14)', borderColor: 'rgba(196,94,85,0.32)', color: palette.red },
   alertSeverityCheck: { backgroundColor: palette.amberSoft, borderColor: 'rgba(201,139,47,0.32)', color: palette.amber },
   alertTime: { ...typeScale.caption, color: palette.muted, fontFamily: font },
-  alertTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
+  alertTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '800' },
   alertBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
   emptyAlerts: { ...typeScale.body, color: palette.muted, paddingVertical: 30, textAlign: 'center' },
   alertPolicy: { ...typeScale.caption, color: palette.muted, fontFamily: font },
