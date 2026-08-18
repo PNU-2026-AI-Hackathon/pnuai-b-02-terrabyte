@@ -154,7 +154,7 @@ const styles = StyleSheet.create(scaleTypography({
   navItemActive: { backgroundColor: palette.greenSoft, borderLeftColor: palette.green },
   navItemText: { ...typeScale.bodyStrong, color: palette.secondary, fontFamily: font },
   navItemTextActive: { color: palette.greenDark, fontWeight: '800' },
-  sidebarBottom: { gap: 14, marginTop: 'auto' },
+  sidebarBottom: { gap: 10, marginTop: 'auto', paddingTop: 26 },
   devicePanel: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 10, borderWidth: 1, padding: 14 },
   deviceStatusRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
   onlineDot: { backgroundColor: '#3aad70', borderRadius: 999, height: 7, width: 7 },
