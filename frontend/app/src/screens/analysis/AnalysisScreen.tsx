@@ -115,7 +115,7 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
             <Text style={styles.reportTitle}>부산 도심 옥상 A 공간 진단 보고서</Text>
           </View>
         </View>
-        <View style={styles.reportSummaryGrid}>
+        <View style={[styles.reportSummaryGrid, compact && styles.reportSummaryGridCompact]}>
           <View style={[styles.reportSummaryRow, compact && styles.reportSummaryRowCompact, styles.reportSummaryDivider]}>
             <View style={styles.reportSummaryLabelColumn}>
               <Text style={styles.reportSummaryLabel}>종합 적합도</Text>
@@ -148,8 +148,8 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
             <View style={[styles.reportSummaryContent, styles.reportPriorityList]}>
               {issueFactors.length ? issueFactors.map((factor, index) => (
                 <Text key={factor.key} style={styles.reportPriority}>{index + 1}. {factor.label} {factor.status === 'LOW' ? '보완' : '완화'}</Text>
-              )) : <Text style={styles.reportPriority}>현재 환경 설정 유지</Text>}
-              <Text style={styles.reportPriority}>{issueFactors.length + 1}. 토양수분 모니터링</Text>
+              )) : <Text style={styles.reportPriority}>1. 현재 환경 설정 유지</Text>}
+              <Text style={styles.reportPriority}>{issueFactors.length ? issueFactors.length + 1 : 2}. 토양수분 모니터링</Text>
             </View>
           </View>
         </View>
@@ -192,7 +192,7 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
       <Surface flat style={styles.reportSection}>
         <View style={styles.reportSectionHeading}>
           <Text style={styles.reportSectionNumber}>02</Text>
-          <SectionHeader title="우선순위 개선 계획" description="효과와 실행 난이도를 기준으로 바로 적용할 작업부터 배치했습니다." />
+          <SectionHeader title="추천 개선 방안" description="현재 환경에서 바로 적용할 수 있는 개선 방법을 우선순위별로 정리했습니다." />
         </View>
         <View style={styles.reportPlanList}>
           {[
@@ -325,13 +325,14 @@ const styles = StyleSheet.create(scaleTypography({
   reportCoverTop: { alignItems: 'flex-start', flexDirection: 'row', gap: 42, justifyContent: 'space-between' },
   reportCoverCopy: { flex: 1, gap: 10 },
   reportTitle: { color: palette.text, fontFamily: font, fontSize: 34, fontWeight: '900', letterSpacing: -0.9, lineHeight: 44 },
-  reportSummaryGrid: { alignItems: 'stretch', flexDirection: 'column', gap: 0, overflow: 'hidden', padding: 0 },
-  reportSummaryRow: { alignItems: 'flex-start', flexDirection: 'column', gap: 12, padding: 24, paddingHorizontal: 26 },
-  reportSummaryRowCompact: { flexDirection: 'column', gap: 12 },
+  reportSummaryGrid: { alignItems: 'stretch', flexDirection: 'row', gap: 0, overflow: 'hidden', padding: 0 },
+  reportSummaryGridCompact: { flexDirection: 'column' },
+  reportSummaryRow: { alignItems: 'flex-start', flex: 1, flexDirection: 'column', gap: 16, minHeight: 220, padding: 24, paddingHorizontal: 26 },
+  reportSummaryRowCompact: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1, borderRightWidth: 0, flex: 0, minHeight: 0 },
   reportSummaryLabelColumn: { borderLeftColor: '#b8d7c3', borderLeftWidth: 2, flexBasis: 'auto', flexGrow: 0, flexShrink: 0, paddingLeft: 12 },
-  reportSummaryContent: { flex: 0, gap: 8, minWidth: 0, width: '100%' },
+  reportSummaryContent: { flex: 1, gap: 8, minWidth: 0, width: '100%' },
   reportPriorityList: { gap: 8 },
-  reportSummaryDivider: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1 },
+  reportSummaryDivider: { borderRightColor: palette.lineStrong, borderRightWidth: 1 },
   reportSummaryLabel: { color: palette.muted, fontFamily: font, fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
   reportAssessment: { color: palette.greenDark, fontFamily: font, fontSize: 18, fontWeight: '900' },
   reportSummaryTitle: { color: palette.text, fontFamily: font, fontSize: 21, fontWeight: '900', lineHeight: 29 },
