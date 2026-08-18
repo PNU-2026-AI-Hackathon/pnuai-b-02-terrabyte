@@ -149,7 +149,7 @@ const styles = StyleSheet.create(scaleTypography({
   headerActions: { alignItems: 'center', flexDirection: 'row', gap: 12, marginLeft: 'auto', paddingTop: 2 },
   headerActionsCompact: { alignSelf: 'flex-end', marginLeft: 0, paddingTop: 0 },
   headerAlertButton: { alignItems: 'center', height: 46, justifyContent: 'center', position: 'relative', width: 46 },
-  headerAlertCount: { ...typeScale.caption, backgroundColor: palette.text, borderRadius: 999, color: '#ffffff', fontFamily: font, minWidth: 18, overflow: 'hidden', paddingHorizontal: 4, paddingVertical: 2, position: 'absolute', right: 0, textAlign: 'center', top: 0 },
+  headerAlertCount: { ...typeScale.caption, backgroundColor: palette.text, borderRadius: 999, color: '#ffffff', fontFamily: font, fontWeight: '700', minWidth: 18, overflow: 'hidden', paddingHorizontal: 4, paddingVertical: 2, position: 'absolute', right: 0, textAlign: 'center', top: 0 },
   bellIcon: { height: 23, position: 'relative', width: 23 },
   bellBody: { backgroundColor: 'transparent', borderColor: palette.text, borderTopLeftRadius: 9, borderTopRightRadius: 9, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, borderWidth: 2, height: 14, left: 4, position: 'absolute', top: 2, width: 15 },
   bellBase: { backgroundColor: palette.text, borderRadius: 999, height: 2, left: 2, position: 'absolute', top: 16, width: 19 },

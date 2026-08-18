@@ -151,7 +151,7 @@ const styles = StyleSheet.create(scaleTypography({
   guideTaskRowCompleted: { backgroundColor: 'rgba(228,241,233,0.42)' },
   guideTaskRowPressed: { opacity: 0.78 },
   guideTaskNumber: { alignItems: 'center', backgroundColor: palette.greenSoft, borderRadius: 10, height: 46, justifyContent: 'center', width: 46 },
-  guideTaskNumberText: { ...typeScale.label, color: palette.greenDark, fontFamily: font },
+  guideTaskNumberText: { ...typeScale.label, color: palette.greenDark, fontFamily: font, fontWeight: '700' },
   guideTaskCopy: { flex: 1, gap: 8, maxWidth: 850 },
   guideTaskPriority: { ...typeScale.label, color: palette.amber, fontFamily: font },
   guideTaskTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },

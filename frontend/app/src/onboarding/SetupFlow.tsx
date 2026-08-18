@@ -450,7 +450,7 @@ const styles = StyleSheet.create(scaleTypography({
   selectOption: { borderBottomColor: palette.line, borderBottomWidth: 1, paddingHorizontal: 16, paddingVertical: 13 },
   selectOptionSelected: { backgroundColor: palette.greenSoft },
   selectOptionText: { ...typeScale.bodyStrong, color: palette.secondary, fontFamily: font },
-  selectOptionTextSelected: { color: palette.greenDark, fontWeight: '900' },
+  selectOptionTextSelected: { color: palette.greenDark, fontWeight: '500' },
   areaInputRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
   areaValueInput: { flex: 1 },
   areaUnitSelect: { width: 110 },
