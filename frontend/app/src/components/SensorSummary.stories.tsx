@@ -12,7 +12,6 @@ const meta = {
       { label: '조도 센서', model: 'BH1750' },
       { label: '토양수분 센서', model: 'EF04027' },
       { label: '토양 온도 센서', model: 'DS18B20' },
-      { label: 'CO₂ 센서', model: 'SCD40' },
     ],
   },
 } satisfies Meta<typeof SensorSummary>;

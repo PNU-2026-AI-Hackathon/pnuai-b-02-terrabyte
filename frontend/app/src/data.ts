@@ -146,7 +146,6 @@ export const sensors: Sensor[] = [
   { label: '조도 센서', model: 'BH1750' },
   { label: '토양수분 센서', model: 'EF04027' },
   { label: '토양 온도 센서', model: 'DS18B20' },
-  { label: 'CO₂ 센서', model: 'SCD40' },
 ];
 
 export const factorProductMap: Partial<Record<'temperature' | 'humidity' | 'plantLight', string[]>> = {
@@ -369,18 +368,6 @@ export const latest = [
     color: '#8b6f47',
     sub: '최적 범위 (18~25℃)',
     sparkline: [22.4, 22.5, 22.5, 22.6, 22.7, 22.8, 22.7, 22.9, 22.8, 22.8, 22.9, 22.8],
-  },
-  {
-    label: 'CO₂',
-    emoji: '',
-    value: '742 ppm',
-    baseValue: 742,
-    unit: 'ppm',
-    decimals: 0,
-    jitter: 18,
-    color: '#557a68',
-    sub: '권장 범위 (400~1,000ppm)',
-    sparkline: [690, 705, 721, 734, 755, 768, 750, 739, 728, 745, 751, 742],
   },
 ];
 

@@ -60,7 +60,7 @@ export function SuitabilityFormulaModal({ onClose, scoreData, visible }: Suitabi
 
             <View style={styles.formulaNotice}>
               <Text style={styles.formulaNoticeTitle}>점수 제외 항목</Text>
-              <Text style={styles.formulaBody}>오염도, CO₂, 토양수분은 종합 적합도에 포함하지 않습니다.</Text>
+              <Text style={styles.formulaBody}>토양수분은 종합 적합도에 포함하지 않습니다.</Text>
             </View>
           </ScrollView>
         </Surface>
