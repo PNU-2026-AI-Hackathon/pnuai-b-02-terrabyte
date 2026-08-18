@@ -24,8 +24,8 @@ export function HistoryScreen({ compact, onNavigate }: { compact: boolean; onNav
       <Surface flat style={styles.historySummaryPanel}>
         <SectionHeader title="환경 진단 변화" description="최초 공간 진단부터 현재 모니터링까지의 변화입니다." />
         <View style={[styles.historySummaryGrid, compact && styles.stack]}>
-          <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>최초 적합도</Text><Text style={[styles.historySummaryValue, styles.historyScoreInitial]}>{initialScore}점</Text></View>
           <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>현재 적합도</Text><Text style={[styles.historySummaryValue, styles.historyScoreCurrent]}>{currentScore}점</Text></View>
+          <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>최초 적합도</Text><Text style={[styles.historySummaryValue, styles.historyScoreInitial]}>{initialScore}점</Text></View>
           <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>누적 개선</Text><Text style={[styles.historySummaryValue, accumulatedImprovement > 0 ? styles.historyScoreUp : accumulatedImprovement < 0 ? styles.historyScoreDown : styles.historyScoreInitial]}>{accumulatedImprovement > 0 ? '+' : ''}{accumulatedImprovement}점</Text></View>
           <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>수집 데이터</Text><Text style={styles.historySummaryValue}>14일</Text></View>
         </View>
