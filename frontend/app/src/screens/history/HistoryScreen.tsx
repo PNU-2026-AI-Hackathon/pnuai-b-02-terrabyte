@@ -65,7 +65,7 @@ const styles = StyleSheet.create(scaleTypography({
   historyList: { overflow: 'hidden' },
   historyRow: { alignItems: 'center', borderBottomColor: palette.lineStrong, borderBottomWidth: 1, flexDirection: 'row', gap: 22, minHeight: 124, padding: 24 },
   historyDateBlock: { gap: 5, width: 120 },
-  historyDate: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '600' },
+  historyDate: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontSize: 16, fontWeight: '600', lineHeight: 22 },
   historyScoreBlock: { alignItems: 'flex-end', flexDirection: 'row', minWidth: 100 },
   historyScore: { ...typeScale.metric, color: palette.greenDark, fontFamily: font },
   historyScoreUp: { color: palette.red },
