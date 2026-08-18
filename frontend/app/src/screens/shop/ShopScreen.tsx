@@ -67,19 +67,21 @@ export function ShopScreen({ compact }: { compact: boolean }) {
               </Pressable>
             ))}
           </View>
+        </View>
+        <View style={[styles.shopToolbarActions, compact && styles.shopToolbarActionsCompact]}>
+          <Pressable accessibilityRole="button" onPress={() => setCartOpen(true)} style={styles.cartButton}>
+            <Text style={styles.cartCount}>장바구니 {cartCount}</Text>
+          </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="추천 상품만 보기"
+            accessibilityLabel="추천 제품 보기"
             accessibilityState={{ selected: recommendedOnly }}
             onPress={toggleRecommended}
-            style={[styles.recommendationTag, recommendedOnly && styles.recommendationTagActive]}
+            style={[styles.recommendationButton, recommendedOnly && styles.recommendationButtonActive]}
           >
-            <Text style={[styles.recommendationTagText, recommendedOnly && styles.recommendationTagTextActive]}>추천</Text>
+            <Text style={[styles.recommendationButtonText, recommendedOnly && styles.recommendationButtonTextActive]}>추천 제품 보기</Text>
           </Pressable>
         </View>
-        <Pressable accessibilityRole="button" onPress={() => setCartOpen(true)} style={styles.cartButton}>
-          <Text style={styles.cartCount}>장바구니 {cartCount}</Text>
-        </Pressable>
       </View>
       <Surface flat style={styles.productPanel}>
         <SectionHeader
@@ -212,15 +214,17 @@ const styles = StyleSheet.create(scaleTypography({
   shopToolbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
   shopToolbarCompact: { alignItems: 'flex-start', flexDirection: 'column', gap: 12 },
   shopFilters: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  shopToolbarActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
+  shopToolbarActionsCompact: { justifyContent: 'flex-start', width: '100%' },
   shopTabs: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 11, borderWidth: 1, flexDirection: 'row', gap: 3, padding: 5 },
   shopTab: { borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
   shopTabActive: { backgroundColor: palette.green, shadowColor: '#1f6646', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.16, shadowRadius: 10 },
   shopTabText: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '800' },
   shopTabTextActive: { color: '#ffffff', fontWeight: '900' },
-  recommendationTag: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.34)', borderColor: palette.green, borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 42, paddingHorizontal: 17 },
-  recommendationTagActive: { backgroundColor: palette.green },
-  recommendationTagText: { color: palette.greenDark, fontFamily: font, fontSize: 16, fontWeight: '900' },
-  recommendationTagTextActive: { color: '#ffffff' },
+  recommendationButton: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.34)', borderColor: palette.green, borderRadius: 9, borderWidth: 1, justifyContent: 'center', minHeight: 42, paddingHorizontal: 17 },
+  recommendationButtonActive: { backgroundColor: palette.green },
+  recommendationButtonText: { color: palette.greenDark, fontFamily: font, fontSize: 16, fontWeight: '900' },
+  recommendationButtonTextActive: { color: '#ffffff' },
   cartButton: { alignItems: 'center', backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 9, borderWidth: 1, justifyContent: 'center', minHeight: 42, paddingHorizontal: 17 },
   cartCount: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '800' },
   productPanel: { gap: 34, padding: 36 },
