@@ -106,25 +106,20 @@ export function Header({ compact, onCreatePot, onSelectPot, onUpdatePot, page, p
                 <Text style={styles.modalTitle}>알림</Text>
                 <Text style={styles.modalDescription}>확인이 필요한 환경 알림을 모아봤어요.</Text>
               </View>
-              <View style={styles.modalHeaderActions}>
-                <Pressable
-                  accessibilityLabel="알림 닫기"
-                  accessibilityRole="button"
-                  onPress={() => setAlertsOpen(false)}
-                  style={styles.modalCloseIcon}
-                >
-                  <Text style={styles.modalCloseIconText}>×</Text>
-                </Pressable>
-                <Pressable disabled={!unreadAlertCount} onPress={markAllAlertsRead} style={[styles.modalAction, !unreadAlertCount && styles.modalActionDisabled]}>
-                  <Text style={styles.modalActionText}>모두 읽음</Text>
-                </Pressable>
-              </View>
+              <Pressable
+                accessibilityLabel="알림 닫기"
+                accessibilityRole="button"
+                onPress={() => setAlertsOpen(false)}
+                style={styles.modalCloseIcon}
+              >
+                <Text style={styles.modalCloseIconText}>×</Text>
+              </Pressable>
             </View>
             <View style={styles.alertList}>
               {alerts.length ? alerts.map((alert, index) => (
                 <View key={alert.id} style={[styles.alertItem, index < alerts.length - 1 && styles.alertItemDivider, alert.read && styles.alertItemRead]}>
                   <View style={styles.alertItemHeader}>
-                    <Text style={styles.alertSeverity}>{alert.severity}</Text>
+                    <Text style={[styles.alertSeverity, alert.severity === '주의' ? styles.alertSeverityWarning : styles.alertSeverityCheck]}>{alert.severity}</Text>
                     <Text style={styles.alertTime}>{alert.time}</Text>
                   </View>
                   <Text style={styles.alertTitle}>{alert.title}</Text>
@@ -133,6 +128,11 @@ export function Header({ compact, onCreatePot, onSelectPot, onUpdatePot, page, p
               )) : <Text style={styles.emptyAlerts}>새 알림이 없습니다.</Text>}
             </View>
             {alerts.length ? <Text style={styles.alertPolicy}>알림 기준: 권장 범위 이탈이 10분 이상 지속되면 사용자에게 안내합니다.</Text> : null}
+            <View style={styles.modalFooter}>
+              <Pressable disabled={!unreadAlertCount} onPress={markAllAlertsRead} style={[styles.modalAction, !unreadAlertCount && styles.modalActionDisabled]}>
+                <Text style={styles.modalActionText}>모두 읽음</Text>
+              </Pressable>
+            </View>
           </Surface>
         </View>
       </Modal>
@@ -160,18 +160,20 @@ const styles = StyleSheet.create(scaleTypography({
   modalHeaderCopy: { flex: 1, gap: 5 },
   modalTitle: { ...typeScale.dialogTitle, color: palette.text, fontFamily: font },
   modalDescription: { ...typeScale.body, color: palette.secondary, fontFamily: font },
-  modalHeaderActions: { alignItems: 'center', flexDirection: 'column', gap: 4, minWidth: 84 },
+  modalFooter: { alignItems: 'flex-end' },
   modalAction: { alignItems: 'center', borderColor: palette.lineStrong, borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 36, paddingHorizontal: 12 },
   modalActionDisabled: { opacity: 0.4 },
   modalActionText: { ...typeScale.button, color: palette.secondary, fontFamily: font },
-  modalCloseIcon: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+  modalCloseIcon: { alignItems: 'center', height: 36, justifyContent: 'center', marginRight: -10, width: 36 },
   modalCloseIconText: { color: palette.secondary, fontFamily: font, fontSize: 34, fontWeight: '500', lineHeight: 36 },
   alertList: { backgroundColor: palette.panelMuted, borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
   alertItem: { gap: 8, padding: 20 },
   alertItemDivider: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1 },
   alertItemRead: { opacity: 0.62 },
   alertItemHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  alertSeverity: { ...typeScale.label, color: palette.secondary, fontFamily: font },
+  alertSeverity: { ...typeScale.label, alignSelf: 'flex-start', borderRadius: 999, borderWidth: 1, fontFamily: font, paddingHorizontal: 10, paddingVertical: 4 },
+  alertSeverityWarning: { backgroundColor: 'rgba(196,94,85,0.14)', borderColor: 'rgba(196,94,85,0.32)', color: palette.red },
+  alertSeverityCheck: { backgroundColor: palette.amberSoft, borderColor: 'rgba(201,139,47,0.32)', color: palette.amber },
   alertTime: { ...typeScale.caption, color: palette.muted, fontFamily: font },
   alertTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   alertBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
