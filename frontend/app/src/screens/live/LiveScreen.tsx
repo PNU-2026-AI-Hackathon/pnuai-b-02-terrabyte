@@ -8,11 +8,15 @@ import { LineChart } from '../../components/LineChart';
 import { SensorSummary } from '../../components/SensorSummary';
 import { Surface } from '../../components/Surface';
 import { latest, sensors } from '../../data';
-import { useDeviceEnvironment } from '../../shared/device-environment/DeviceEnvironmentProvider';
+import {
+  useDeviceEnvironment,
+  useMeasurementSeries,
+} from '../../shared/device-environment/DeviceEnvironmentProvider';
 
 export function LiveScreen({ compact }: { compact: boolean }) {
   const [deviceOpen, setDeviceOpen] = useState(false);
   const { measurements: measurement } = useDeviceEnvironment();
+  const soilTemperatureSeries = useMeasurementSeries('soil_temperature_c', '1h');
 
   const values = measurement?.measurements;
   const liveMetrics = latest.slice(0, 4).map((metric) => {
@@ -27,6 +31,9 @@ export function LiveScreen({ compact }: { compact: boolean }) {
       value: current == null ? '--' : `${current.toLocaleString('ko-KR')}${unit}`,
     };
   });
+  const soilTemperatureValues = soilTemperatureSeries.points.map((point) => point.value);
+  const hasSoilTemperatureSeries = soilTemperatureValues.length >= 2;
+  const soilTemperature = measurement?.measurements.soilTemperatureC;
 
   return (
     <View style={styles.pageBody}>
@@ -56,6 +63,41 @@ export function LiveScreen({ compact }: { compact: boolean }) {
             </View>
           </Surface>
         ))}
+        <Surface style={styles.liveCard}>
+          <View style={styles.liveCardHeader}>
+            <Text style={styles.liveLabel}>토양 온도</Text>
+            <Text style={styles.liveRange}>최근 1시간</Text>
+          </View>
+          <Text style={styles.liveValue}>
+            {soilTemperature == null
+              ? '--'
+              : `${soilTemperature.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}℃`}
+          </Text>
+          {/* 현재값(폴링)과 추이(시리즈)는 별개 요청이라, 한쪽이 비어도 다른 쪽은 그대로 보여준다. */}
+          <Text style={styles.liveCaption}>{soilTemperature == null ? '프로브 미연결' : '현재 측정값'}</Text>
+          {hasSoilTemperatureSeries ? (
+            <>
+              <LineChart
+                gridLines={1}
+                height={72}
+                series={[{ color: '#8b6f47', values: soilTemperatureValues }]}
+                showLegend={false}
+              />
+              <View style={styles.liveFooter}>
+                <Text style={styles.liveFooterText}>최저 {Math.min(...soilTemperatureValues).toLocaleString('ko-KR')}℃</Text>
+                <Text style={styles.liveFooterText}>최고 {Math.max(...soilTemperatureValues).toLocaleString('ko-KR')}℃</Text>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.liveCaption}>
+              {soilTemperatureSeries.loading
+                ? '최근 1시간 추이를 불러오는 중'
+                : soilTemperatureSeries.error
+                  ? '최근 1시간 추이를 불러오지 못했습니다'
+                  : '표시할 추이 데이터가 아직 없습니다'}
+            </Text>
+          )}
+        </Surface>
       </View>
       <Modal animationType="fade" onRequestClose={() => setDeviceOpen(false)} transparent visible={deviceOpen}>
         <View style={styles.modalBackdrop}>

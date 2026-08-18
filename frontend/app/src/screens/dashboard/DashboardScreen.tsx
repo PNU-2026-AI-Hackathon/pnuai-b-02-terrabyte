@@ -10,9 +10,12 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { SensorSummary } from '../../components/SensorSummary';
 import { SuitabilityFormulaModal } from '../../components/SuitabilityFormulaModal';
 import { Surface } from '../../components/Surface';
-import { chartMetrics, crops, factors, latest, sensors } from '../../data';
+import { chartMetrics, crops, factors, sensors } from '../../data';
 import type { Page } from '../../navigation/types';
-import { useDeviceEnvironment } from '../../shared/device-environment/DeviceEnvironmentProvider';
+import {
+  useDeviceEnvironment,
+  useMeasurementSeries,
+} from '../../shared/device-environment/DeviceEnvironmentProvider';
 import { getGradeLabel, getIssueFactors } from '../../shared/factorPresentation';
 import { useDisclosure } from '../../shared/hooks/useDisclosure';
 
@@ -23,10 +26,20 @@ function makeWavePoints(seed: number, amplitude: number, center: number): number
   );
 }
 
-const extendedMetricSensors: Array<[label: string, model: string]> = [
-  ['토양 온도', 'DS18B20'],
-  ['CO₂', 'SCD40'],
-];
+function makeAxisLabels(points: Array<{ time: string }>, range: '1h' | '24h' | '7d' | '30d'): string[] {
+  const labelCount = Math.min(5, points.length);
+  if (!labelCount) return [];
+  const indexes = Array.from(
+    { length: labelCount },
+    (_, index) => Math.round((index / Math.max(labelCount - 1, 1)) * (points.length - 1)),
+  );
+  return indexes.map((index) => {
+    const date = new Date(points[index].time);
+    return range === '1h' || range === '24h'
+      ? date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+      : date.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric' });
+  });
+}
 
 export function DashboardScreen({
   compact,
@@ -40,6 +53,7 @@ export function DashboardScreen({
   const currentCrop = crops[selectedCrop] ?? crops[0];
   const [chartRange, setChartRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
   const { score: scoreData, measurements: latestData } = useDeviceEnvironment();
+  const soilTemperatureSeries = useMeasurementSeries('soil_temperature_c', chartRange);
   const formulaDisclosure = useDisclosure();
 
   const factorDetail = (key: string) => {
@@ -57,10 +71,10 @@ export function DashboardScreen({
   const displayFactors = scoreData?.factors ?? factors.slice(0, 3);
   const issueFactors = getIssueFactors(scoreData?.factors ?? []);
   const gradeText = getGradeLabel(scoreData?.grade);
-  const extendedStats = extendedMetricSensors.map(([label, model]) => {
-    const metric = latest.find((item) => item.label === label);
-    return { label, value: metric?.value ?? '--', detail: `${model} · 정상` };
-  });
+  const soilTemperature = latestData?.measurements.soilTemperatureC;
+  const soilTemperatureValue = soilTemperature == null
+    ? '--'
+    : `${soilTemperature.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}℃`;
 
   return (
     <View style={styles.pageBody}>
@@ -160,17 +174,36 @@ export function DashboardScreen({
         </Surface>
       </View>
 
-      <Surface style={styles.extendedMetricsPanel}>
-        <SectionHeader title="확장 환경 지표" description="공간분석·토양분석 세트에서 함께 수집하는 운영 지표입니다." />
-        <View style={[styles.extendedMetricsGrid, compact && styles.stack]}>
-          {extendedStats.map((item) => (
-            <View key={item.label} style={styles.extendedMetricItem}>
-              <Text style={styles.extendedMetricLabel}>{item.label}</Text>
-              <Text style={styles.extendedMetricValue}>{item.value}</Text>
-              <Text style={styles.extendedMetricDetail}>{item.detail}</Text>
+      <Surface style={styles.soilTemperaturePanel}>
+        <SectionHeader
+          action={(
+            <View style={styles.soilTemperatureCurrent}>
+              <Text style={styles.soilTemperatureCurrentLabel}>현재 측정값</Text>
+              <Text style={styles.soilTemperatureCurrentValue}>{soilTemperatureValue}</Text>
             </View>
-          ))}
-        </View>
+          )}
+          title="토양 온도"
+          description={`환경 변화와 같은 최근 ${chartRange === '1h' ? '1시간' : chartRange === '24h' ? '24시간' : chartRange === '7d' ? '7일' : '30일'} 측정 추이`}
+        />
+        {soilTemperatureSeries.error ? (
+          <Text style={styles.chartStateText}>토양 온도 데이터를 불러오지 못했습니다.</Text>
+        ) : soilTemperatureSeries.loading && soilTemperatureSeries.points.length === 0 ? (
+          <Text style={styles.chartStateText}>토양 온도 데이터를 불러오는 중입니다.</Text>
+        ) : soilTemperatureSeries.points.length === 0 ? (
+          <Text style={styles.chartStateText}>토양 온도 프로브가 연결되지 않았거나 아직 수집된 값이 없습니다.</Text>
+        ) : soilTemperatureSeries.points.length === 1 ? (
+          <Text style={styles.chartStateText}>측정 추이를 표시하려면 값이 조금 더 필요합니다.</Text>
+        ) : (
+          <LineChart
+            axisLabels={makeAxisLabels(soilTemperatureSeries.points, chartRange)}
+            height={180}
+            series={[{
+              label: '토양 온도',
+              color: '#8b6f47',
+              values: soilTemperatureSeries.points.map((point) => point.value),
+            }]}
+          />
+        )}
       </Surface>
 
       <View style={[styles.dashboardBottomGrid, compact && styles.stack]}>
@@ -257,17 +290,16 @@ const styles = StyleSheet.create(scaleTypography({
   statValue: { color: palette.text, fontFamily: font, fontSize: 38, fontWeight: '900', letterSpacing: -0.8 },
   statDetail: { color: palette.muted, fontFamily: font, fontSize: 16, fontWeight: '500', lineHeight: 25 },
   chartPanel: { flex: 1, gap: 32, padding: 34 },
-  extendedMetricsPanel: { gap: 26, padding: 34 },
-  extendedMetricsGrid: { flexDirection: 'row', gap: 14 },
-  extendedMetricItem: { backgroundColor: palette.panelMuted, borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, flex: 1, gap: 6, padding: 20 },
-  extendedMetricLabel: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '800' },
-  extendedMetricValue: { color: palette.text, fontFamily: font, fontSize: 31, fontWeight: '900' },
-  extendedMetricDetail: { color: palette.muted, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 24 },
+  chartStateText: { color: palette.muted, fontFamily: font, fontSize: 16, lineHeight: 25, paddingVertical: 28 },
   rangeControl: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 7, borderWidth: 1, flexDirection: 'row', padding: 3 },
   rangeButton: { borderRadius: 5, paddingHorizontal: 9, paddingVertical: 6 },
   rangeButtonActive: { backgroundColor: palette.panel },
   rangeButtonText: { color: palette.muted, fontFamily: font, fontSize: 14, fontWeight: '700' },
   rangeButtonTextActive: { color: palette.greenDark, fontWeight: '900' },
+  soilTemperatureCurrent: { alignItems: 'flex-end', gap: 5 },
+  soilTemperatureCurrentLabel: { color: palette.muted, fontFamily: font, fontSize: 14, fontWeight: '700' },
+  soilTemperatureCurrentValue: { color: palette.text, fontFamily: font, fontSize: 31, fontWeight: '900' },
+  soilTemperaturePanel: { gap: 26, padding: 34 },
   dashboardBottomGrid: { alignItems: 'stretch', flexDirection: 'row', gap: 24 },
   tablePanel: { flex: 1, padding: 34 },
   tableHeader: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1, flexDirection: 'row', marginTop: 24, paddingBottom: 14 },

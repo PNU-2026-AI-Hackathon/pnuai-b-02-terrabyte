@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import { fn } from 'storybook/test';
 
-import type { EnvironmentScore, LatestMeasurements } from '../../measurement/measurementApi';
+import type { EnvironmentScore, LatestMeasurements, MeasurementSeries } from '../../measurement/measurementApi';
 import { DeviceEnvironmentProvider } from '../../shared/device-environment/DeviceEnvironmentProvider';
 import { DashboardScreen } from './DashboardScreen';
 
@@ -50,12 +50,24 @@ const mockMeasurements: LatestMeasurements = {
     airTemperatureC: 24.6,
     airHumidityPct: 46,
     plantLightPpfdUmolM2S: 80,
+    soilTemperatureC: 21.4,
   },
   quality: {
     soilSensorValid: true,
     airSensorValid: true,
     lightSensorValid: true,
   },
+};
+
+const mockSeries: MeasurementSeries = {
+  deviceId: 1,
+  metric: 'soil_temperature_c',
+  unit: '℃',
+  range: '24h',
+  points: Array.from({ length: 24 }, (_, index) => ({
+    time: new Date(Date.UTC(2026, 6, 28, index)).toISOString(),
+    value: 21.8 + Math.sin(index / 4) * 0.9,
+  })),
 };
 
 const meta = {
@@ -71,6 +83,7 @@ const meta = {
       potId={1}
       fetchMeasurements={async () => mockMeasurements}
       fetchScore={async () => mockScore}
+      fetchSeries={async (_potId, _metric, range) => ({ ...mockSeries, range })}
     >
       <DashboardScreen {...args} />
     </DeviceEnvironmentProvider>
@@ -81,3 +94,19 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const WithoutSoilProbe: Story = {
+  render: (args) => (
+    <DeviceEnvironmentProvider
+      potId={1}
+      fetchMeasurements={async () => ({
+        ...mockMeasurements,
+        measurements: { ...mockMeasurements.measurements, soilTemperatureC: null },
+      })}
+      fetchScore={async () => mockScore}
+      fetchSeries={async (_potId, _metric, range) => ({ ...mockSeries, range, points: [] })}
+    >
+      <DashboardScreen {...args} />
+    </DeviceEnvironmentProvider>
+  ),
+};

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 
-import type { EnvironmentScore, LatestMeasurements } from '../../measurement/measurementApi';
+import type { EnvironmentScore, LatestMeasurements, MeasurementSeries } from '../../measurement/measurementApi';
 import { DeviceEnvironmentProvider } from '../../shared/device-environment/DeviceEnvironmentProvider';
 import { LiveScreen } from './LiveScreen';
 
@@ -60,12 +60,24 @@ const mockMeasurements: LatestMeasurements = {
     airTemperatureC: 24.6,
     airHumidityPct: 61,
     plantLightPpfdUmolM2S: 420,
+    soilTemperatureC: 21.4,
   },
   quality: {
     soilSensorValid: true,
     airSensorValid: true,
     lightSensorValid: true,
   },
+};
+
+const mockSeries: MeasurementSeries = {
+  deviceId: 1,
+  metric: 'soil_temperature_c',
+  unit: '℃',
+  range: '1h',
+  points: Array.from({ length: 24 }, (_, index) => ({
+    time: new Date(Date.UTC(2026, 6, 29, 0, index * 3)).toISOString(),
+    value: 21.4 + Math.sin(index / 4) * 0.8,
+  })),
 };
 
 const meta = {
@@ -79,6 +91,7 @@ const meta = {
       potId={1}
       fetchMeasurements={async () => mockMeasurements}
       fetchScore={async () => mockScore}
+      fetchSeries={async (_potId, _metric, range) => ({ ...mockSeries, range })}
     >
       <LiveScreen {...args} />
     </DeviceEnvironmentProvider>

@@ -3,12 +3,18 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   getEnvironmentScore,
   getLatestMeasurements,
+  getMeasurementSeries,
   type EnvironmentScore,
   type LatestMeasurements,
+  type MeasurementMetricKey,
+  type MeasurementPoint,
+  type MeasurementRangeKey,
 } from '../../measurement/measurementApi';
 import { getSoilRecommendation, type SoilRecommendation } from '../../soil/soilApi';
 
 export type DeviceEnvironmentState = {
+  potId: number | undefined;
+  fetchSeries: typeof getMeasurementSeries;
   score: EnvironmentScore | null;
   measurements: LatestMeasurements | null;
   soilRecommendation: SoilRecommendation | null;
@@ -24,6 +30,7 @@ type DeviceEnvironmentProviderProps = {
   pollIntervalMs?: number;
   fetchScore?: typeof getEnvironmentScore;
   fetchMeasurements?: typeof getLatestMeasurements;
+  fetchSeries?: typeof getMeasurementSeries;
   fetchSoilRecommendation?: typeof getSoilRecommendation;
   children: ReactNode;
 };
@@ -33,6 +40,7 @@ export function DeviceEnvironmentProvider({
   pollIntervalMs = 3000,
   fetchScore = getEnvironmentScore,
   fetchMeasurements = getLatestMeasurements,
+  fetchSeries = getMeasurementSeries,
   fetchSoilRecommendation = getSoilRecommendation,
   children,
 }: DeviceEnvironmentProviderProps) {
@@ -92,8 +100,8 @@ export function DeviceEnvironmentProvider({
   }, [potId, pollIntervalMs, load]);
 
   const value = useMemo<DeviceEnvironmentState>(
-    () => ({ score, measurements, soilRecommendation, loading, error, refetch: load }),
-    [score, measurements, soilRecommendation, loading, error, load],
+    () => ({ potId, fetchSeries, score, measurements, soilRecommendation, loading, error, refetch: load }),
+    [potId, fetchSeries, score, measurements, soilRecommendation, loading, error, load],
   );
 
   return <DeviceEnvironmentContext.Provider value={value}>{children}</DeviceEnvironmentContext.Provider>;
@@ -105,4 +113,58 @@ export function useDeviceEnvironment(): DeviceEnvironmentState {
     throw new Error('useDeviceEnvironment must be used within a DeviceEnvironmentProvider');
   }
   return context;
+}
+
+export function useMeasurementSeries(
+  metric: MeasurementMetricKey,
+  range: MeasurementRangeKey,
+): { points: MeasurementPoint[]; unit: string | null; loading: boolean; error: Error | null } {
+  const { potId, fetchSeries } = useDeviceEnvironment();
+  const [points, setPoints] = useState<MeasurementPoint[]>([]);
+  const [unit, setUnit] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const activeRef = useRef(true);
+  const requestVersionRef = useRef(0);
+
+  useEffect(() => {
+    activeRef.current = true;
+    const requestVersion = ++requestVersionRef.current;
+    setPoints([]);
+    setUnit(null);
+    setError(null);
+
+    if (potId === undefined) {
+      setLoading(false);
+      return () => {
+        activeRef.current = false;
+        requestVersionRef.current += 1;
+      };
+    }
+
+    setLoading(true);
+    void fetchSeries(potId, metric, range)
+      .then((series) => {
+        if (activeRef.current && requestVersion === requestVersionRef.current) {
+          setPoints(series.points);
+          setUnit(series.unit);
+          setError(null);
+        }
+      })
+      .catch((caught) => {
+        if (activeRef.current && requestVersion === requestVersionRef.current) {
+          setError(caught instanceof Error ? caught : new Error('측정 추이를 불러오지 못했습니다.'));
+        }
+      })
+      .finally(() => {
+        if (activeRef.current && requestVersion === requestVersionRef.current) setLoading(false);
+      });
+
+    return () => {
+      activeRef.current = false;
+      requestVersionRef.current += 1;
+    };
+  }, [potId, metric, range, fetchSeries]);
+
+  return { points, unit, loading, error };
 }

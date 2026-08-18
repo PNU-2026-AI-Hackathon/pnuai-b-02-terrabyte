@@ -49,6 +49,7 @@ const mockMeasurements: LatestMeasurements = {
     airTemperatureC: 24.6,
     airHumidityPct: 46,
     plantLightPpfdUmolM2S: 80,
+    soilTemperatureC: null,
   },
   quality: {
     soilSensorValid: true,
