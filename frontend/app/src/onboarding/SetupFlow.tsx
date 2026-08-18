@@ -229,9 +229,9 @@ export function SetupFlow({
   };
 
   const copy = {
-    device: { kicker: 'STEP 01', title: '진단할 공간을 등록하세요', description: '공간 기본 정보와 공간분석 세트의 등록 번호를 입력하세요.' },
-    crop: { kicker: 'STEP 02', title: '검토할 작물을 선택하세요', description: '선택한 작물을 기준으로 공간 적합도와 필요한 개선 조건을 분석합니다.' },
-    setup: { kicker: 'STEP 03', title: '분석 키트를 설치하세요', description: '공간분석 세트와 토양분석 세트를 연결하면 진단과 모니터링이 시작됩니다.' },
+    device: { title: '진단할 공간을 등록하세요', description: '공간 기본 정보와 공간분석 세트의 등록 번호를 입력하세요.' },
+    crop: { title: '검토할 작물을 선택하세요', description: '선택한 작물을 기준으로 공간 적합도와 필요한 개선 조건을 분석합니다.' },
+    setup: { title: '분석 키트를 설치하세요', description: '공간분석 세트와 토양분석 세트를 연결하면 진단과 모니터링이 시작됩니다.' },
   }[stage];
 
   return (
@@ -251,7 +251,6 @@ export function SetupFlow({
 
       <View style={[styles.setupFrame, compact && styles.setupFrameCompact]}>
         <View style={styles.setupIntro}>
-          <Text style={styles.setupKicker}>{copy.kicker}</Text>
           <Text style={styles.setupTitle}>{copy.title}</Text>
           <Text style={styles.setupDescription}>{copy.description}</Text>
           <Pressable onPress={onBack} style={styles.setupBackButton}>
@@ -466,7 +465,6 @@ const styles = StyleSheet.create(scaleTypography({
   setupFrame: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 70, justifyContent: 'center', maxWidth: 980, width: '100%' },
   setupFrameCompact: { flexDirection: 'column', gap: 28 },
   setupIntro: { flex: 1, gap: 13, maxWidth: 370 },
-  setupKicker: { color: palette.green, fontFamily: font, fontSize: 14, fontWeight: '900', letterSpacing: 1.3 },
   setupTitle: { color: palette.text, fontFamily: font, fontSize: 40, fontWeight: '900', letterSpacing: -1.2, lineHeight: 51 },
   setupDescription: { color: palette.secondary, fontFamily: font, fontSize: 18, lineHeight: 29 },
   setupBackButton: { alignSelf: 'flex-start', borderBottomColor: palette.lineStrong, borderBottomWidth: 1, marginTop: 12, paddingBottom: 3 },

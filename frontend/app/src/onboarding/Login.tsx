@@ -74,7 +74,6 @@ export function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) =
       <View style={[styles.loginFrame, compact && styles.loginFrameCompact]}>
         <View style={[styles.loginIntro, compact && styles.loginIntroCompact]}>
           <BrandMark />
-          <Text style={styles.loginKicker}>TERRABYTE SMART FARM</Text>
           <Text style={[styles.loginTitle, compact && styles.loginTitleCompact]}>
             재배 환경을{compact ? ' ' : '\n'}한눈에 관리하세요.
           </Text>
@@ -167,8 +166,7 @@ const styles = StyleSheet.create(scaleTypography({
   loginFrameCompact: { flexDirection: 'column', gap: 38 },
   loginIntro: { flex: 1, maxWidth: 460 },
   loginIntroCompact: { alignItems: 'center' },
-  loginKicker: { color: palette.green, fontFamily: font, fontSize: 15, fontWeight: '800', letterSpacing: 1.5, marginTop: 30 },
-  loginTitle: { color: palette.text, fontFamily: font, fontSize: 42, fontWeight: '900', letterSpacing: -1.5, lineHeight: 56, marginTop: 10 },
+  loginTitle: { color: palette.text, fontFamily: font, fontSize: 42, fontWeight: '900', letterSpacing: -1.5, lineHeight: 56, marginTop: 24 },
   loginTitleCompact: { fontSize: 31, lineHeight: 42, textAlign: 'center' },
   loginDescription: { color: palette.secondary, fontFamily: font, fontSize: 18, lineHeight: 30, marginTop: 18, maxWidth: 460 },
   centerText: { textAlign: 'center' },

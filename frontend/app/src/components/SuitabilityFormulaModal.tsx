@@ -19,7 +19,6 @@ export function SuitabilityFormulaModal({ onClose, scoreData, visible }: Suitabi
         <Surface style={styles.formulaModal}>
           <View style={styles.modalHeader}>
             <View style={styles.modalHeaderCopy}>
-              <Text style={styles.modalEyebrow}>SUITABILITY FORMULA</Text>
               <Text style={styles.modalTitle}>적합도 계산식</Text>
               <Text style={styles.modalDescription}>온도·습도·PPFD 세 가지 환경값만 사용합니다.</Text>
             </View>
@@ -80,7 +79,6 @@ const styles = StyleSheet.create(
     },
     modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
     modalHeaderCopy: { flex: 1, gap: 5 },
-    modalEyebrow: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
     modalTitle: { color: palette.text, fontFamily: font, fontSize: 32, fontWeight: '900', letterSpacing: -0.8, lineHeight: 41 },
     modalClose: {
       alignItems: 'center',

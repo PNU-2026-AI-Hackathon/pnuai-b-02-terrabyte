@@ -8,36 +8,36 @@ export const colors = {
   warnAmber: '#e0b23a',
   warnText: '#a4571f',
   okText: '#1f6b42',
-  glass: 'rgba(255,255,255,0.5)',
-  glassStrong: 'rgba(255,255,255,0.65)',
-  glassSoft: 'rgba(255,255,255,0.4)',
-  lineSoft: 'rgba(255,255,255,0.65)',
-  pageStart: '#e8f2e6',
-  pageMid: '#d7e8dc',
-  pageEnd: '#cfe3e0',
+  glass: '#fbfdfb',
+  glassStrong: '#ffffff',
+  glassSoft: '#eef5f0',
+  lineSoft: '#dde8e0',
+  pageStart: '#f7faf8',
+  pageMid: '#f1f6f2',
+  pageEnd: '#e9f2ec',
   deviceOnline: '#35b26b',
 };
 
 export const radii = {
-  card: 24,
-  control: 14,
+  card: 18,
+  control: 11,
   pill: 999,
 };
 
 export const shadows = {
   card: {
     shadowColor: '#1f3a2a',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.14,
-    shadowRadius: 48,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.06,
+    shadowRadius: 24,
+    elevation: 3,
   },
   soft: {
     shadowColor: '#1f3a2a',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 36,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.045,
+    shadowRadius: 16,
+    elevation: 2,
   },
 };
 
@@ -45,11 +45,9 @@ export const typography = {
   fontFamily: '"Pretendard Variable", Pretendard, "Noto Sans KR", sans-serif',
 };
 
-export const maxContentWidth = 1080;
+export const maxContentWidth = 1180;
 export const compactBreakpoint = 760;
 
 export const glassWebStyle = {
-  backdropFilter: 'blur(24px)',
-  WebkitBackdropFilter: 'blur(24px)',
-  boxShadow: '0 16px 48px rgba(31,58,42,0.14)',
+  boxShadow: '0 8px 28px rgba(31,58,42,0.07)',
 } as const;

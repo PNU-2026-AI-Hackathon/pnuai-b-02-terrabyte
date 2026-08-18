@@ -13,7 +13,7 @@ const navItems: Array<{ key: Page; label: string }> = [
   { key: 'live', label: '환경 모니터링' },
   { key: 'history', label: '진단 이력' },
   { key: 'guide', label: '관리 가이드' },
-  { key: 'shop', label: '제품 추천' },
+  { key: 'shop', label: '제품 추가 구매' },
 ];
 
 export function Sidebar({ compact, cropName, onHide, onLogout, onNavigate, page }: {
@@ -90,7 +90,6 @@ export function Sidebar({ compact, cropName, onHide, onLogout, onNavigate, page 
         <Surface style={styles.infoModal}>
           <View style={styles.modalHeader}>
             <View style={styles.modalHeaderCopy}>
-              <Text style={styles.modalEyebrow}>SMART FARM</Text>
               <Text style={styles.modalTitle}>내 스마트팜</Text>
             </View>
             <Pressable onPress={() => setFarmInfoOpen(false)} style={styles.modalClose}>
@@ -151,7 +150,6 @@ const styles = StyleSheet.create(scaleTypography({
   infoModal: { gap: 22, maxHeight: '84%', maxWidth: 580, padding: 28, width: '100%' },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
   modalHeaderCopy: { flex: 1, gap: 5 },
-  modalEyebrow: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '900', letterSpacing: 1 },
   modalTitle: { color: palette.text, fontFamily: font, fontSize: 32, fontWeight: '900', letterSpacing: -0.8, lineHeight: 41 },
   modalClose: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 36, paddingHorizontal: 12 },
   modalCloseText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '800' },

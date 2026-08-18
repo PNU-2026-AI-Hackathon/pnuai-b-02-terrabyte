@@ -36,7 +36,7 @@ export function SegmentedTabs<T extends string>({ value, options, onChange }: Se
 const styles = StyleSheet.create({
   wrap: {
     backgroundColor: colors.glassSoft,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: colors.lineSoft,
     borderRadius: radii.control,
     borderWidth: 1,
     flexDirection: 'row',
@@ -53,10 +53,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   activeTab: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: colors.glassStrong,
     shadowColor: '#1f3a2a',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 2,
   },
