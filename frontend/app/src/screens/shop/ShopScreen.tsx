@@ -74,19 +74,21 @@ export function ShopScreen({ compact }: { compact: boolean }) {
           <Pressable accessibilityRole="button" onPress={() => setCartOpen(true)} style={styles.cartButton}>
             <Text style={styles.cartCount}>장바구니 {cartCount}</Text>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="추천 제품 보기"
-            accessibilityState={{ selected: recommendedOnly }}
-            onPress={toggleRecommended}
-            style={[styles.recommendationButton, recommendedOnly && styles.recommendationButtonActive]}
-          >
-            <Text style={[styles.recommendationButtonText, recommendedOnly && styles.recommendationButtonTextActive]}>추천 제품 보기</Text>
-          </Pressable>
         </View>
       </View>
       <Surface flat style={styles.productPanel}>
         <SectionHeader
+          action={(
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="추천 제품 보기"
+              accessibilityState={{ selected: recommendedOnly }}
+              onPress={toggleRecommended}
+              style={[styles.recommendationButton, recommendedOnly && styles.recommendationButtonActive]}
+            >
+              <Text style={[styles.recommendationButtonText, recommendedOnly && styles.recommendationButtonTextActive]}>추천 제품 보기</Text>
+            </Pressable>
+          )}
           title={recommendedOnly ? `${category === 'all' ? '' : `${tabs.find((tab) => tab.key === category)?.label} `}추천 제품` : category === 'all' ? '전체 제품' : tabs.find((tab) => tab.key === category)?.label ?? '제품'}
           description={recommendedOnly ? `추천 태그가 붙은 제품 ${filteredProducts.length}개` : `제품 ${filteredProducts.length}개 · ${currentPage} / ${pageCount} 페이지`}
         />
