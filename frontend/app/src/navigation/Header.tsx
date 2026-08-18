@@ -4,6 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
+import { typeScale } from '../appTheme/typography';
 import { Surface } from '../components/Surface';
 import type { PotResponse } from '../device/deviceApi';
 import { PotMenu } from './PotMenu';
@@ -143,12 +144,12 @@ const styles = StyleSheet.create(scaleTypography({
   header: { alignItems: 'flex-start', flexDirection: 'row', gap: 30, paddingBottom: 24, paddingLeft: 48, paddingRight: 48, paddingTop: 40 },
   headerCompact: { alignItems: 'flex-start', flexDirection: 'column', paddingHorizontal: 20, paddingTop: 24 },
   headerCopy: { flex: 1, gap: 8, maxWidth: 820 },
-  pageTitle: { color: palette.text, fontFamily: font, fontSize: 35, fontWeight: '900', letterSpacing: -1, lineHeight: 43 },
-  pageDescription: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 25 },
+  pageTitle: { ...typeScale.pageTitle, color: palette.text, fontFamily: font },
+  pageDescription: { ...typeScale.body, color: palette.secondary, fontFamily: font },
   headerActions: { alignItems: 'center', flexDirection: 'row', gap: 12, marginLeft: 'auto', paddingTop: 2 },
   headerActionsCompact: { alignSelf: 'flex-end', marginLeft: 0, paddingTop: 0 },
   headerAlertButton: { alignItems: 'center', height: 46, justifyContent: 'center', position: 'relative', width: 46 },
-  headerAlertCount: { backgroundColor: palette.text, borderRadius: 999, color: '#ffffff', fontFamily: font, fontSize: 11, fontWeight: '900', minWidth: 18, overflow: 'hidden', paddingHorizontal: 4, paddingVertical: 2, position: 'absolute', right: 0, textAlign: 'center', top: 0 },
+  headerAlertCount: { ...typeScale.caption, backgroundColor: palette.text, borderRadius: 999, color: '#ffffff', fontFamily: font, minWidth: 18, overflow: 'hidden', paddingHorizontal: 4, paddingVertical: 2, position: 'absolute', right: 0, textAlign: 'center', top: 0 },
   bellIcon: { height: 23, position: 'relative', width: 23 },
   bellBody: { backgroundColor: 'transparent', borderColor: palette.text, borderTopLeftRadius: 9, borderTopRightRadius: 9, borderBottomLeftRadius: 5, borderBottomRightRadius: 5, borderWidth: 2, height: 14, left: 4, position: 'absolute', top: 2, width: 15 },
   bellBase: { backgroundColor: palette.text, borderRadius: 999, height: 2, left: 2, position: 'absolute', top: 16, width: 19 },
@@ -157,12 +158,12 @@ const styles = StyleSheet.create(scaleTypography({
   alertModal: { gap: 24, maxHeight: '84%', maxWidth: 680, padding: 30, width: '100%' },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
   modalHeaderCopy: { flex: 1, gap: 5 },
-  modalTitle: { color: palette.text, fontFamily: font, fontSize: 32, fontWeight: '900', letterSpacing: -0.8, lineHeight: 41 },
-  modalDescription: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '500', lineHeight: 28 },
+  modalTitle: { ...typeScale.dialogTitle, color: palette.text, fontFamily: font },
+  modalDescription: { ...typeScale.body, color: palette.secondary, fontFamily: font },
   modalHeaderActions: { alignItems: 'center', flexDirection: 'column', gap: 4, minWidth: 84 },
   modalAction: { alignItems: 'center', borderColor: palette.lineStrong, borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 36, paddingHorizontal: 12 },
   modalActionDisabled: { opacity: 0.4 },
-  modalActionText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '800' },
+  modalActionText: { ...typeScale.button, color: palette.secondary, fontFamily: font },
   modalCloseIcon: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
   modalCloseIconText: { color: palette.secondary, fontFamily: font, fontSize: 34, fontWeight: '500', lineHeight: 36 },
   alertList: { backgroundColor: palette.panelMuted, borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
@@ -170,10 +171,10 @@ const styles = StyleSheet.create(scaleTypography({
   alertItemDivider: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1 },
   alertItemRead: { opacity: 0.62 },
   alertItemHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  alertSeverity: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '900' },
-  alertTime: { color: palette.muted, fontFamily: font, fontSize: 14, fontWeight: '700' },
-  alertTitle: { color: palette.text, fontFamily: font, fontSize: 22, fontWeight: '900' },
-  alertBody: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '500', lineHeight: 28 },
-  emptyAlerts: { color: palette.muted, fontFamily: font, fontSize: 17, paddingVertical: 30, textAlign: 'center' },
-  alertPolicy: { color: palette.muted, fontFamily: font, fontSize: 14, lineHeight: 22 },
+  alertSeverity: { ...typeScale.label, color: palette.secondary, fontFamily: font },
+  alertTime: { ...typeScale.caption, color: palette.muted, fontFamily: font },
+  alertTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
+  alertBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
+  emptyAlerts: { ...typeScale.body, color: palette.muted, paddingVertical: 30, textAlign: 'center' },
+  alertPolicy: { ...typeScale.caption, color: palette.muted, fontFamily: font },
 }));

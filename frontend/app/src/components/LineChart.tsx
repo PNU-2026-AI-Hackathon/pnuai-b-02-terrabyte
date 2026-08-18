@@ -4,6 +4,7 @@ import Svg, { Line, Polyline } from 'react-native-svg';
 import { font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
+import { typeScale } from '../appTheme/typography';
 
 export type LineChartSeries = {
   label?: string;
@@ -92,8 +93,8 @@ const styles = StyleSheet.create(
     legend: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
     legendItem: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     legendLine: { borderRadius: 999, height: 3, width: 17 },
-    legendText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '700' },
+    legendText: { ...typeScale.label, color: palette.secondary, fontFamily: font },
     axis: { flexDirection: 'row', justifyContent: 'space-between' },
-    axisText: { color: palette.muted, fontFamily: font, fontSize: 15 },
+    axisText: { ...typeScale.caption, color: palette.muted, fontFamily: font },
   }),
 );

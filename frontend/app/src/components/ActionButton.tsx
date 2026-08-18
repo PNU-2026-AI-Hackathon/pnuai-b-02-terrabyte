@@ -1,8 +1,9 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
+import { controlTextTokens, controlTokens } from '../appTheme/controls';
 import { font } from '../appTheme/glass';
-import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
+import { typeScale } from '../appTheme/typography';
 
 type ActionButtonProps = {
   disabled?: boolean;
@@ -32,19 +33,15 @@ export function ActionButton({ disabled = false, label, onPress, quiet = false }
 const styles = StyleSheet.create(
   scaleTypography({
     actionButton: {
-      alignItems: 'center',
+      ...controlTokens.primary,
       alignSelf: 'flex-end',
-      backgroundColor: palette.green,
-      borderRadius: 9,
-      justifyContent: 'center',
-      minHeight: 48,
       minWidth: 154,
       paddingHorizontal: 24,
     },
-    quietButton: { backgroundColor: palette.greenSoft, borderColor: '#c9dfd1', borderWidth: 1 },
+    quietButton: { ...controlTokens.secondary },
     disabledButton: { opacity: 0.5 },
     pressed: { opacity: 0.78 },
-    actionButtonText: { color: '#ffffff', fontFamily: font, fontSize: 16, fontWeight: '800' },
-    quietButtonText: { color: palette.greenDark },
+    actionButtonText: { ...typeScale.button, ...controlTextTokens.primary, fontFamily: font },
+    quietButtonText: { ...controlTextTokens.secondary },
   }),
 );

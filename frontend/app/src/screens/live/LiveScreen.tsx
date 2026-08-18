@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { font } from '../../appTheme/glass';
 import { palette } from '../../appTheme/palette';
 import { scaleTypography } from '../../appTheme/scaleTypography';
+import { typeScale } from '../../appTheme/typography';
 import { LineChart } from '../../components/LineChart';
 import { Surface } from '../../components/Surface';
 import { latest } from '../../data';
@@ -93,15 +94,15 @@ export function LiveScreen({ compact }: { compact: boolean }) {
 
 const styles = StyleSheet.create(scaleTypography({
   pageBody: { gap: 30, maxWidth: 1320, width: '100%' },
-  liveRefresh: { alignSelf: 'flex-end', color: palette.muted, fontFamily: font, fontSize: 14 },
+  liveRefresh: { ...typeScale.caption, alignSelf: 'flex-end', color: palette.muted, fontFamily: font },
   liveGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 24 },
   stack: { flexDirection: 'column' },
   liveCard: { flexBasis: '47%', flexGrow: 1, gap: 14, minWidth: 280, padding: 34 },
   liveCardHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
-  liveLabel: { color: palette.text, fontFamily: font, fontSize: 23, fontWeight: '900' },
-  liveRange: { color: palette.muted, fontFamily: font, fontSize: 15, textAlign: 'right' },
-  liveValue: { color: palette.text, fontFamily: font, fontSize: 38, fontWeight: '900', letterSpacing: -0.8 },
-  liveCaption: { color: palette.muted, fontFamily: font, fontSize: 16 },
+  liveLabel: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
+  liveRange: { ...typeScale.caption, color: palette.muted, fontFamily: font, textAlign: 'right' },
+  liveValue: { ...typeScale.metric, color: palette.text, fontFamily: font },
+  liveCaption: { ...typeScale.body, color: palette.muted, fontFamily: font },
   liveFooter: { borderTopColor: palette.line, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 },
-  liveFooterText: { color: palette.muted, fontFamily: font, fontSize: 14 },
+  liveFooterText: { ...typeScale.caption, color: palette.muted, fontFamily: font },
 }));

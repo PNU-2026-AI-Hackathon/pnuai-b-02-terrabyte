@@ -5,6 +5,7 @@ import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
+import { typeScale } from '../appTheme/typography';
 import { ensureBrandFontLoaded } from '../appTheme/webFont';
 import { clearAccessToken, getMe, loadAccessToken, type MeResponse } from '../auth/authApi';
 import { BrandMark } from '../components/BrandMark';
@@ -208,5 +209,5 @@ export default function RootShell() {
 const styles = StyleSheet.create(scaleTypography({
   root: { backgroundColor: palette.background, flex: 1, minHeight: '100vh', overflow: 'hidden', position: 'relative' } as any,
   sessionLoading: { alignItems: 'center', gap: 18, justifyContent: 'center' },
-  sessionLoadingText: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '700' },
+  sessionLoadingText: { ...typeScale.bodyStrong, color: palette.secondary, fontFamily: font },
 }));

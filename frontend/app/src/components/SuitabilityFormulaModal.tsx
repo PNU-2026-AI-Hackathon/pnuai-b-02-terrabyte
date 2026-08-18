@@ -3,6 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
+import { typeScale } from '../appTheme/typography';
 import type { EnvironmentScore } from '../measurement/measurementApi';
 import { Surface } from './Surface';
 
@@ -79,7 +80,7 @@ const styles = StyleSheet.create(
     },
     modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
     modalHeaderCopy: { flex: 1, gap: 5 },
-    modalTitle: { color: palette.text, fontFamily: font, fontSize: 32, fontWeight: '900', letterSpacing: -0.8, lineHeight: 41 },
+    modalTitle: { ...typeScale.dialogTitle, color: palette.text, fontFamily: font },
     modalClose: {
       alignItems: 'center',
       borderColor: palette.line,
@@ -89,8 +90,8 @@ const styles = StyleSheet.create(
       minHeight: 36,
       paddingHorizontal: 12,
     },
-    modalCloseText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '800' },
-    modalDescription: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '500', lineHeight: 28 },
+    modalCloseText: { ...typeScale.button, color: palette.secondary, fontFamily: font },
+    modalDescription: { ...typeScale.body, color: palette.secondary, fontFamily: font },
     formulaModal: { gap: 22, maxHeight: '86%', maxWidth: 680, padding: 30, width: '100%' },
     formulaContent: { gap: 18, paddingBottom: 4 },
     formulaSection: {
@@ -101,8 +102,8 @@ const styles = StyleSheet.create(
       gap: 14,
       padding: 20,
     },
-    formulaSectionTitle: { color: palette.text, fontFamily: font, fontSize: 18, fontWeight: '900' },
-    formulaBody: { color: palette.secondary, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 24 },
+    formulaSectionTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
+    formulaBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
     formulaFactorRow: {
       alignItems: 'center',
       borderTopColor: palette.line,
@@ -111,9 +112,9 @@ const styles = StyleSheet.create(
       justifyContent: 'space-between',
       paddingTop: 12,
     },
-    formulaFactorName: { color: palette.text, fontFamily: font, fontSize: 15, fontWeight: '900' },
-    formulaFactorRange: { color: palette.muted, fontFamily: font, fontSize: 13, marginTop: 3 },
-    formulaFactorScore: { color: palette.greenDark, fontFamily: font, fontSize: 18, fontWeight: '900' },
+    formulaFactorName: { ...typeScale.label, color: palette.text, fontFamily: font },
+    formulaFactorRange: { ...typeScale.caption, color: palette.muted, marginTop: 3 },
+    formulaFactorScore: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font },
     formulaExpressionBox: {
       alignItems: 'center',
       backgroundColor: palette.greenSoft,
@@ -121,12 +122,11 @@ const styles = StyleSheet.create(
       paddingHorizontal: 16,
       paddingVertical: 20,
     },
-    formulaExpression: { color: palette.greenDark, fontFamily: font, fontSize: 18, fontWeight: '900', textAlign: 'center' },
+    formulaExpression: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font, textAlign: 'center' },
     formulaEquivalentExpression: {
       color: palette.secondary,
       fontFamily: font,
-      fontSize: 14,
-      fontWeight: '500',
+      ...typeScale.caption,
       marginTop: 8,
       textAlign: 'center',
     },
@@ -138,6 +138,6 @@ const styles = StyleSheet.create(
       gap: 6,
       padding: 18,
     },
-    formulaNoticeTitle: { color: palette.text, fontFamily: font, fontSize: 15, fontWeight: '900' },
+    formulaNoticeTitle: { ...typeScale.label, color: palette.text, fontFamily: font },
   }),
 );

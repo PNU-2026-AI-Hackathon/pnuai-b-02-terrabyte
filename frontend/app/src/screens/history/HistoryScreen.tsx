@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { font } from '../../appTheme/glass';
 import { palette } from '../../appTheme/palette';
 import { scaleTypography } from '../../appTheme/scaleTypography';
+import { typeScale } from '../../appTheme/typography';
 import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
@@ -58,30 +59,30 @@ const styles = StyleSheet.create(scaleTypography({
   historySummaryPanel: { gap: 28, padding: 36 },
   historySummaryGrid: { flexDirection: 'row', gap: 0 },
   historySummaryItem: { borderRightColor: palette.lineStrong, borderRightWidth: 1, flex: 1, gap: 7, padding: 22 },
-  historySummaryLabel: { color: palette.muted, fontFamily: font, fontSize: 16, fontWeight: '800' },
-  historySummaryValue: { color: palette.text, fontFamily: font, fontSize: 27, fontWeight: '900' },
+  historySummaryLabel: { ...typeScale.label, color: palette.muted, fontFamily: font },
+  historySummaryValue: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   historyPanel: { gap: 28, padding: 36 },
   historyList: { overflow: 'hidden' },
   historyRow: { alignItems: 'center', borderBottomColor: palette.lineStrong, borderBottomWidth: 1, flexDirection: 'row', gap: 22, minHeight: 124, padding: 24 },
   historyDateBlock: { gap: 5, width: 120 },
-  historyDate: { color: palette.text, fontFamily: font, fontSize: 18, fontWeight: '900' },
+  historyDate: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   historyScoreBlock: { alignItems: 'flex-end', flexDirection: 'row', minWidth: 100 },
-  historyScore: { color: palette.greenDark, fontFamily: font, fontSize: 30, fontWeight: '900' },
+  historyScore: { ...typeScale.metric, color: palette.greenDark, fontFamily: font },
   historyScoreUp: { color: palette.red },
   historyScoreDown: { color: '#2f6ea6' },
   historyScoreInitial: { color: palette.text },
-  historyScoreUnit: { color: palette.muted, fontFamily: font, fontSize: 15, marginBottom: 5 },
+  historyScoreUnit: { ...typeScale.caption, color: palette.muted, marginBottom: 5 },
   historyCopy: { flex: 1, gap: 7 },
-  historyTitle: { color: palette.text, fontFamily: font, fontSize: 22, fontWeight: '900' },
-  historyIssue: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '500', lineHeight: 28 },
-  historyArchived: { color: palette.muted, fontFamily: font, fontSize: 15, fontWeight: '800' },
+  historyTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
+  historyIssue: { ...typeScale.body, color: palette.secondary, fontFamily: font },
+  historyArchived: { ...typeScale.button, color: palette.muted, fontFamily: font },
   historyComparePanel: { alignItems: 'center', flexDirection: 'row', gap: 32, justifyContent: 'space-between', padding: 36 },
   historyCompareCopy: { flex: 1, gap: 8 },
-  historyCompareTitle: { color: palette.text, fontFamily: font, fontSize: 22, fontWeight: '900', lineHeight: 30 },
-  historyCompareBody: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '500', lineHeight: 29, maxWidth: 760 },
+  historyCompareTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
+  historyCompareBody: { ...typeScale.body, color: palette.secondary, fontFamily: font, maxWidth: 760 },
   historyCompareValue: { gap: 7, minWidth: 180, padding: 24 },
-  historyCompareValueLabel: { color: palette.greenDark, fontFamily: font, fontSize: 15, fontWeight: '800' },
-  historyCompareValueNumber: { color: palette.greenDark, fontFamily: font, fontSize: 28, fontWeight: '900' },
+  historyCompareValueLabel: { ...typeScale.label, color: palette.greenDark, fontFamily: font },
+  historyCompareValueNumber: { ...typeScale.metric, color: palette.greenDark, fontFamily: font },
   historyCompareValueBaseline: { color: palette.text },
   historyCompareValueArrow: { color: palette.muted },
 }));

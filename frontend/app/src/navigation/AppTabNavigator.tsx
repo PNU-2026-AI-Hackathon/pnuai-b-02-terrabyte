@@ -6,6 +6,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
+import { typeScale } from '../appTheme/typography';
 import type { PotResponse } from '../device/deviceApi';
 import { AnalysisScreen } from '../screens/analysis/AnalysisScreen';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
@@ -181,5 +182,5 @@ const styles = StyleSheet.create(scaleTypography({
     width: 30,
     zIndex: 3,
   },
-  showSidebarButtonText: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '900' },
+  showSidebarButtonText: { ...typeScale.button, color: palette.secondary, fontFamily: font },
 }));

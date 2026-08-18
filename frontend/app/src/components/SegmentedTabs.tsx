@@ -1,6 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { colors, radii, typography } from '../theme';
+import { controlTokens } from '../appTheme/controls';
+import { font } from '../appTheme/glass';
+import { palette } from '../appTheme/palette';
+import { typeScale } from '../appTheme/typography';
 
 type SegmentOption<T extends string> = {
   key: T;
@@ -35,16 +38,16 @@ export function SegmentedTabs<T extends string>({ value, options, onChange }: Se
 
 const styles = StyleSheet.create({
   wrap: {
-    backgroundColor: colors.glassSoft,
-    borderColor: colors.lineSoft,
-    borderRadius: radii.control,
+    backgroundColor: 'rgba(255,255,255,0.48)',
+    borderColor: palette.lineStrong,
+    borderRadius: 11,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 6,
     padding: 5,
   },
   tab: {
-    alignItems: 'center',
+    ...controlTokens.filter,
     borderRadius: 10,
     flex: 1,
     minHeight: 36,
@@ -53,7 +56,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   activeTab: {
-    backgroundColor: colors.glassStrong,
+    backgroundColor: palette.greenSoft,
     shadowColor: '#1f3a2a',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -61,12 +64,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   label: {
-    color: '#5a7466',
-    fontFamily: typography.fontFamily,
-    fontSize: 14,
-    fontWeight: '700',
+    ...typeScale.label,
+    color: palette.secondary,
+    fontFamily: font,
   },
   activeLabel: {
-    color: colors.textPrimary,
+    color: palette.greenDark,
   },
 });
