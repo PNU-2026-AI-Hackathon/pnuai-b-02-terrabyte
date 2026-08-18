@@ -8,38 +8,47 @@ import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
 import { shopProducts, type ShopCategory, type ShopProduct } from '../../data';
-import { useDeviceEnvironment } from '../../shared/device-environment/DeviceEnvironmentProvider';
-import { getRecommendedProductIds } from '../../shared/factorPresentation';
+
+type ProductCategory = 'all' | ShopCategory;
 
 export function ShopScreen({ compact }: { compact: boolean }) {
-  const { score } = useDeviceEnvironment();
-  const [category, setCategory] = useState<'all' | ShopCategory>('all');
+  const [category, setCategory] = useState<ProductCategory>('all');
+  const [recommendedOnly, setRecommendedOnly] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 9;
   const filteredProducts = useMemo(
-    () => category === 'all' ? shopProducts : shopProducts.filter((product) => product.category === category),
-    [category],
+    () => {
+      const categoryProducts = category === 'all'
+        ? shopProducts
+        : shopProducts.filter((product) => product.category === category);
+      return recommendedOnly
+        ? categoryProducts.filter((product) => product.badge?.includes('추천'))
+        : categoryProducts;
+    },
+    [category, recommendedOnly],
   );
   const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const visibleProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const cartCount = Object.values(cart).reduce((sum, value) => sum + value, 0);
   const cartProducts = shopProducts.filter((product) => (cart[product.id] ?? 0) > 0);
   const cartTotal = cartProducts.reduce((sum, product) => sum + product.price * (cart[product.id] ?? 0), 0);
-  const recommendedProducts = getRecommendedProductIds(score?.factors ?? [])
-    .map((id) => shopProducts.find((product) => product.id === id))
-    .filter((product): product is ShopProduct => Boolean(product));
-  const tabs: Array<{ key: 'all' | ShopCategory; label: string }> = [
+  const tabs: Array<{ key: ProductCategory; label: string }> = [
     { key: 'all', label: '전체' },
     { key: 'parts', label: '부품' },
     { key: 'soil', label: '흙과 배지' },
     { key: 'seeds', label: '씨앗' },
   ];
 
-  const changeCategory = (nextCategory: 'all' | ShopCategory) => {
+  const changeCategory = (nextCategory: ProductCategory) => {
     setCategory(nextCategory);
+    setCurrentPage(1);
+  };
+
+  const toggleRecommended = () => {
+    setRecommendedOnly((current) => !current);
     setCurrentPage(1);
   };
 
@@ -49,47 +58,34 @@ export function ShopScreen({ compact }: { compact: boolean }) {
 
   return (
     <View style={styles.pageBody}>
-      <Surface style={styles.shopRecommendationPanel}>
-        <SectionHeader title="현재 공간 맞춤 추천" description="공간 진단에서 확인된 조도, 습도와 배수 개선 항목을 기준으로 추천합니다." />
-        <View style={[styles.shopRecommendationGrid, compact && styles.stack]}>
-          {recommendedProducts.map((product, index) => (
-            <Pressable key={product.id} onPress={() => setSelectedProduct(product)} style={styles.shopRecommendationCard}>
-              <View style={styles.shopRecommendationTop}>
-                <Text style={styles.shopRecommendationRank}>{index + 1}순위</Text>
-              </View>
-              <Text style={styles.shopRecommendationName}>{product.name}</Text>
-              <Text style={styles.shopRecommendationDescription}>{product.desc}</Text>
-              <View style={styles.shopRecommendationBottom}>
-                <Text style={styles.shopRecommendationPrice}>{product.price.toLocaleString('ko-KR')}원</Text>
-                <Pressable
-                  onPress={(event) => {
-                    event.stopPropagation?.();
-                    addToCart(product);
-                  }}
-                  style={styles.addButton}
-                >
-                  <Text style={styles.addButtonText}>담기</Text>
-                </Pressable>
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      </Surface>
-
       <View style={[styles.shopToolbar, compact && styles.shopToolbarCompact]}>
-        <View style={styles.shopTabs}>
-          {tabs.map((tab) => (
-            <Pressable key={tab.key} onPress={() => changeCategory(tab.key)} style={[styles.shopTab, category === tab.key && styles.shopTabActive]}>
-              <Text style={[styles.shopTabText, category === tab.key && styles.shopTabTextActive]}>{tab.label}</Text>
-            </Pressable>
-          ))}
+        <View style={styles.shopFilters}>
+          <View style={styles.shopTabs}>
+            {tabs.map((tab) => (
+              <Pressable key={tab.key} onPress={() => changeCategory(tab.key)} style={[styles.shopTab, category === tab.key && styles.shopTabActive]}>
+                <Text style={[styles.shopTabText, category === tab.key && styles.shopTabTextActive]}>{tab.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="추천 상품만 보기"
+            accessibilityState={{ selected: recommendedOnly }}
+            onPress={toggleRecommended}
+            style={[styles.recommendationTag, recommendedOnly && styles.recommendationTagActive]}
+          >
+            <Text style={[styles.recommendationTagText, recommendedOnly && styles.recommendationTagTextActive]}>추천</Text>
+          </Pressable>
         </View>
         <Pressable accessibilityRole="button" onPress={() => setCartOpen(true)} style={styles.cartButton}>
           <Text style={styles.cartCount}>장바구니 {cartCount}</Text>
         </Pressable>
       </View>
-      <Surface style={styles.productPanel}>
-        <SectionHeader title="전체 제품" description={`전체 ${filteredProducts.length}개 · ${currentPage} / ${pageCount} 페이지`} />
+      <Surface flat style={styles.productPanel}>
+        <SectionHeader
+          title={recommendedOnly ? `${category === 'all' ? '' : `${tabs.find((tab) => tab.key === category)?.label} `}추천 제품` : category === 'all' ? '전체 제품' : tabs.find((tab) => tab.key === category)?.label ?? '제품'}
+          description={recommendedOnly ? `추천 태그가 붙은 제품 ${filteredProducts.length}개` : `제품 ${filteredProducts.length}개 · ${currentPage} / ${pageCount} 페이지`}
+        />
         <View style={[styles.productGrid, compact && styles.stack]}>
           {visibleProducts.map((product) => (
             <Pressable key={product.id} onPress={() => setSelectedProduct(product)} style={[styles.productCard, compact && styles.productCardCompact]}>
@@ -166,7 +162,6 @@ export function ShopScreen({ compact }: { compact: boolean }) {
           <Surface style={styles.cartModal}>
             <View style={styles.modalHeader}>
               <View style={styles.modalHeaderCopy}>
-                <Text style={styles.modalEyebrow}>CART</Text>
                 <Text style={styles.modalTitle}>장바구니</Text>
               </View>
               <Pressable onPress={() => setCartOpen(false)} style={styles.modalClose}>
@@ -216,25 +211,21 @@ const styles = StyleSheet.create(scaleTypography({
   stack: { flexDirection: 'column' },
   shopToolbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
   shopToolbarCompact: { alignItems: 'flex-start', flexDirection: 'column', gap: 12 },
+  shopFilters: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   shopTabs: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 11, borderWidth: 1, flexDirection: 'row', gap: 3, padding: 5 },
   shopTab: { borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
   shopTabActive: { backgroundColor: palette.green, shadowColor: '#1f6646', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.16, shadowRadius: 10 },
   shopTabText: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '800' },
   shopTabTextActive: { color: '#ffffff', fontWeight: '900' },
+  recommendationTag: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.34)', borderColor: palette.green, borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 42, paddingHorizontal: 17 },
+  recommendationTagActive: { backgroundColor: palette.green },
+  recommendationTagText: { color: palette.greenDark, fontFamily: font, fontSize: 16, fontWeight: '900' },
+  recommendationTagTextActive: { color: '#ffffff' },
   cartButton: { alignItems: 'center', backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 9, borderWidth: 1, justifyContent: 'center', minHeight: 42, paddingHorizontal: 17 },
   cartCount: { color: palette.secondary, fontFamily: font, fontSize: 16, fontWeight: '800' },
-  shopRecommendationPanel: { gap: 28, padding: 34 },
-  shopRecommendationGrid: { flexDirection: 'row', gap: 16 },
-  shopRecommendationCard: { backgroundColor: palette.greenSoft, borderColor: '#c2dccb', borderRadius: 14, borderWidth: 1, flex: 1, gap: 10, minHeight: 220, padding: 24 },
-  shopRecommendationTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  shopRecommendationRank: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '900' },
-  shopRecommendationName: { color: palette.text, fontFamily: font, fontSize: 22, fontWeight: '900', lineHeight: 30 },
-  shopRecommendationDescription: { color: palette.secondary, flex: 1, fontFamily: font, fontSize: 15, fontWeight: '500', lineHeight: 24 },
-  shopRecommendationBottom: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  shopRecommendationPrice: { color: palette.greenDark, fontFamily: font, fontSize: 21, fontWeight: '900' },
   productPanel: { gap: 34, padding: 36 },
-  productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 20 },
-  productCard: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 15, borderWidth: 1, flexBasis: '31%', flexGrow: 1, gap: 16, maxWidth: '32%', minHeight: 250, minWidth: 240, padding: 27, shadowColor: '#203329', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.06, shadowRadius: 18 },
+  productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  productCard: { backgroundColor: 'rgba(255,255,255,0.16)', borderColor: 'rgba(86,120,101,0.24)', borderRadius: 16, borderWidth: 1, flexBasis: '31%', flexGrow: 1, gap: 16, maxWidth: '32%', minHeight: 250, minWidth: 240, padding: 27 },
   productCardCompact: { flexBasis: 'auto', maxWidth: '100%', minWidth: 0, width: '100%' },
   productCardTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 24 },
   productCategoryText: { color: palette.greenDark, fontFamily: font, fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
