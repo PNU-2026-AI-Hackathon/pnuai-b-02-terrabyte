@@ -74,7 +74,7 @@ const mockSoilRecommendation: SoilRecommendation = {
   mixRatioText: '원예용 상토 5 : 펄라이트 1',
   reason: '일정한 수분 공급을 유지하면서 배수와 통기성을 보완한다.',
   environmentSignals: [
-    '관수 후 토양수분이 상승함',
+    '관수 후 토양 수분이 상승함',
     '이후 수분이 점진적으로 감소함',
     '배수구에서 물이 정상적으로 빠짐',
   ],

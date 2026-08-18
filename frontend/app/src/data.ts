@@ -90,7 +90,7 @@ export const factors: Factor[] = [
     gap: 3200,
   },
   {
-    label: '토양수분',
+    label: '토양 수분',
     unit: '%',
     current: 38,
     avg24h: 36,
@@ -118,7 +118,7 @@ export const altCrops = [
     emoji: '🥬',
     expectedScore: 85,
     setsCropIndex: 1,
-    reason: '현재 온도와 토양수분 조건에 가장 잘 맞고, 조도 보완 효과를 빠르게 받을 수 있습니다.',
+    reason: '현재 온도와 토양 수분 조건에 가장 잘 맞고, 조도 보완 효과를 빠르게 받을 수 있습니다.',
     caution: '습도가 45% 아래로 내려가지 않도록 관리가 필요합니다.',
   },
   {
@@ -144,7 +144,7 @@ export type Sensor = { label: string; model: string };
 export const sensors: Sensor[] = [
   { label: '온·습도 센서', model: 'DHT22' },
   { label: '조도 센서', model: 'BH1750' },
-  { label: '토양수분 센서', model: 'EF04027' },
+  { label: '토양 수분 센서', model: 'EF04027' },
   { label: '토양 온도 센서', model: 'DS18B20' },
 ];
 
@@ -305,7 +305,7 @@ export const dailyAvg = [
   { label: '온도', emoji: '🌡️', value: '24.1℃', sub: '24h 평균 · 최저 21.8 · 최고 26.3' },
   { label: '습도', emoji: '💧', value: '52%', sub: '24h 평균 · 최저 43 · 최고 64' },
   { label: '조도', emoji: '☀️', value: '11,800 lux', sub: '24h 평균 · 최저 1,200 · 최고 18,900' },
-  { label: '토양수분', emoji: '🪴', value: '36%', sub: '24h 평균 · 최저 31 · 최고 42' },
+  { label: '토양 수분', emoji: '🪴', value: '36%', sub: '24h 평균 · 최저 31 · 최고 42' },
 ];
 
 export const latest = [
@@ -346,7 +346,7 @@ export const latest = [
     sparkline: [7650, 7820, 7900, 7750, 8010, 8150, 8070, 8240, 8100, 7950, 8120, 8000],
   },
   {
-    label: '토양수분',
+    label: '토양 수분',
     emoji: '🪴',
     value: '38%',
     baseValue: 38,
@@ -382,5 +382,5 @@ export const chartMetrics = [
   { label: '온도', unit: '℃', color: '#d9822b', seed: 1, amp: 16, mid: 55 },
   { label: '습도', unit: '%', color: '#2b8fae', seed: 3, amp: 22, mid: 60 },
   { label: '조도', unit: 'lux', color: '#e0b23a', seed: 5, amp: 30, mid: 55 },
-  { label: '토양수분', unit: '%', color: '#3fae6f', seed: 7, amp: 14, mid: 50 },
+  { label: '토양 수분', unit: '%', color: '#3fae6f', seed: 7, amp: 14, mid: 50 },
 ];

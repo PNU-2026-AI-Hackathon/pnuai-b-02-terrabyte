@@ -53,12 +53,12 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
     recommendation: getFactorRecommendation(factor.key),
   })) ?? [];
   const soilMoistureReport = analysisLatest ? [{
-    label: '토양수분',
+    label: '토양 수분',
     unit: '%',
     avg24h: analysisLatest.measurements.soilMoisturePct,
     axisMax: 100,
     status: 'REFERENCE',
-    finding: `현재 토양수분은 ${analysisLatest.measurements.soilMoisturePct}%입니다. 이 값은 모니터링용이며 종합 적합도에는 포함되지 않습니다.`,
+    finding: `현재 토양 수분은 ${analysisLatest.measurements.soilMoisturePct}%입니다. 이 값은 모니터링용이며 종합 적합도에는 포함되지 않습니다.`,
     recommendation: '작물과 배지에 맞는 관수 기준이 확정되면 별도 관수 판단에 활용하세요.',
   }] : [];
   const soilTemperatureReport = analysisLatest?.measurements.soilTemperatureC == null ? [] : [{
@@ -94,7 +94,7 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
         ? '관수와 환기 시간을 조절해 60~75% 범위를 유지하세요.'
         : factor.label === '조도'
           ? '생장등의 세기와 설치 거리를 조절해 조도를 보완하세요.'
-          : '관수 전 토양수분을 확인하고 30~45% 범위를 유지하세요.',
+          : '관수 전 토양 수분을 확인하고 30~45% 범위를 유지하세요.',
   }));
   const factorReports = analysisScore?.factors.length
     ? [...scoreFactorReports, ...soilMoistureReport, ...soilTemperatureReport]
@@ -150,7 +150,7 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
               {issueFactors.length ? issueFactors.map((factor, index) => (
                 <Text key={factor.key} style={styles.reportPriority}>{index + 1}. {factor.label} {factor.status === 'LOW' ? '보완' : '완화'}</Text>
               )) : <Text style={styles.reportPriority}>1. 현재 환경 설정 유지</Text>}
-              <Text style={styles.reportPriority}>{issueFactors.length ? issueFactors.length + 1 : 2}. 토양수분 모니터링</Text>
+              <Text style={styles.reportPriority}>{issueFactors.length ? issueFactors.length + 1 : 2}. 토양 수분 모니터링</Text>
             </View>
           </View>
         </View>
@@ -199,7 +199,7 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
           {[
             { number: '01', tag: '오늘 실행', title: '생장등 보조 운전 설정', body: '오후 16:00부터 20:00까지 4시간 운전하세요. 잎 끝과 조명 사이 거리는 약 30cm를 유지합니다.', effect: '조도 안정화 · 예상 +11점' },
             { number: '02', tag: '3일 관찰', title: '오후 습도 하락 구간 완화', body: '관수 직후 환기 시작 시간을 10분 늦추고 물받이 트레이를 배치해 50~60% 범위를 유지하세요.', effect: '습도 안정화 · 예상 +4점' },
-            { number: '03', tag: '현재 유지', title: '토양수분 기준 관수 유지', body: '고정 시간 관수 대신 센서값 31% 이하를 기준으로 물을 주세요. 과습 위험을 줄일 수 있습니다.', effect: '뿌리 스트레스 예방' },
+            { number: '03', tag: '현재 유지', title: '토양 수분 기준 관수 유지', body: '고정 시간 관수 대신 센서값 31% 이하를 기준으로 물을 주세요. 과습 위험을 줄일 수 있습니다.', effect: '뿌리 스트레스 예방' },
           ].map((plan) => (
             <View key={plan.number} style={[styles.reportPlanRow, compact && styles.stack]}>
               <Text style={styles.reportPlanNumber}>{plan.number}</Text>
@@ -268,14 +268,14 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
           <SectionHeader title="토양 및 배지 추천" description="토양분석 세트의 수분·온도 측정값과 선택한 작물의 뿌리 특성을 반영했습니다." />
         </View>
         <View style={[styles.soilSummaryGrid, compact && styles.stack]}>
-          <View style={styles.soilSummaryItem}><Text style={styles.soilSummaryLabel}>토양수분</Text><Text style={styles.soilSummaryValue}>36%</Text><Text style={styles.soilSummaryState}>적정</Text></View>
+          <View style={styles.soilSummaryItem}><Text style={styles.soilSummaryLabel}>토양 수분</Text><Text style={styles.soilSummaryValue}>36%</Text><Text style={styles.soilSummaryState}>적정</Text></View>
           <View style={styles.soilSummaryItem}><Text style={styles.soilSummaryLabel}>토양 온도</Text><Text style={styles.soilSummaryValue}>22.8℃</Text><Text style={styles.soilSummaryState}>적정</Text></View>
           <View style={styles.soilSummaryItem}><Text style={styles.soilSummaryLabel}>배수 상태</Text><Text style={styles.soilSummaryValue}>72점</Text><Text style={styles.soilSummaryStateWarn}>보완 권장</Text></View>
         </View>
         <View style={styles.soilRecommendationList}>
           {[
             { label: '1순위', title: '실내 허브용 배양토 + 펄라이트', ratio: '권장 배합 2 : 1', body: '현재 수분을 유지하면서 통기성과 배수성을 높이는 구성입니다. 바질과 페퍼민트의 뿌리 과습을 예방하기 좋습니다.', note: '분갈이 시 화분 하단에 배수층 2cm 확보' },
-            { label: '2순위', title: '코코피트 + 펄라이트 + 상토', ratio: '권장 배합 1 : 1 : 2', body: '가볍고 수분 분포가 고른 배지입니다. 자동 관수 키트를 함께 사용할 때 수분 편차를 줄일 수 있습니다.', note: '초기 2주간 토양수분 32~40% 유지' },
+            { label: '2순위', title: '코코피트 + 펄라이트 + 상토', ratio: '권장 배합 1 : 1 : 2', body: '가볍고 수분 분포가 고른 배지입니다. 자동 관수 키트를 함께 사용할 때 수분 편차를 줄일 수 있습니다.', note: '초기 2주간 토양 수분 32~40% 유지' },
             { label: '유지 관리', title: '기존 흙 배수성 보완', ratio: '펄라이트 20% 추가', body: '전체 분갈이가 어렵다면 표토를 걷어내고 펄라이트를 혼합해 배수성을 단계적으로 개선하세요.', note: '혼합 후 첫 관수량은 평소의 70% 적용' },
           ].map((soilItem) => (
             <View key={soilItem.title} style={styles.soilRecommendationRow}>

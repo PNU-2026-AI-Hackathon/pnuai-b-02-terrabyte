@@ -20,7 +20,7 @@ export const MultiSeries: Story = {
       { label: '온도', color: '#d27d35', values: wave(1, 18, 88) },
       { label: '습도', color: '#438da5', values: wave(3, 25, 98) },
       { label: '조도', color: '#c99b32', values: wave(5, 34, 90) },
-      { label: '토양수분', color: '#2b8058', values: wave(7, 16, 105) },
+      { label: '토양 수분', color: '#2b8058', values: wave(7, 16, 105) },
     ],
   },
 };

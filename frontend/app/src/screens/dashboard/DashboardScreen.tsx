@@ -64,6 +64,7 @@ export function DashboardScreen({
   const soilTemperatureSeries = useMeasurementSeries('soil_temperature_c', chartRange);
   const formulaDisclosure = useDisclosure();
 
+  const soilMoisture = latestData?.measurements.soilMoisturePct;
   const soilTemperature = latestData?.measurements.soilTemperatureC;
   const realtimeStatus = (value: number | null | undefined) => (
     value == null ? '데이터 수신 대기 중' : '실시간 측정 중'
@@ -85,7 +86,7 @@ export function DashboardScreen({
       detail: realtimeStatus(latestData?.measurements.plantLightPpfdUmolM2S),
     },
     {
-      label: '토양수분',
+      label: '토양 수분',
       value: latestData ? `${latestData.measurements.soilMoisturePct}%` : '--',
       detail: realtimeStatus(latestData?.measurements.soilMoisturePct),
     },
@@ -98,6 +99,8 @@ export function DashboardScreen({
   const displayFactors = scoreData?.factors ?? factors.slice(0, 3);
   const issueFactors = getIssueFactors(scoreData?.factors ?? []);
   const gradeText = getGradeLabel(scoreData?.grade);
+  const soilMoistureValue = soilMoisture == null ? '--' : `${soilMoisture.toLocaleString('ko-KR')}%`;
+  const soilMoistureInRange = soilMoisture != null && soilMoisture >= 30 && soilMoisture <= 45;
   const soilTemperatureValue = soilTemperature == null ? '--' : `${soilTemperature.toLocaleString('ko-KR', { maximumFractionDigits: 1 })}℃`;
   const chartSeries = environmentChartMetrics
     .map((metric) => ({
@@ -259,6 +262,16 @@ export function DashboardScreen({
               </View>
             </View>
           ))}
+          <View style={styles.tableRow}>
+            <Text style={[styles.tableCellStrong, styles.tableName]}>토양 수분</Text>
+            <Text style={styles.tableCell}>{soilMoistureValue}</Text>
+            <Text style={styles.tableCell}>30~45%</Text>
+            <View style={[styles.statusBadge, !soilMoistureInRange && styles.statusBadgeWarn]}>
+              <Text style={[styles.statusBadgeText, !soilMoistureInRange && styles.statusBadgeTextWarn]}>
+                {soilMoistureInRange ? '적정' : '확인 필요'}
+              </Text>
+            </View>
+          </View>
           <View style={styles.tableRow}>
             <Text style={[styles.tableCellStrong, styles.tableName]}>토양 온도</Text>
             <Text style={styles.tableCell}>{soilTemperatureValue}</Text>
