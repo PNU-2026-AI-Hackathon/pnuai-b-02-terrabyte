@@ -4,7 +4,9 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { glassWebStyle, font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
+import { SensorSummary } from '../components/SensorSummary';
 import { Surface } from '../components/Surface';
+import { sensors } from '../data';
 import type { Page } from './types';
 
 const navItems: Array<{ key: Page; label: string }> = [
@@ -25,6 +27,7 @@ export function Sidebar({ compact, cropName, onHide, onLogout, onNavigate, page 
   page: Page;
 }) {
   const [farmInfoOpen, setFarmInfoOpen] = useState(false);
+  const [deviceStatusOpen, setDeviceStatusOpen] = useState(false);
 
   if (compact) {
     return (
@@ -80,6 +83,9 @@ export function Sidebar({ compact, cropName, onHide, onLogout, onNavigate, page 
           <Text style={styles.deviceDetail}>마지막 수신 방금 전</Text>
           <Text style={styles.devicePanelAction}>스마트팜 정보 보기</Text>
         </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => setDeviceStatusOpen(true)} style={({ pressed }) => [styles.deviceStatusButton, pressed && styles.pressed]}>
+          <Text style={styles.deviceStatusButtonText}>디바이스 상태 보기</Text>
+        </Pressable>
         <Pressable accessibilityRole="button" onPress={onLogout} style={styles.logoutButton}>
           <Text style={styles.logoutText}>로그아웃</Text>
         </Pressable>
@@ -113,6 +119,21 @@ export function Sidebar({ compact, cropName, onHide, onLogout, onNavigate, page 
         </Surface>
       </View>
     </Modal>
+    <Modal animationType="fade" onRequestClose={() => setDeviceStatusOpen(false)} transparent visible={deviceStatusOpen}>
+      <View style={styles.modalBackdrop}>
+        <Surface style={styles.infoModal}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalHeaderCopy}>
+              <Text style={styles.modalTitle}>디바이스 상태</Text>
+            </View>
+            <Pressable onPress={() => setDeviceStatusOpen(false)} style={styles.modalClose}>
+              <Text style={styles.modalCloseText}>닫기</Text>
+            </Pressable>
+          </View>
+          <SensorSummary sensors={sensors} statusLabel="정상 연결" />
+        </Surface>
+      </View>
+    </Modal>
     </>
   );
 }
@@ -138,6 +159,8 @@ const styles = StyleSheet.create(scaleTypography({
   deviceTitle: { color: palette.text, fontFamily: font, fontSize: 19, fontWeight: '800', marginTop: 12 },
   deviceDetail: { color: palette.muted, fontFamily: font, fontSize: 14, marginTop: 5 },
   devicePanelAction: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800', marginTop: 16 },
+  deviceStatusButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, paddingVertical: 11 },
+  deviceStatusButtonText: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800' },
   logoutButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, paddingVertical: 10 },
   logoutText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '700' },
   mobileNav: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.48)', borderBottomColor: palette.line, borderBottomWidth: 1, flexDirection: 'row', gap: 20, minHeight: 68, paddingHorizontal: 22, zIndex: 2 },

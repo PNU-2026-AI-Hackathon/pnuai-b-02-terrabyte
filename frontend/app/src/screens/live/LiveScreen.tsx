@@ -1,20 +1,17 @@
-import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { font } from '../../appTheme/glass';
 import { palette } from '../../appTheme/palette';
 import { scaleTypography } from '../../appTheme/scaleTypography';
 import { LineChart } from '../../components/LineChart';
-import { SensorSummary } from '../../components/SensorSummary';
 import { Surface } from '../../components/Surface';
-import { latest, sensors } from '../../data';
+import { latest } from '../../data';
 import {
   useDeviceEnvironment,
   useMeasurementSeries,
 } from '../../shared/device-environment/DeviceEnvironmentProvider';
 
 export function LiveScreen({ compact }: { compact: boolean }) {
-  const [deviceOpen, setDeviceOpen] = useState(false);
   const { measurements: measurement } = useDeviceEnvironment();
   const soilTemperatureSeries = useMeasurementSeries('soil_temperature_c', '1h');
 
@@ -37,16 +34,7 @@ export function LiveScreen({ compact }: { compact: boolean }) {
 
   return (
     <View style={styles.pageBody}>
-      <Pressable accessibilityRole="button" onPress={() => setDeviceOpen(true)} style={({ pressed }) => [styles.liveToolbar, pressed && styles.pressed]}>
-        <View style={styles.deviceStatusRow}>
-          <View style={styles.onlineDot} />
-          <Text style={styles.liveStatus}>센서 정상 연결</Text>
-        </View>
-        <View style={styles.liveToolbarRight}>
-          <Text style={styles.liveRefresh}>3초마다 자동 갱신{measurement ? ` · 업데이트 #${measurement.sequence}` : ''}</Text>
-          <Text style={styles.liveDeviceAction}>디바이스 상태 보기</Text>
-        </View>
-      </Pressable>
+      <Text style={styles.liveRefresh}>3초마다 자동 갱신{measurement ? ` · 업데이트 #${measurement.sequence}` : ''}</Text>
       <View style={[styles.liveGrid, compact && styles.stack]}>
         {liveMetrics.map((metric) => (
           <Surface flat key={metric.label} style={styles.liveCard}>
@@ -99,35 +87,13 @@ export function LiveScreen({ compact }: { compact: boolean }) {
           )}
         </Surface>
       </View>
-      <Modal animationType="fade" onRequestClose={() => setDeviceOpen(false)} transparent visible={deviceOpen}>
-        <View style={styles.modalBackdrop}>
-          <Surface style={styles.infoModal}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderCopy}>
-                <Text style={styles.modalTitle}>디바이스 상태</Text>
-              </View>
-              <Pressable onPress={() => setDeviceOpen(false)} style={styles.modalClose}>
-                <Text style={styles.modalCloseText}>닫기</Text>
-              </Pressable>
-            </View>
-            <SensorSummary sensors={sensors} statusLabel="정상 연결" />
-          </Surface>
-        </View>
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create(scaleTypography({
   pageBody: { gap: 30, maxWidth: 1320, width: '100%' },
-  liveToolbar: { alignItems: 'center', borderBottomColor: palette.lineStrong, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 0, paddingVertical: 15 },
-  pressed: { opacity: 0.78 },
-  deviceStatusRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
-  onlineDot: { backgroundColor: '#3aad70', borderRadius: 999, height: 7, width: 7 },
-  liveStatus: { color: palette.text, fontFamily: font, fontSize: 19, fontWeight: '900' },
-  liveToolbarRight: { alignItems: 'flex-end', gap: 3 },
-  liveRefresh: { color: palette.muted, fontFamily: font, fontSize: 15 },
-  liveDeviceAction: { color: palette.greenDark, fontFamily: font, fontSize: 14, fontWeight: '800' },
+  liveRefresh: { alignSelf: 'flex-end', color: palette.muted, fontFamily: font, fontSize: 14 },
   liveGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 24 },
   stack: { flexDirection: 'column' },
   liveCard: { flexBasis: '47%', flexGrow: 1, gap: 14, minWidth: 280, padding: 34 },
@@ -138,11 +104,4 @@ const styles = StyleSheet.create(scaleTypography({
   liveCaption: { color: palette.muted, fontFamily: font, fontSize: 16 },
   liveFooter: { borderTopColor: palette.line, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 },
   liveFooterText: { color: palette.muted, fontFamily: font, fontSize: 14 },
-  modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
-  infoModal: { gap: 22, maxHeight: '84%', maxWidth: 580, padding: 28, width: '100%' },
-  modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
-  modalHeaderCopy: { flex: 1, gap: 5 },
-  modalTitle: { color: palette.text, fontFamily: font, fontSize: 32, fontWeight: '900', letterSpacing: -0.8, lineHeight: 41 },
-  modalClose: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 36, paddingHorizontal: 12 },
-  modalCloseText: { color: palette.secondary, fontFamily: font, fontSize: 14, fontWeight: '800' },
 }));
