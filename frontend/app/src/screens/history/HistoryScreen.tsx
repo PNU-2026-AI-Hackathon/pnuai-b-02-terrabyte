@@ -15,15 +15,17 @@ export function HistoryScreen({ compact, onNavigate }: { compact: boolean; onNav
     { date: '2026. 07. 08', score: 68, isInitial: true, summary: '옥상 공간의 채광·환기·환경 조건 분석', issues: '조도·습도·배수 보완 필요' },
   ];
   const initialScore = records.find((record) => record.isInitial)?.score ?? records[records.length - 1].score;
+  const currentScore = records[0]?.score ?? initialScore;
+  const accumulatedImprovement = currentScore - initialScore;
 
   return (
     <View style={styles.pageBody}>
       <Surface flat style={styles.historySummaryPanel}>
         <SectionHeader title="부산 도심 옥상 A" description="최초 공간 진단부터 현재 모니터링까지의 변화입니다." />
         <View style={[styles.historySummaryGrid, compact && styles.stack]}>
-          <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>최초 적합도</Text><Text style={styles.historySummaryValue}>68점</Text></View>
-          <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>현재 적합도</Text><Text style={styles.historySummaryValueStrong}>82점</Text></View>
-          <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>누적 개선</Text><Text style={styles.historySummaryValueStrong}>+14점</Text></View>
+          <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>최초 적합도</Text><Text style={[styles.historySummaryValue, styles.historyScoreInitial]}>{initialScore}점</Text></View>
+          <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>현재 적합도</Text><Text style={[styles.historySummaryValue, currentScore > initialScore ? styles.historyScoreUp : currentScore < initialScore ? styles.historyScoreDown : styles.historyScoreInitial]}>{currentScore}점</Text></View>
+          <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>누적 개선</Text><Text style={[styles.historySummaryValue, accumulatedImprovement > 0 ? styles.historyScoreUp : accumulatedImprovement < 0 ? styles.historyScoreDown : styles.historyScoreInitial]}>{accumulatedImprovement > 0 ? '+' : ''}{accumulatedImprovement}점</Text></View>
           <View style={styles.historySummaryItem}><Text style={styles.historySummaryLabel}>수집 데이터</Text><Text style={styles.historySummaryValue}>14일</Text></View>
         </View>
       </Surface>
@@ -44,7 +46,7 @@ export function HistoryScreen({ compact, onNavigate }: { compact: boolean; onNav
 
       <Surface flat style={styles.historyComparePanel}>
         <View style={styles.historyCompareCopy}><Text style={styles.historyCompareTitle}>보조 조명 설치 후 조도 점수가 가장 크게 개선됐습니다</Text><Text style={styles.historyCompareBody}>일평균 조도는 9,600lux에서 11,800lux로 상승했고, 권장 범위 미달 시간은 하루 8.2시간에서 4.6시간으로 줄었습니다.</Text></View>
-        <View style={styles.historyCompareValue}><Text style={styles.historyCompareValueLabel}>조도 점수 변화</Text><Text style={styles.historyCompareValueNumber}>54 → 71</Text></View>
+        <View style={styles.historyCompareValue}><Text style={styles.historyCompareValueLabel}>조도 점수 변화</Text><Text style={styles.historyCompareValueNumber}><Text style={styles.historyCompareValueBaseline}>54</Text><Text style={styles.historyCompareValueArrow}> → </Text><Text style={styles.historyScoreUp}>71</Text></Text></View>
       </Surface>
     </View>
   );
@@ -58,7 +60,6 @@ const styles = StyleSheet.create(scaleTypography({
   historySummaryItem: { borderRightColor: palette.lineStrong, borderRightWidth: 1, flex: 1, gap: 7, padding: 22 },
   historySummaryLabel: { color: palette.muted, fontFamily: font, fontSize: 16, fontWeight: '800' },
   historySummaryValue: { color: palette.text, fontFamily: font, fontSize: 27, fontWeight: '900' },
-  historySummaryValueStrong: { color: palette.greenDark, fontFamily: font, fontSize: 27, fontWeight: '900' },
   historyPanel: { gap: 28, padding: 36 },
   historyList: { overflow: 'hidden' },
   historyRow: { alignItems: 'center', borderBottomColor: palette.lineStrong, borderBottomWidth: 1, flexDirection: 'row', gap: 22, minHeight: 124, padding: 24 },
@@ -81,4 +82,6 @@ const styles = StyleSheet.create(scaleTypography({
   historyCompareValue: { gap: 7, minWidth: 180, padding: 24 },
   historyCompareValueLabel: { color: palette.greenDark, fontFamily: font, fontSize: 15, fontWeight: '800' },
   historyCompareValueNumber: { color: palette.greenDark, fontFamily: font, fontSize: 28, fontWeight: '900' },
+  historyCompareValueBaseline: { color: palette.text },
+  historyCompareValueArrow: { color: palette.muted },
 }));
