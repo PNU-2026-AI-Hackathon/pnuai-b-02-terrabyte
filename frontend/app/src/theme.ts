@@ -1,3 +1,5 @@
+import { appFontFamily } from './appTheme/fontFamily';
+
 export const colors = {
   textPrimary: '#1c2b22',
   textSecondary: '#4a6355',
@@ -42,7 +44,7 @@ export const shadows = {
 };
 
 export const typography = {
-  fontFamily: '"Pretendard Variable", Pretendard, "Noto Sans KR", sans-serif',
+  fontFamily: appFontFamily,
 };
 
 export const maxContentWidth = 1180;
