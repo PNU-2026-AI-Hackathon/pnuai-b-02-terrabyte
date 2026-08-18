@@ -13,6 +13,7 @@ const meta = {
     compact: false,
     cropName: '방울토마토',
     selectedCrop: 0,
+    onCreatePot: fn(),
     onLogout: fn(),
     onSelectCrop: fn(),
     onSelectPot: fn(),

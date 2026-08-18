@@ -15,6 +15,7 @@ import { LiveScreen } from '../screens/live/LiveScreen';
 import { ShopScreen } from '../screens/shop/ShopScreen';
 import { DeviceEnvironmentProvider } from '../shared/device-environment/DeviceEnvironmentProvider';
 import { Header } from './Header';
+import { PotManager } from './PotManager';
 import { Sidebar } from './Sidebar';
 import type { AppTabParamList, Page } from './types';
 
@@ -38,35 +39,10 @@ const pageByRouteName: Record<keyof AppTabParamList, Page> = {
   Shop: 'shop',
 };
 
-function PotSelector({ onSelect, pots, selectedPotId }: {
-  onSelect: (potId: number) => void;
-  pots: PotResponse[];
-  selectedPotId?: number;
-}) {
-  if (pots.length === 0) return null;
-  return (
-    <View accessibilityLabel="화분 선택" style={styles.potSelector}>
-      {pots.slice(0, 4).map((pot) => {
-        const selected = pot.id === selectedPotId;
-        return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ selected }}
-            key={pot.id}
-            onPress={() => onSelect(pot.id)}
-            style={[styles.potButton, selected && styles.potButtonSelected]}
-          >
-            <Text style={[styles.potButtonText, selected && styles.potButtonTextSelected]}>{pot.label}</Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-function ScreenLayout({ children, compact, onSelectPot, page, pots, selectedPotId }: {
+function ScreenLayout({ children, compact, onCreatePot, onSelectPot, page, pots, selectedPotId }: {
   children: ReactNode;
   compact: boolean;
+  onCreatePot: (label: string, cropCode: string) => Promise<void>;
   onSelectPot: (potId: number) => void;
   page: Page;
   pots: PotResponse[];
@@ -76,7 +52,7 @@ function ScreenLayout({ children, compact, onSelectPot, page, pots, selectedPotI
     <View style={styles.workspace}>
       <Header compact={compact} page={page} />
       <ScrollView contentContainerStyle={[styles.workspaceScroll, compact && styles.workspaceScrollCompact]}>
-        <PotSelector onSelect={onSelectPot} pots={pots} selectedPotId={selectedPotId} />
+        <PotManager compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} pots={pots} selectedPotId={selectedPotId} />
         {children}
       </ScrollView>
     </View>
@@ -87,6 +63,7 @@ type AppTabNavigatorProps = {
   compact: boolean;
   cropName: string;
   onLogout: () => void;
+  onCreatePot: (label: string, cropCode: string) => Promise<void>;
   onSelectCrop: (cropCode: string) => Promise<void>;
   onSelectPot: (potId: number) => void;
   pots: PotResponse[];
@@ -96,7 +73,7 @@ type AppTabNavigatorProps = {
 
 const appShellFill = { flex: 1 };
 
-export function AppTabNavigator({ compact, cropName, onLogout, onSelectCrop, onSelectPot, pots, selectedCrop, selectedPotId }: AppTabNavigatorProps) {
+export function AppTabNavigator({ compact, cropName, onCreatePot, onLogout, onSelectCrop, onSelectPot, pots, selectedCrop, selectedPotId }: AppTabNavigatorProps) {
   const navigationRef = useNavigationContainerRef<AppTabParamList>();
   const [page, setPage] = useState<Page>('dashboard');
   const [sidebarHidden, setSidebarHidden] = useState(false);
@@ -129,42 +106,42 @@ export function AppTabNavigator({ compact, cropName, onLogout, onSelectCrop, onS
           <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
             <Tab.Screen name="Dashboard">
               {() => (
-                <ScreenLayout compact={compact} onSelectPot={onSelectPot} page="dashboard" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="dashboard" pots={pots} selectedPotId={selectedPotId}>
                   <DashboardScreen compact={compact} onNavigate={goToPage} selectedCrop={selectedCrop} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="Analysis">
               {() => (
-                <ScreenLayout compact={compact} onSelectPot={onSelectPot} page="analysis" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="analysis" pots={pots} selectedPotId={selectedPotId}>
                   <AnalysisScreen compact={compact} onNavigate={goToPage} onSelectCrop={onSelectCrop} selectedCrop={selectedCrop} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="Live">
               {() => (
-                <ScreenLayout compact={compact} onSelectPot={onSelectPot} page="live" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="live" pots={pots} selectedPotId={selectedPotId}>
                   <LiveScreen compact={compact} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="History">
               {() => (
-                <ScreenLayout compact={compact} onSelectPot={onSelectPot} page="history" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="history" pots={pots} selectedPotId={selectedPotId}>
                   <HistoryScreen compact={compact} onNavigate={goToPage} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="Guide">
               {() => (
-                <ScreenLayout compact={compact} onSelectPot={onSelectPot} page="guide" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="guide" pots={pots} selectedPotId={selectedPotId}>
                   <GuideScreen compact={compact} onNavigate={goToPage} />
                 </ScreenLayout>
               )}
             </Tab.Screen>
             <Tab.Screen name="Shop">
               {() => (
-                <ScreenLayout compact={compact} onSelectPot={onSelectPot} page="shop" pots={pots} selectedPotId={selectedPotId}>
+                <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} page="shop" pots={pots} selectedPotId={selectedPotId}>
                   <ShopScreen compact={compact} />
                 </ScreenLayout>
               )}
@@ -182,24 +159,6 @@ const styles = StyleSheet.create(scaleTypography({
   workspace: { flex: 1, minWidth: 0, zIndex: 1 },
   workspaceScroll: { alignItems: 'center', paddingBottom: 88, paddingHorizontal: 48 },
   workspaceScrollCompact: { paddingBottom: 56, paddingHorizontal: 20 },
-  potSelector: {
-    alignSelf: 'stretch',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14,
-  },
-  potButton: {
-    backgroundColor: palette.panelMuted,
-    borderColor: palette.line,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  potButtonSelected: { backgroundColor: palette.greenSoft, borderColor: palette.green },
-  potButtonText: { color: palette.secondary, fontFamily: font, fontSize: 13, fontWeight: '800' },
-  potButtonTextSelected: { color: palette.greenDark },
   showSidebarButton: {
     alignItems: 'center',
     backgroundColor: palette.panel,

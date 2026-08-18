@@ -10,7 +10,7 @@ import { clearAccessToken, getMe, loadAccessToken, type MeResponse } from '../au
 import { BrandMark } from '../components/BrandMark';
 import { selectPotCrop } from '../crop/cropApi';
 import { crops } from '../data';
-import { getDevice, type DeviceResponse } from '../device/deviceApi';
+import { createPot, getDevice, type DeviceResponse } from '../device/deviceApi';
 import { Login } from '../onboarding/Login';
 import { SetupFlow } from '../onboarding/SetupFlow';
 import { AppTabNavigator } from './AppTabNavigator';
@@ -52,6 +52,18 @@ export default function RootShell() {
       ...current,
       pots: (current.pots ?? []).map((pot) => pot.id === selectedPotId ? { ...pot, cropCode: selection.crop.code } : pot),
     } : current);
+  };
+
+  const addPot = async (label: string, cropCode: string) => {
+    if (!device?.id) throw new Error('화분을 추가할 공간을 찾을 수 없습니다.');
+    const created = await createPot(device.id, { cropCode, label });
+    const nextPot = { ...created, cropCode: created.cropCode ?? cropCode };
+    setDevice((current) => current ? {
+      ...current,
+      pots: [...(current.pots ?? []), nextPot],
+    } : current);
+    setSelectedPotId(nextPot.id);
+    setSelectedCropCode(nextPot.cropCode ?? crops[0].code);
   };
 
   const applyRegisteredDevice = (registered: DeviceResponse) => {
@@ -162,6 +174,7 @@ export default function RootShell() {
       <AppTabNavigator
         compact={compact}
         cropName={(crops[selectedCrop] ?? crops[0]).name}
+        onCreatePot={addPot}
         onSelectPot={setSelectedPotId}
         onLogout={() => {
           void clearAccessToken();
@@ -172,7 +185,7 @@ export default function RootShell() {
           setFlow('auth');
         }}
         onSelectCrop={changeSelectedCrop}
-        pots={(device?.pots ?? []).slice(0, 4)}
+        pots={device?.pots ?? []}
         selectedCrop={selectedCrop}
         selectedPotId={selectedPotId}
       />

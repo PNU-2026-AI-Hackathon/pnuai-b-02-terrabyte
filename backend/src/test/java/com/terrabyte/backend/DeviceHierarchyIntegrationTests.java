@@ -106,6 +106,34 @@ class DeviceHierarchyIntegrationTests {
     }
 
     @Test
+    void ownerCanCreateAnotherPotWithItsOwnCrop() throws Exception {
+        String token = signup("multi-pot-owner@example.com");
+        long deviceId = register(token, "483920", null).path("id").asLong();
+
+        String created = mockMvc.perform(post("/api/devices/{deviceId}/pots", deviceId)
+                        .header("Authorization", bearer(token))
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"label\":\"바질 화분\",\"cropCode\":\"basil\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.label").value("바질 화분"))
+                .andExpect(jsonPath("$.cropCode").value("basil"))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        long potId = objectMapper.readTree(created).path("id").asLong();
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM pot WHERE device_id = ?", Integer.class, deviceId))
+                .isEqualTo(2);
+
+        mockMvc.perform(get("/api/pots/{potId}", potId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.label").value("바질 화분"))
+                .andExpect(jsonPath("$.cropCode").value("basil"));
+    }
+
+    @Test
     void telemetryBindsTheOldestUnboundPotThenCreatesAPotForANewNode() throws Exception {
         String token = signup("binding-owner@example.com");
         long deviceId = register(token, "483920", null).path("id").asLong();
