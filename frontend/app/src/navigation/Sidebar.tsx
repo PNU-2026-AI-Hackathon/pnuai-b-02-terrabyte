@@ -12,10 +12,10 @@ import type { Page } from './types';
 const navItems: Array<{ key: Page; label: string }> = [
   { key: 'dashboard', label: '공간 개요' },
   { key: 'analysis', label: '공간 진단' },
+  { key: 'live', label: '환경 모니터링' },
   { key: 'history', label: '진단 이력' },
   { key: 'guide', label: '관리 가이드' },
   { key: 'shop', label: '제품 추가 구매' },
-  { key: 'live', label: '환경 모니터링' },
 ];
 
 export function Sidebar({ compact, cropName, onHide, onLogout, onNavigate, page }: {
