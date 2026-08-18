@@ -113,44 +113,63 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
       <Surface flat style={styles.reportCover}>
         <View style={[styles.reportCoverTop, compact && styles.stack]}>
           <View style={styles.reportCoverCopy}>
+            <View style={styles.reportEyebrowRow}>
+              <Text style={styles.reportEyebrow}>공간 진단 요약</Text>
+              <View style={styles.reportCropBadge}><Text style={styles.reportCropBadgeText}>{currentCrop.name} 재배 기준</Text></View>
+            </View>
             <Text style={styles.reportTitle}>부산 도심 옥상 A 공간 진단 보고서</Text>
+            <Text style={styles.reportIntro}>현재 측정값을 바탕으로 공간의 적합도와 바로 실행할 관리 항목을 정리했습니다.</Text>
           </View>
         </View>
         <View style={[styles.reportSummaryGrid, compact && styles.reportSummaryGridCompact]}>
-          <View style={[styles.reportSummaryRow, compact && styles.reportSummaryRowCompact, styles.reportSummaryDivider]}>
-            <View style={styles.reportSummaryLabelColumn}>
+          <View style={[styles.reportSummaryCard, styles.reportScoreCard, compact && styles.reportSummaryCardCompact]}>
+            <View style={styles.reportSummaryCardHeader}>
               <Text style={styles.reportSummaryLabel}>종합 적합도</Text>
+              <Text style={styles.reportSummaryKicker}>현재 기준</Text>
             </View>
-            <View style={styles.reportSummaryContent}>
+            <View style={styles.reportScoreValueBlock}>
               <View style={styles.bigScoreRow}><Text style={styles.bigScore}>{analysisScore?.total ?? '--'}</Text><Text style={styles.bigScoreUnit}>/ 100</Text></View>
-              <Text style={styles.reportAssessment}>{getGradeLabel(analysisScore?.grade)}</Text>
+              <Text style={styles.reportAssessment}>{getGradeLabel(analysisScore?.grade)} · {currentCrop.name}</Text>
             </View>
+            <View style={styles.reportScoreTrack}><View style={[styles.reportScoreFill, { width: `${Math.max(0, Math.min(100, analysisScore?.total ?? 0))}%` } as any]} /></View>
           </View>
-          <View style={[styles.reportSummaryRow, compact && styles.reportSummaryRowCompact, styles.reportSummaryDivider]}>
-            <View style={styles.reportSummaryLabelColumn}>
+          <View style={[styles.reportSummaryCard, compact && styles.reportSummaryCardCompact]}>
+            <View style={styles.reportSummaryCardHeader}>
               <Text style={styles.reportSummaryLabel}>핵심 진단</Text>
+              <Text style={[styles.reportSummaryKicker, issueFactors.length ? styles.reportSummaryKickerWarn : styles.reportSummaryKickerGood]}>{issueFactors.length ? '확인 필요' : '안정'}</Text>
             </View>
-            <View style={styles.reportSummaryContent}>
-              <Text style={styles.reportSummaryTitle}>{issueFactors.length ? `${issueFactors.map((factor) => factor.label).join('·')} 환경을 확인하세요` : '온도·습도·조도가 모두 적정합니다'}</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={formulaDisclosure.show}
-                style={({ pressed }) => [styles.formulaLink, styles.formulaLinkBottom, pressed && styles.pressed]}
-              >
-                <Text style={styles.formulaLinkText}>적합도 계산식</Text>
-                <Text style={styles.formulaLinkArrow}>→</Text>
-              </Pressable>
-            </View>
+            <Text style={styles.reportSummaryTitle}>{issueFactors.length ? `${issueFactors.map((factor) => factor.label).join('·')} 환경을 확인하세요` : '온도·습도·조도가 모두 적정합니다'}</Text>
+            <Text style={styles.reportSummaryBody}>{issueFactors.length ? '권장 범위를 벗어난 지표부터 확인하면 관리 우선순위를 빠르게 정할 수 있습니다.' : '현재 주요 환경 지표가 권장 범위 안에 있습니다. 토양 수분은 참고 지표로 계속 확인하세요.'}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={formulaDisclosure.show}
+              style={({ pressed }) => [styles.formulaLink, styles.reportSummaryFormula, pressed && styles.pressed]}
+            >
+              <Text style={styles.formulaLinkText}>적합도 계산식</Text>
+              <Text style={styles.formulaLinkArrow}>→</Text>
+            </Pressable>
           </View>
-          <View style={[styles.reportSummaryRow, compact && styles.reportSummaryRowCompact]}>
-            <View style={styles.reportSummaryLabelColumn}>
+          <View style={[styles.reportSummaryCard, compact && styles.reportSummaryCardCompact]}>
+            <View style={styles.reportSummaryCardHeader}>
               <Text style={styles.reportSummaryLabel}>관리 우선순위</Text>
+              <Text style={styles.reportSummaryKicker}>{issueFactors.length ? `${issueFactors.length + 1}개 항목` : '2개 항목'}</Text>
             </View>
-            <View style={[styles.reportSummaryContent, styles.reportPriorityList]}>
+            <View style={styles.reportPriorityList}>
               {issueFactors.length ? issueFactors.map((factor, index) => (
-                <Text key={factor.key} style={styles.reportPriority}>{index + 1}. {factor.label} {factor.status === 'LOW' ? '보완' : '완화'}</Text>
-              )) : <Text style={styles.reportPriority}>1. 현재 환경 설정 유지</Text>}
-              <Text style={styles.reportPriority}>{issueFactors.length ? issueFactors.length + 1 : 2}. 토양 수분 모니터링</Text>
+                <View key={factor.key} style={styles.reportPriorityItem}>
+                  <Text style={styles.reportPriorityNumber}>{String(index + 1).padStart(2, '0')}</Text>
+                  <Text style={styles.reportPriority}>{factor.label} {factor.status === 'LOW' ? '보완' : '완화'}</Text>
+                </View>
+              )) : (
+                <View style={styles.reportPriorityItem}>
+                  <Text style={styles.reportPriorityNumber}>01</Text>
+                  <Text style={styles.reportPriority}>현재 환경 설정 유지</Text>
+                </View>
+              )}
+              <View style={styles.reportPriorityItem}>
+                <Text style={styles.reportPriorityNumber}>{issueFactors.length ? String(issueFactors.length + 1).padStart(2, '0') : '02'}</Text>
+                <Text style={styles.reportPriority}>토양 수분 모니터링</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -313,7 +332,6 @@ const styles = StyleSheet.create(scaleTypography({
   pageBody: { gap: 30, maxWidth: 1320, width: '100%' },
   stack: { flexDirection: 'column' },
   formulaLink: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 10, paddingVertical: 10 },
-  formulaLinkBottom: { alignSelf: 'flex-start', marginTop: 14 },
   formulaLinkText: { ...typeScale.button, color: palette.greenDark, fontFamily: font },
   formulaLinkArrow: { color: palette.green, fontFamily: font, fontSize: 20, fontWeight: '500' },
   bigScoreRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 5 },
@@ -324,20 +342,34 @@ const styles = StyleSheet.create(scaleTypography({
   factorFillWarn: { backgroundColor: palette.amber },
   reportCover: { gap: 28, padding: 38 },
   reportCoverTop: { alignItems: 'flex-start', flexDirection: 'row', gap: 42, justifyContent: 'space-between' },
-  reportCoverCopy: { flex: 1, gap: 10 },
+  reportCoverCopy: { flex: 1, gap: 12 },
+  reportEyebrowRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between' },
+  reportEyebrow: { ...typeScale.label, color: palette.greenDark, fontFamily: font, letterSpacing: 0.7 },
+  reportCropBadge: { backgroundColor: palette.greenSoft, borderColor: '#c9dfd1', borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 7 },
+  reportCropBadgeText: { ...typeScale.caption, color: palette.greenDark, fontFamily: font },
   reportTitle: { ...typeScale.pageTitle, color: palette.text, fontFamily: font },
-  reportSummaryGrid: { alignItems: 'stretch', flexDirection: 'row', gap: 0, overflow: 'hidden', padding: 0 },
+  reportIntro: { ...typeScale.body, color: palette.secondary, fontFamily: font, maxWidth: 760 },
+  reportSummaryGrid: { alignItems: 'stretch', flexDirection: 'row', gap: 14 },
   reportSummaryGridCompact: { flexDirection: 'column' },
-  reportSummaryRow: { alignItems: 'flex-start', flex: 1, flexDirection: 'column', gap: 16, minHeight: 220, padding: 24, paddingHorizontal: 26 },
-  reportSummaryRowCompact: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1, borderRightWidth: 0, flex: 0, minHeight: 0 },
-  reportSummaryLabelColumn: { borderLeftColor: '#b8d7c3', borderLeftWidth: 2, flexBasis: 'auto', flexGrow: 0, flexShrink: 0, paddingLeft: 12 },
-  reportSummaryContent: { flex: 1, gap: 8, minWidth: 0, width: '100%' },
-  reportPriorityList: { gap: 8 },
-  reportSummaryDivider: { borderRightColor: palette.lineStrong, borderRightWidth: 1 },
+  reportSummaryCard: { backgroundColor: 'rgba(255,255,255,0.34)', borderColor: palette.lineStrong, borderRadius: 16, borderWidth: 1, flex: 1, gap: 16, minHeight: 236, padding: 24 },
+  reportSummaryCardCompact: { flexBasis: 'auto', minHeight: 0, width: '100%' },
+  reportScoreCard: { backgroundColor: palette.greenSoft, borderColor: '#c9dfd1' },
+  reportSummaryCardHeader: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
   reportSummaryLabel: { ...typeScale.label, color: palette.muted, fontFamily: font, letterSpacing: 0.5 },
+  reportSummaryKicker: { ...typeScale.caption, color: palette.muted, fontFamily: font },
+  reportSummaryKickerGood: { color: palette.greenDark },
+  reportSummaryKickerWarn: { color: palette.amber },
+  reportScoreValueBlock: { gap: 4 },
   reportAssessment: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font },
   reportSummaryTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
-  reportPriority: { ...typeScale.bodyStrong, color: palette.text, fontFamily: font },
+  reportSummaryBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
+  reportSummaryFormula: { alignSelf: 'flex-start', marginTop: 'auto', paddingHorizontal: 0 },
+  reportScoreTrack: { backgroundColor: 'rgba(31,102,70,0.14)', borderRadius: 999, height: 8, overflow: 'hidden', width: '100%' },
+  reportScoreFill: { backgroundColor: palette.greenDark, borderRadius: 999, height: '100%' },
+  reportPriorityList: { gap: 10, marginTop: 2 },
+  reportPriorityItem: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  reportPriorityNumber: { ...typeScale.caption, backgroundColor: palette.greenSoft, borderRadius: 7, color: palette.greenDark, fontFamily: font, minWidth: 31, paddingHorizontal: 6, paddingVertical: 5, textAlign: 'center' },
+  reportPriority: { ...typeScale.bodyStrong, color: palette.text, flex: 1, fontFamily: font },
   reportSection: { gap: 36, padding: 46 },
   reportSectionHeading: { alignItems: 'flex-start', flexDirection: 'row', gap: 18 },
   reportSectionNumber: { ...typeScale.label, color: palette.green, fontFamily: font, letterSpacing: 1 },
