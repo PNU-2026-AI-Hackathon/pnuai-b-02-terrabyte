@@ -139,7 +139,7 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
               <Text style={[styles.reportSummaryKicker, issueFactors.length ? styles.reportSummaryKickerWarn : styles.reportSummaryKickerGood]}>{issueFactors.length ? '확인 필요' : '안정'}</Text>
             </View>
             <Text style={styles.reportSummaryTitle}>{issueFactors.length ? `${issueFactors.map((factor) => factor.label).join('·')} 환경을 확인하세요` : '온도·습도·조도가 모두 적정합니다'}</Text>
-            <Text style={styles.reportSummaryBody}>{issueFactors.length ? '권장 범위를 벗어난 지표부터 확인하면 관리 우선순위를 빠르게 정할 수 있습니다.' : '현재 주요 환경 지표가 권장 범위 안에 있습니다. 토양 수분은 참고 지표로 계속 확인하세요.'}</Text>
+            <Text style={styles.reportSummaryBody}>{issueFactors.length ? '권장 범위를 벗어난 지표부터 확인하면 관리 우선순위를 빠르게 정할 수 있습니다.' : '현재 주요 환경 지표가 권장 범위 안에 있습니다.'}</Text>
             <Pressable
               accessibilityRole="button"
               onPress={formulaDisclosure.show}
