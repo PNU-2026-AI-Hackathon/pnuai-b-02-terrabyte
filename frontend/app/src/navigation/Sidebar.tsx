@@ -154,7 +154,7 @@ const styles = StyleSheet.create(scaleTypography({
   navItemActive: { backgroundColor: palette.greenSoft, borderLeftColor: palette.green },
   navItemText: { ...typeScale.bodyStrong, color: palette.secondary, fontFamily: font },
   navItemTextActive: { color: palette.greenDark, fontWeight: '500' },
-  sidebarBottom: { gap: 10, marginTop: 'auto', paddingTop: 26 },
+  sidebarBottom: { gap: 10, marginTop: 56, paddingTop: 0 },
   devicePanel: { backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 10, borderWidth: 1, padding: 14 },
   deviceStatusRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
   onlineDot: { backgroundColor: '#3aad70', borderRadius: 999, height: 7, width: 7 },
@@ -185,4 +185,4 @@ const styles = StyleSheet.create(scaleTypography({
   farmStatusCopy: { flex: 1, gap: 4 },
   farmStatusTitle: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font },
   farmStatusBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
-}, { fontSizeScale: 0.8 }));
+}, { fontSizeScale: 0.84 }));
