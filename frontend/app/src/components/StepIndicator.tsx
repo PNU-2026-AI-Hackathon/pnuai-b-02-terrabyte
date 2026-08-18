@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 
+import { scaleTypography } from '../appTheme/scaleTypography';
 import { colors, radii, typography } from '../theme';
 
 type StepIndicatorProps = {
@@ -27,7 +28,7 @@ export function StepIndicator({ current }: StepIndicatorProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create(scaleTypography({
   wrap: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -56,4 +57,4 @@ const styles = StyleSheet.create({
   activeText: {
     color: '#fff',
   },
-});
+}));
