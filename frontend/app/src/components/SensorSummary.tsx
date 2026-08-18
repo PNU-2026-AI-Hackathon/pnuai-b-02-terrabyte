@@ -63,7 +63,7 @@ const styles = StyleSheet.create(
     },
     onlineDot: { backgroundColor: '#3aad70', borderRadius: 999, height: 7, width: 7 },
     copy: { flex: 1, gap: 4 },
-    name: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '400' },
+    name: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
     meta: { ...typeScale.caption, color: palette.muted, fontFamily: font },
   }),
 );
