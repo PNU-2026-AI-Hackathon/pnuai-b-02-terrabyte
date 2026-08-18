@@ -48,10 +48,6 @@ const cultivationCriteria = [
   },
 ] as const;
 
-function getProductCategoryLabel(category: ShopProduct['category']) {
-  return category === 'parts' ? '부품' : category === 'soil' ? '흙과 배지' : '씨앗';
-}
-
 export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
   const [completedTaskIds, setCompletedTaskIds] = useState<Record<string, boolean>>({});
   const { score } = useDeviceEnvironment();
@@ -124,10 +120,7 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
             <View key={product.id} style={[styles.guideTaskRow, compact && styles.guideTaskRowCompact]}>
               <View style={styles.guideTaskNumber}><Text style={styles.guideTaskNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
               <View style={styles.guideTaskCopy}>
-                <View style={styles.guideProductTitleRow}>
-                  <Text style={[styles.guideTaskTitle, styles.guideProductTitle]}>{product.name}</Text>
-                  <Text style={styles.guideProductCategory}>{getProductCategoryLabel(product.category)}</Text>
-                </View>
+                <Text style={styles.guideTaskTitle}>{product.name}</Text>
                 <Text style={styles.guideTaskBody}>{product.desc}</Text>
               </View>
               <Text style={styles.guideProductPrice}>{product.price.toLocaleString('ko-KR')}원</Text>
@@ -169,9 +162,6 @@ const styles = StyleSheet.create(scaleTypography({
   guideTaskCheck: { alignItems: 'center', borderColor: palette.greenDark, borderRadius: 8, borderWidth: 1.5, height: 32, justifyContent: 'center', width: 32 },
   guideTaskCheckCompleted: { backgroundColor: palette.green, borderColor: palette.green },
   guideTaskCheckText: { color: '#ffffff', fontFamily: font, fontSize: 20, fontWeight: '900', lineHeight: 24 },
-  guideProductTitleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12 },
-  guideProductTitle: { flex: 1 },
-  guideProductCategory: { ...typeScale.label, backgroundColor: palette.greenSoft, borderRadius: 999, color: palette.greenDark, fontFamily: font, paddingHorizontal: 11, paddingVertical: 6 },
   soilMixRow: { gap: 6 },
   soilMixRatio: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   soilReason: { ...typeScale.body, color: palette.secondary, fontFamily: font },
