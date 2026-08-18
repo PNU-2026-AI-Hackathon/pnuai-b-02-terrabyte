@@ -23,7 +23,7 @@ const meta = {
       factors: [
         { key: 'temperature', label: '온도', unit: '℃', current: 24.5, optimalMin: 20, optimalMax: 26, status: 'OK', gap: 0, score: 92 },
         { key: 'humidity', label: '습도', unit: '%', current: 45, optimalMin: 60, optimalMax: 75, status: 'LOW', gap: 15, score: 58 },
-        { key: 'plantLight', label: '광량', unit: 'μmol/m²/s', current: 180, optimalMin: 300, optimalMax: 400, status: 'LOW', gap: 120, score: 54 },
+        { key: 'plantLight', label: '조도', unit: 'μmol/m²/s', current: 180, optimalMin: 300, optimalMax: 400, status: 'LOW', gap: 120, score: 54 },
       ],
     },
   },

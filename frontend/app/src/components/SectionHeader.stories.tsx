@@ -19,6 +19,6 @@ export const Default: Story = {
 
 export const TitleOnly: Story = {
   args: {
-    title: '하드웨어 키트',
+    title: '키트 상태',
   },
 };

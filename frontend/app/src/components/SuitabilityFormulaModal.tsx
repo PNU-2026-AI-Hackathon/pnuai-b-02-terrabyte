@@ -54,7 +54,7 @@ export function SuitabilityFormulaModal({ onClose, scoreData, visible }: Suitabi
                 <Text style={styles.formulaExpression}>100 × (T/100)¹⁄³ × (H/100)¹⁄³ × (L/100)¹⁄³</Text>
                 <Text style={styles.formulaEquivalentExpression}>= (T × H × L)¹⁄³</Text>
               </View>
-              <Text style={styles.formulaBody}>T = 온도 점수 · H = 습도 점수 · L = PPFD 광량 점수</Text>
+              <Text style={styles.formulaBody}>T = 온도 점수 · H = 습도 점수 · L = PPFD 조도 점수</Text>
             </View>
 
             <View style={styles.formulaNotice}>

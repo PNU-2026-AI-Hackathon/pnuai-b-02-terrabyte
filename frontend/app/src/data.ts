@@ -134,7 +134,7 @@ export const altCrops = [
     emoji: '🌿',
     expectedScore: 74,
     setsCropIndex: 2,
-    reason: '온도 조건은 적합하지만 현재 광량으로는 줄기가 가늘게 자랄 가능성이 있습니다.',
+    reason: '온도 조건은 적합하지만 현재 조도로는 줄기가 가늘게 자랄 가능성이 있습니다.',
     caution: '생장등 보완 후 선택하면 예상 적합도가 83점까지 상승합니다.',
   },
 ];

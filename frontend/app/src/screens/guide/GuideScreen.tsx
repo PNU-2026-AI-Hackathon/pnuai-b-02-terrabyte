@@ -84,7 +84,7 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
           <View style={styles.guideStageItem}>
             <View style={styles.guideStageHeader}><View style={styles.guideStageIndex}><Text style={styles.guideStageIndexText}>01</Text></View><Text style={styles.guideStageLabel}>현재 단계</Text></View>
             <Text style={styles.guideStageTitle}>활착기 · 4일차</Text>
-            <Text style={styles.guideStageBody}>뿌리가 새 배지에 자리 잡는 기간입니다. 과습과 강한 광량 변화를 피하세요.</Text>
+            <Text style={styles.guideStageBody}>뿌리가 새 배지에 자리 잡는 기간입니다. 과습과 강한 빛 변화를 피하세요.</Text>
           </View>
           <View style={styles.guideStageItem}>
             <View style={styles.guideStageHeader}><View style={styles.guideStageIndex}><Text style={styles.guideStageIndexText}>02</Text></View><Text style={styles.guideStageLabel}>권장 환경</Text></View>

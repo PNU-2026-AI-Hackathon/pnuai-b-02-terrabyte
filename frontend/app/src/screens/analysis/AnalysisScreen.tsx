@@ -92,7 +92,7 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
       : factor.label === '습도'
         ? '관수와 환기 시간을 조절해 60~75% 범위를 유지하세요.'
         : factor.label === '조도'
-          ? '생장등의 세기와 설치 거리를 조절해 광량을 보완하세요.'
+          ? '생장등의 세기와 설치 거리를 조절해 조도를 보완하세요.'
           : '관수 전 토양수분을 확인하고 30~45% 범위를 유지하세요.',
   }));
   const factorReports = analysisScore?.factors.length
@@ -130,7 +130,7 @@ export function AnalysisScreen({ compact, onNavigate, onSelectCrop, selectedCrop
               <Text style={styles.reportSummaryLabel}>핵심 진단</Text>
             </View>
             <View style={styles.reportSummaryContent}>
-              <Text style={styles.reportSummaryTitle}>{issueFactors.length ? `${issueFactors.map((factor) => factor.label).join('·')} 환경을 확인하세요` : '온도·습도·광량이 모두 적정합니다'}</Text>
+              <Text style={styles.reportSummaryTitle}>{issueFactors.length ? `${issueFactors.map((factor) => factor.label).join('·')} 환경을 확인하세요` : '온도·습도·조도가 모두 적정합니다'}</Text>
               <Pressable
                 accessibilityRole="button"
                 onPress={formulaDisclosure.show}
