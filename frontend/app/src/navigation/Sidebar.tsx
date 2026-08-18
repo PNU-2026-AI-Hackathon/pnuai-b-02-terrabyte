@@ -148,7 +148,7 @@ const styles = StyleSheet.create(scaleTypography({
   brandName: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   hideButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, height: 30, justifyContent: 'center', width: 30 },
   hideButtonText: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '500' },
-  navCaption: { ...typeScale.label, color: palette.muted, fontFamily: font, letterSpacing: 0.3, marginBottom: 16, marginTop: 54, paddingHorizontal: 13 },
+  navCaption: { ...typeScale.label, color: palette.muted, fontFamily: font, fontWeight: '700', letterSpacing: 0.3, marginBottom: 16, marginTop: 54, paddingHorizontal: 13 },
   navList: { gap: 8 },
   navItem: { borderLeftColor: 'transparent', borderLeftWidth: 3, borderRadius: 9, justifyContent: 'center', minHeight: 48, paddingHorizontal: 15 },
   navItemActive: { backgroundColor: palette.greenSoft, borderLeftColor: palette.green },
@@ -162,8 +162,8 @@ const styles = StyleSheet.create(scaleTypography({
   deviceTitle: { ...typeScale.bodyStrong, color: palette.text, fontFamily: font, fontWeight: '700', marginTop: 8 },
   deviceDetail: { ...typeScale.caption, color: palette.muted, fontFamily: font, marginTop: 5 },
   sidebarActionButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, minHeight: 42, justifyContent: 'center', paddingHorizontal: 12, paddingVertical: 7 },
-  sidebarActionText: { ...typeScale.caption, color: palette.greenDark, fontFamily: font },
-  sidebarActionTextMuted: { ...typeScale.caption, color: palette.secondary, fontFamily: font },
+  sidebarActionText: { ...typeScale.caption, color: palette.greenDark, fontFamily: font, fontWeight: '700' },
+  sidebarActionTextMuted: { ...typeScale.caption, color: palette.secondary, fontFamily: font, fontWeight: '700' },
   mobileNav: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.48)', borderBottomColor: palette.line, borderBottomWidth: 1, flexDirection: 'row', gap: 20, minHeight: 68, paddingHorizontal: 22, zIndex: 2 },
   mobileBrandName: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   mobileNavItems: { alignItems: 'center', gap: 18 },
@@ -185,4 +185,4 @@ const styles = StyleSheet.create(scaleTypography({
   farmStatusCopy: { flex: 1, gap: 4 },
   farmStatusTitle: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font },
   farmStatusBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
-}));
+}, { fontSizeScale: 0.8 }));
