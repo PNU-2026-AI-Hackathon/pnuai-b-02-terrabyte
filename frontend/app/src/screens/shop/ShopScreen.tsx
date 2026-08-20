@@ -9,12 +9,26 @@ import { typeScale } from '../../appTheme/typography';
 import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
-import { getShopProducts, type ShopCategory, type ShopProduct } from '../../shop/shopApi';
+import { getShopProducts, type ShopCategory, type ShopProduct, type ShopSubCategory } from '../../shop/shopApi';
 
 type ProductCategory = 'all' | ShopCategory;
+type ProductSubCategory = 'all' | ShopSubCategory;
+
+function formatPackage(product: ShopProduct) {
+  if (product.packageQuantity == null || !product.packageUnit) return '정보 준비 중';
+  return `${product.packageQuantity.toLocaleString('ko-KR', { maximumFractionDigits: 2 })}${product.packageUnit}`;
+}
+
+function subCategoryLabel(subCategory: ProductSubCategory) {
+  if (subCategory === 'SOIL') return '배양토';
+  if (subCategory === 'MEDIA') return '배지';
+  if (subCategory === 'NUTRIENT') return '영양제';
+  return '전체';
+}
 
 export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compact: boolean; fetchProducts?: typeof getShopProducts }) {
   const [category, setCategory] = useState<ProductCategory>('all');
+  const [subCategory, setSubCategory] = useState<ProductSubCategory>('all');
   const [recommendedOnly, setRecommendedOnly] = useState(false);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
@@ -43,11 +57,14 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
       const categoryProducts = category === 'all'
         ? products
         : products.filter((product) => product.category === category);
+      const subCategoryProducts = subCategory === 'all'
+        ? categoryProducts
+        : categoryProducts.filter((product) => product.subCategory === subCategory);
       return recommendedOnly
-        ? categoryProducts.filter((product) => product.badge?.includes('추천'))
-        : categoryProducts;
+        ? subCategoryProducts.filter((product) => product.badge?.includes('추천'))
+        : subCategoryProducts;
     },
-    [category, products, recommendedOnly],
+    [category, products, recommendedOnly, subCategory],
   );
   const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const visibleProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -63,6 +80,12 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
 
   const changeCategory = (nextCategory: ProductCategory) => {
     setCategory(nextCategory);
+    setSubCategory('all');
+    setCurrentPage(1);
+  };
+
+  const changeSubCategory = (nextSubCategory: ProductSubCategory) => {
+    setSubCategory(nextSubCategory);
     setCurrentPage(1);
   };
 
@@ -86,6 +109,15 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
               </Pressable>
             ))}
           </View>
+          {category === 'soil' ? (
+            <View style={styles.subCategoryTabs}>
+              {(['all', 'SOIL', 'MEDIA', 'NUTRIENT'] as ProductSubCategory[]).map((tab) => (
+                <Pressable key={tab} onPress={() => changeSubCategory(tab)} style={[styles.subCategoryTab, subCategory === tab && styles.subCategoryTabActive]}>
+                  <Text style={[styles.subCategoryTabText, subCategory === tab && styles.subCategoryTabTextActive]}>{subCategoryLabel(tab)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
         </View>
         <View style={[styles.shopToolbarActions, compact && styles.shopToolbarActionsCompact]}>
           <Pressable accessibilityRole="button" onPress={() => setCartOpen(true)} style={styles.cartButton}>
@@ -170,12 +202,14 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
                 <Text style={styles.modalDescription}>{selectedProduct.desc}</Text>
                 <View style={styles.productInfoList}>
                   <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>카테고리</Text><Text style={styles.productInfoValue}>{selectedProduct.category === 'parts' ? '부품' : selectedProduct.category === 'soil' ? '흙과 배지' : '씨앗'}</Text></View>
+                  {selectedProduct.subCategory ? <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>세부 분류</Text><Text style={styles.productInfoValue}>{subCategoryLabel(selectedProduct.subCategory)}</Text></View> : null}
+                  <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>구성 / 규격</Text><Text style={styles.productInfoValue}>{formatPackage(selectedProduct)}</Text></View>
                   <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>배송 안내</Text><Text style={styles.productInfoValue}>결제 후 2~3일 이내 출고</Text></View>
-                  <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>상품 상태</Text><Text style={styles.productInfoValue}>구매 가능</Text></View>
+                  <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>상품 상태</Text><Text style={styles.productInfoValue}>{selectedProduct.available === false ? '품절' : '구매 가능'}</Text></View>
                 </View>
                 <View style={styles.modalFooter}>
                   <Text style={styles.modalPrice}>{selectedProduct.price.toLocaleString('ko-KR')}원</Text>
-                  <ActionButton label="장바구니 담기" onPress={() => addToCart(selectedProduct)} />
+                  <ActionButton disabled={selectedProduct.available === false} label={selectedProduct.available === false ? '품절' : '장바구니 담기'} onPress={() => addToCart(selectedProduct)} />
                 </View>
               </>
             ) : null}
@@ -241,7 +275,12 @@ const styles = StyleSheet.create(scaleTypography({
   shopToolbarActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
   shopToolbarActionsCompact: { justifyContent: 'flex-start', width: '100%' },
   shopTabs: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 11, borderWidth: 1, flexDirection: 'row', gap: 3, padding: 5 },
+  subCategoryTabs: { backgroundColor: 'rgba(255,255,255,0.28)', borderColor: palette.line, borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 3, padding: 4 },
   shopTab: { borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
+  subCategoryTab: { borderRadius: 7, paddingHorizontal: 14, paddingVertical: 8 },
+  subCategoryTabActive: { backgroundColor: palette.greenSoft },
+  subCategoryTabText: { ...typeScale.label, color: palette.secondary, fontFamily: font },
+  subCategoryTabTextActive: { color: palette.greenDark, fontWeight: '700' },
   shopTabActive: { backgroundColor: palette.green, shadowColor: '#1f6646', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.16, shadowRadius: 10 },
   shopTabText: { ...typeScale.label, color: palette.secondary, fontFamily: font },
   shopTabTextActive: { color: '#ffffff', fontWeight: '700' },
