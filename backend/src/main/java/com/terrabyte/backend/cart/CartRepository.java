@@ -34,6 +34,18 @@ public class CartRepository {
         return jdbcTemplate.query(SELECT_CART_LINES, this::mapLine, userId);
     }
 
+    public List<CartLine> findLinesForUpdate(long userId) {
+        Optional<Long> cartId = findCartId(userId);
+        if (cartId.isEmpty()) {
+            return List.of();
+        }
+        lockCart(cartId.get());
+        return jdbcTemplate.query(
+                SELECT_CART_LINES + " FOR UPDATE",
+                this::mapLine,
+                userId);
+    }
+
     public Optional<Integer> findItemQuantity(long userId, String productId) {
         return jdbcTemplate.query(
                         """
@@ -70,6 +82,7 @@ public class CartRepository {
 
     public void deleteItem(long userId, String productId) {
         findCartId(userId).ifPresent(cartId -> {
+            lockCart(cartId);
             jdbcTemplate.update(
                     "DELETE FROM cart_item WHERE cart_id = ? AND product_id = ?",
                     cartId,
@@ -80,6 +93,7 @@ public class CartRepository {
 
     public void clear(long userId) {
         findCartId(userId).ifPresent(cartId -> {
+            lockCart(cartId);
             jdbcTemplate.update("DELETE FROM cart_item WHERE cart_id = ?", cartId);
             touchCart(cartId);
         });
