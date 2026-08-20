@@ -27,6 +27,8 @@ RestartSec=5
 # ProtectSystem=strict makes the rest of the filesystem read-only, so this is
 # what keeps the queue writable — point TB_DATABASE_PATH inside it.
 StateDirectory=terrabyte-edge
+RuntimeDirectory=terrabyte-edge
+RuntimeDirectoryMode=0755
 UMask=0077
 NoNewPrivileges=true
 PrivateTmp=true

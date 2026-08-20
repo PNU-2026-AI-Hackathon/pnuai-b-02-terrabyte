@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from threading import Event, Thread
 
 from .backend import HttpPublisher
@@ -12,6 +13,7 @@ from .outbox import Outbox, OutboxFullError
 from .protocol import NonTelemetryMessage, ProtocolError, parse_line
 from .publisher import Delivery, Publisher
 from .serial_reader import SerialLineReader
+from .state import DEFAULT_SNAPSHOT_PATH, GatewayState, write_snapshot
 
 
 LOGGER = logging.getLogger(__name__)
@@ -47,6 +49,8 @@ class BridgeService:
         outbox: Outbox | None = None,
         publisher: Publisher | None = None,
         serial_reader: SerialLineReader | None = None,
+        state: GatewayState | None = None,
+        snapshot_path: Path = DEFAULT_SNAPSHOT_PATH,
     ) -> None:
         self.settings = settings
         self.stop_event = Event()
@@ -65,6 +69,11 @@ class BridgeService:
             max_line_bytes=settings.serial_max_line_bytes,
         )
         self._threads: list[Thread] = []
+        self.state = state or GatewayState(
+            gateway_id=getattr(settings, "device_id", "—"),
+            port=getattr(settings, "serial_port", "—"),
+        )
+        self.snapshot_path = snapshot_path
 
     def start(self) -> None:
         self.outbox.initialize()
@@ -73,6 +82,7 @@ class BridgeService:
         self._threads = [
             Thread(target=self._ingest_loop, name="serial-ingest", daemon=True),
             Thread(target=self._upload_loop, name="backend-upload", daemon=True),
+            Thread(target=self._snapshot_loop, name="status-snapshot", daemon=True),
         ]
         for thread in self._threads:
             thread.start()
@@ -110,6 +120,7 @@ class BridgeService:
         except ProtocolError as exc:
             LOGGER.warning("discarding invalid telemetry reason=%s", exc)
             return
+        self.state.record_frame(event)
         try:
             enqueued = self.outbox.enqueue(event)
         except OutboxFullError as exc:
@@ -142,8 +153,10 @@ class BridgeService:
             event_id = item.event.event_id
             if result.outcome is Delivery.DELIVERED:
                 self.outbox.mark_delivered(event_id)
+                self.state.record_transport(connected=True)
                 LOGGER.info("telemetry delivered event_id=%s", event_id)
             elif result.outcome is Delivery.RETRY:
+                self.state.record_transport(connected=False, error=result.reason)
                 delay = self.outbox.mark_retry(
                     event_id,
                     item.attempts,
@@ -167,3 +180,13 @@ class BridgeService:
                     result.reason,
                 )
         return processed
+
+    def _snapshot_loop(self) -> None:
+        while not self.stop_event.is_set():
+            try:
+                pending, dead = self.outbox.counts()
+                self.state.record_outbox(pending, dead)
+                write_snapshot(self.snapshot_path, self.state.snapshot())
+            except Exception:
+                LOGGER.exception("failed to publish dashboard snapshot")
+            self.stop_event.wait(1.0)

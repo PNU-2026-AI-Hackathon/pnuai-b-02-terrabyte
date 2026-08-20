@@ -108,6 +108,27 @@ systemctl status terrabyte-edge
 journalctl -u terrabyte-edge -f
 ```
 
+## 로컬 상태 대시보드
+
+브리지는 `/run/terrabyte-edge/status.json`을 최대 1초 간격으로 원자적으로
+갱신합니다. 이 파일은 자격 증명을 포함하지 않으며 별도 데스크톱 프로세스가
+읽을 수 있도록 `0644` 권한으로 생성됩니다. 대시보드는 시리얼 포트나 네트워크를
+직접 열지 않으므로 화면 장애가 텔레메트리 수집에 영향을 주지 않습니다.
+
+```bash
+# 개발용 창 모드
+.venv/bin/python -m terrabyte_edge dashboard --windowed
+
+# Orange Pi 데스크톱 자동 시작
+mkdir -p ~/.config/autostart
+cp deploy/terrabyte-dashboard.desktop ~/.config/autostart/
+```
+
+전체화면에서는 `Escape` 또는 `q`로 종료할 수 있습니다. 상태 파일이 없거나 8초
+이상 갱신되지 않으면 기존 값을 정상처럼 표시하지 않고 오류 배너를 표시하며,
+연결되지 않은 선택 센서 값은 `—`로 표시합니다. 기본 명령
+`python -m terrabyte_edge`는 이전과 동일하게 브리지를 실행합니다.
+
 ## 설정
 
 필수 환경 변수는 `TB_SERIAL_PORT`, `TB_BACKEND_BASE_URL`,

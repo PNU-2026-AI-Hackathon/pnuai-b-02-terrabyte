@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=TerraByte 게이트웨이 상태판
+Name[en]=TerraByte Gateway Dashboard
+Comment=화분과 게이트웨이 상태를 전체화면으로 표시합니다
+Exec=sh -c "cd /opt/terrabyte-edge && exec .venv/bin/python -m terrabyte_edge dashboard"
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=5

@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import logging
+import argparse
+from pathlib import Path
 import signal
 import sys
 from threading import Event
 
 from .config import ConfigError, Settings
 from .service import BridgeService
+from .state import DEFAULT_SNAPSHOT_PATH
 
 
 def _configure_logging(level: str) -> None:
@@ -18,7 +21,16 @@ def _configure_logging(level: str) -> None:
     )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("command", nargs="?", choices=("run", "dashboard"), default="run")
+    parser.add_argument("--snapshot-path", type=Path, default=DEFAULT_SNAPSHOT_PATH)
+    parser.add_argument("--windowed", action="store_true")
+    args = parser.parse_args(argv)
+    if args.command == "dashboard":
+        from .ui.dashboard import run
+        return run(args.snapshot_path, fullscreen=not args.windowed)
+
     try:
         settings = Settings.from_env()
     except ConfigError as exc:
@@ -26,7 +38,7 @@ def main() -> int:
         return 2
 
     _configure_logging(settings.log_level)
-    service = BridgeService(settings)
+    service = BridgeService(settings, snapshot_path=args.snapshot_path)
     terminated = Event()
 
     def request_stop(signum: int, _frame: object) -> None:
