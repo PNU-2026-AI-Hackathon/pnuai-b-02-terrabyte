@@ -158,6 +158,16 @@ void emitSensorStatus(const uint32_t sequence, const uint32_t uptimeMs,
     Serial.print(F("null"));
   }
 #endif
+#if TB_SOIL_MOISTURE_ENABLED
+  // The raw count is what a soil-moisture calibration is derived from, so it
+  // has to be visible exactly when the derived percentage was rejected.
+  Serial.print(F(",\"soil_moisture_raw_adc\":"));
+  if (sample.soilMoistureRawAdc == kSoilMoistureRawAdcAbsent) {
+    Serial.print(F("null"));
+  } else {
+    Serial.print(sample.soilMoistureRawAdc);
+  }
+#endif
   Serial.println(F(",\"reason\":\"sensor_unavailable_or_out_of_range\"}"));
 }
 
