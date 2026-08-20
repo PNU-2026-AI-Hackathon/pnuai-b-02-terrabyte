@@ -9,6 +9,7 @@ import { typeScale } from '../../appTheme/typography';
 import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
+import { addCartItem, getCart, removeCartItem, updateCartItem, type CartResponse } from '../../cart/cartApi';
 import { getShopProducts, type ShopCategory, type ShopProduct, type ShopSubCategory } from '../../shop/shopApi';
 
 type ProductCategory = 'all' | ShopCategory;
@@ -26,11 +27,27 @@ function subCategoryLabel(subCategory: ProductSubCategory) {
   return '전체';
 }
 
-export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compact: boolean; fetchProducts?: typeof getShopProducts }) {
+function errorMessage(caught: unknown, fallback: string) {
+  return caught instanceof Error ? caught.message : fallback;
+}
+
+const EMPTY_CART: CartResponse = { items: [], totalQuantity: 0, totalPrice: 0 };
+
+export function ShopScreen({
+  compact,
+  fetchProducts = getShopProducts,
+  fetchCart = getCart,
+}: {
+  compact: boolean;
+  fetchProducts?: typeof getShopProducts;
+  fetchCart?: typeof getCart;
+}) {
   const [category, setCategory] = useState<ProductCategory>('all');
   const [subCategory, setSubCategory] = useState<ProductSubCategory>('all');
   const [recommendedOnly, setRecommendedOnly] = useState(false);
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cart, setCart] = useState<CartResponse>(EMPTY_CART);
+  const [cartLoading, setCartLoading] = useState(true);
+  const [cartError, setCartError] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,6 +69,19 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
     return () => { active = false; };
   }, [fetchProducts]);
 
+  useEffect(() => {
+    let active = true;
+    setCartLoading(true);
+    setCartError(null);
+    void fetchCart()
+      .then((nextCart) => { if (active) setCart(nextCart); })
+      .catch((caught) => {
+        if (active) setCartError(errorMessage(caught, '장바구니를 불러오지 못했습니다.'));
+      })
+      .finally(() => { if (active) setCartLoading(false); });
+    return () => { active = false; };
+  }, [fetchCart]);
+
   const filteredProducts = useMemo(
     () => {
       const categoryProducts = category === 'all'
@@ -68,9 +98,11 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
   );
   const pageCount = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const visibleProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const cartCount = Object.values(cart).reduce((sum, value) => sum + value, 0);
-  const cartProducts = products.filter((product) => (cart[product.id] ?? 0) > 0);
-  const cartTotal = cartProducts.reduce((sum, product) => sum + product.price * (cart[product.id] ?? 0), 0);
+  const cartQuantities = useMemo(
+    () => new Map(cart.items.map((item) => [item.productId, item.quantity])),
+    [cart.items],
+  );
+  const cartCount = cart.totalQuantity;
   const tabs: Array<{ key: ProductCategory; label: string }> = [
     { key: 'all', label: '전체' },
     { key: 'parts', label: '부품' },
@@ -94,8 +126,31 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
     setCurrentPage(1);
   };
 
-  const addToCart = (product: ShopProduct) => {
-    setCart((current) => ({ ...current, [product.id]: (current[product.id] ?? 0) + 1 }));
+  const addToCart = async (product: ShopProduct) => {
+    if (product.available === false) return;
+    setCartLoading(true);
+    setCartError(null);
+    try {
+      setCart(await addCartItem(product.id));
+    } catch (caught) {
+      setCartError(errorMessage(caught, '장바구니에 상품을 담지 못했습니다.'));
+    } finally {
+      setCartLoading(false);
+    }
+  };
+
+  const changeCartQuantity = async (productId: string, quantity: number) => {
+    setCartLoading(true);
+    setCartError(null);
+    try {
+      setCart(quantity <= 0
+        ? await removeCartItem(productId)
+        : await updateCartItem(productId, quantity));
+    } catch (caught) {
+      setCartError(errorMessage(caught, '장바구니 수량을 변경하지 못했습니다.'));
+    } finally {
+      setCartLoading(false);
+    }
   };
 
   return (
@@ -160,11 +215,12 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
                   accessibilityRole="button"
                   onPress={(event) => {
                     event.stopPropagation?.();
-                    addToCart(product);
+                    void addToCart(product);
                   }}
+                  disabled={product.available === false || cartLoading}
                   style={styles.addButton}
                 >
-                  <Text style={styles.addButtonText}>{cart[product.id] ? `${cart[product.id]}개 담김` : '담기'}</Text>
+                  <Text style={styles.addButtonText}>{cartQuantities.get(product.id) ? `${cartQuantities.get(product.id)}개 담김` : '담기'}</Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -209,7 +265,7 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
                 </View>
                 <View style={styles.modalFooter}>
                   <Text style={styles.modalPrice}>{selectedProduct.price.toLocaleString('ko-KR')}원</Text>
-                  <ActionButton disabled={selectedProduct.available === false} label={selectedProduct.available === false ? '품절' : '장바구니 담기'} onPress={() => addToCart(selectedProduct)} />
+                  <ActionButton disabled={selectedProduct.available === false || cartLoading} label={selectedProduct.available === false ? '품절' : '장바구니 담기'} onPress={() => { void addToCart(selectedProduct); }} />
                 </View>
               </>
             ) : null}
@@ -229,33 +285,35 @@ export function ShopScreen({ compact, fetchProducts = getShopProducts }: { compa
               </Pressable>
             </View>
             <ScrollView style={styles.cartList}>
-              {cartProducts.length === 0 ? (
+              {cartError ? <Text accessibilityRole="alert" style={styles.emptyCart}>{cartError}</Text> : null}
+              {cartLoading && cart.items.length === 0 ? (
+                <Text style={styles.emptyCart}>장바구니를 불러오는 중입니다.</Text>
+              ) : null}
+              {!cartLoading && !cartError && cart.items.length === 0 ? (
                 <Text style={styles.emptyCart}>장바구니에 담긴 상품이 없습니다.</Text>
-              ) : cartProducts.map((product) => (
-                <View key={product.id} style={styles.cartItem}>
+              ) : cart.items.map((item) => (
+                <View key={item.productId} style={styles.cartItem}>
                   <View style={styles.cartItemCopy}>
-                    <Text style={styles.cartItemName}>{product.name}</Text>
-                    <Text style={styles.cartItemPrice}>{product.price.toLocaleString('ko-KR')}원</Text>
+                    <Text style={styles.cartItemName}>{item.name}</Text>
+                    <Text style={styles.cartItemPrice}>{item.price.toLocaleString('ko-KR')}원</Text>
                   </View>
                   <View style={styles.quantityControl}>
                     <Pressable
-                      onPress={() => setCart((current) => ({
-                        ...current,
-                        [product.id]: Math.max(0, (current[product.id] ?? 0) - 1),
-                      }))}
+                      disabled={cartLoading}
+                      onPress={() => { void changeCartQuantity(item.productId, item.quantity - 1); }}
                       style={styles.quantityButton}
                     >
                       <Text style={styles.quantityButtonText}>−</Text>
                     </Pressable>
-                    <Text style={styles.quantityValue}>{cart[product.id]}</Text>
-                    <Pressable onPress={() => addToCart(product)} style={styles.quantityButton}><Text style={styles.quantityButtonText}>+</Text></Pressable>
+                    <Text style={styles.quantityValue}>{item.quantity}</Text>
+                    <Pressable disabled={cartLoading} onPress={() => { void changeCartQuantity(item.productId, item.quantity + 1); }} style={styles.quantityButton}><Text style={styles.quantityButtonText}>+</Text></Pressable>
                   </View>
                 </View>
               ))}
             </ScrollView>
             <View style={styles.cartTotalRow}>
               <Text style={styles.cartTotalLabel}>총 결제 금액</Text>
-              <Text style={styles.cartTotalValue}>{cartTotal.toLocaleString('ko-KR')}원</Text>
+              <Text style={styles.cartTotalValue}>{cart.totalPrice.toLocaleString('ko-KR')}원</Text>
             </View>
             <ActionButton label="구매하기" onPress={() => setCartOpen(false)} />
           </Surface>
