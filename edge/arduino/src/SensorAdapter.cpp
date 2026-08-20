@@ -256,6 +256,27 @@ OneWire soilTemperatureBus(TB_SOIL_TEMPERATURE_PIN);
 DallasTemperature soilTemperatureSensors(&soilTemperatureBus);
 #endif
 
+#if !TB_MOCK_SENSOR_ENABLED && TB_SOIL_MOISTURE_ENABLED
+constexpr uint8_t kSoilMoistureSampleCount = 10;
+
+// The first conversion after selecting an input carries residue from the
+// sample-and-hold capacitor, and a capacitive probe picks up enough supply
+// noise that single counts swing by roughly 15 - wide enough to straddle a
+// calibration endpoint and flap the reading in and out of the valid band.
+// Discarding one conversion and averaging a short burst is what makes an
+// endpoint mean anything.
+uint16_t readSoilMoistureRawAdc() {
+  (void)analogRead(TB_SOIL_MOISTURE_ADC_PIN);
+
+  uint16_t sum = 0;
+  for (uint8_t sample = 0; sample < kSoilMoistureSampleCount; ++sample) {
+    sum += static_cast<uint16_t>(analogRead(TB_SOIL_MOISTURE_ADC_PIN));
+    delay(2);
+  }
+  return sum / kSoilMoistureSampleCount;
+}
+#endif
+
 #if TB_MOCK_SENSOR_ENABLED
 constexpr uint8_t kMockHalfCycleSteps = 8;
 
@@ -357,7 +378,7 @@ SensorSample readSensorSample() {
 #endif
 
 #if !TB_MOCK_SENSOR_ENABLED && TB_SOIL_MOISTURE_ENABLED
-  const int rawSoilMoisture = analogRead(TB_SOIL_MOISTURE_ADC_PIN);
+  const int rawSoilMoisture = static_cast<int>(readSoilMoistureRawAdc());
   sample.soilMoistureRawAdc = static_cast<int16_t>(rawSoilMoisture);
   const int dryAdc = TB_SOIL_MOISTURE_DRY_ADC;
   const int wetAdc = TB_SOIL_MOISTURE_WET_ADC;
