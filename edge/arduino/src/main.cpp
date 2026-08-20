@@ -59,7 +59,7 @@ uint8_t validatedFields(const SensorSample& sample) {
                TB_MAX_PPFD_UMOL_M2_S)) {
     validity &= ~kPpfdValid;
   }
-#if TB_GY30_ENABLED
+#if TB_TSL2591_ENABLED
   if (!inRange(sample.illuminanceLux, TB_MIN_ILLUMINANCE_LUX,
                TB_MAX_ILLUMINANCE_LUX)) {
     validity &= ~kIlluminanceValid;
@@ -83,7 +83,7 @@ uint8_t validatedFields(const SensorSample& sample) {
 
 uint8_t requiredFields() {
   uint8_t required = kCoreTelemetryFieldsValid;
-#if TB_GY30_ENABLED
+#if TB_TSL2591_ENABLED
   required |= kIlluminanceValid;
 #endif
 #if TB_SOIL_TEMPERATURE_ENABLED
@@ -137,7 +137,7 @@ void emitSensorStatus(const uint32_t sequence, const uint32_t uptimeMs,
   Serial.print((validity & kRelativeHumidityValid) ? F("true") : F("false"));
   Serial.print(F(",\"ppfd_umol_m2_s\":"));
   Serial.print((validity & kPpfdValid) ? F("true") : F("false"));
-#if TB_GY30_ENABLED
+#if TB_TSL2591_ENABLED
   Serial.print(F(",\"illuminance_lux\":"));
   Serial.print((validity & kIlluminanceValid) ? F("true") : F("false"));
 #endif
@@ -150,7 +150,7 @@ void emitSensorStatus(const uint32_t sequence, const uint32_t uptimeMs,
   Serial.print((validity & kSoilMoistureValid) ? F("true") : F("false"));
 #endif
   Serial.print('}');
-#if TB_GY30_ENABLED
+#if TB_TSL2591_ENABLED
   Serial.print(F(",\"illuminance_lux\":"));
   if (validity & kIlluminanceValid) {
     Serial.print(sample.illuminanceLux, 2);
@@ -174,7 +174,7 @@ void emitTelemetry(const uint32_t sequence, const uint32_t uptimeMs,
   Serial.print(sample.relativeHumidityPct, 2);
   Serial.print(F(",\"ppfd_umol_m2_s\":"));
   Serial.print(sample.ppfdUmolM2S, 2);
-#if TB_GY30_ENABLED
+#if TB_TSL2591_ENABLED
   Serial.print(F(",\"illuminance_lux\":"));
   Serial.print(sample.illuminanceLux, 2);
 #endif

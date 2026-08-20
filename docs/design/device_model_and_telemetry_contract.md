@@ -373,7 +373,7 @@ v1 하위호환은 제공하지 않는다 — 엣지와 Arduino를 어차피 전
 
 ### 8.2 `edge/arduino`
 
-- PPFD 보정 활성화 (`TB_GY30_PPFD_CALIBRATION_ENABLED`)
+- PPFD 보정 활성화 (`TB_PPFD_CALIBRATION_ENABLED`)
 - DS18B20 토양온도, 정전용량 토양수분 기본 활성화
 - `soil_moisture_raw_adc` 필드 emit 추가
 - `TB_NODE_ID` 프로비저닝 절차 문서화 (기본값 `UNCONFIGURED`)
