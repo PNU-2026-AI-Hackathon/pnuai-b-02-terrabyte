@@ -31,7 +31,7 @@ uses 115200 baud after the sketch starts.
   compile time for an E2E test build.
 - DHT22 air temperature and relative humidity are read from digital pin 2.
 - A waterproof DS18B20 soil-temperature probe is enabled on digital pin 3.
-- An analog capacitive soil-moisture sensor is enabled on A1. Its provisioned
+- An analog capacitive soil-moisture sensor is enabled on A0. Its provisioned
   dry/wet endpoints are provisional placeholders, so the percentage is not
   trustworthy until calibration in real soil; the bench logger retains raw ADC.
 - TSL2591 illuminance is read over I2C using A4/SDA and A5/SCL at its fixed
@@ -99,13 +99,13 @@ pull-up resistor between DATA and VCC:
 ```
 
 The soil-moisture adapter targets an analog capacitive sensor. Connect its
-analog output to A1, then measure raw ADC readings in representative dry and wet
+analog output to A0, then measure raw ADC readings in representative dry and wet
 soil with the final supply voltage, board, and probe. Configure those measured
 endpoints; the conversion supports either ADC direction:
 
 ```cpp
 #define TB_SOIL_MOISTURE_ENABLED 1
-#define TB_SOIL_MOISTURE_ADC_PIN A1
+#define TB_SOIL_MOISTURE_ADC_PIN A0
 #define TB_SOIL_MOISTURE_DRY_ADC 800  // Example syntax only.
 #define TB_SOIL_MOISTURE_WET_ADC 350  // Replace both with measured values.
 ```

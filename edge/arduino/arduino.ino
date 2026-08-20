@@ -15,7 +15,7 @@
  * ------------|-------------------------|------------------------------
  * D2          | DHT22                   | DATA (TB_DHT22_PIN)
  * D3          | DS18B20 soil probe      | DATA (enabled, 4.7 kohm pull-up)
- * A1          | Capacitive soil sensor  | Analog OUT (enabled; calibrate ADC)
+ * A0          | Capacitive soil sensor  | Analog OUT (enabled; calibrate ADC)
  * A4 / SDA    | TSL2591                 | SDA (I2C, fixed address 0x29)
  * A5 / SCL    | TSL2591                 | SCL (I2C, fixed address 0x29)
  * 5V or 3.3V  | Sensor                  | VCC, per the sensor datasheet
