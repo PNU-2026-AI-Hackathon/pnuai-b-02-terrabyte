@@ -192,6 +192,7 @@ class DeviceHierarchyIntegrationTests {
                 "SELECT MIN(id) FROM pot WHERE device_id = ?", Long.class, deviceId);
         TelemetrySample sample = sample(potId, deviceId);
         when(measurementStore.findLatest(potId)).thenReturn(Optional.of(sample));
+        when(measurementStore.findSamples(eq(potId), any(Instant.class))).thenReturn(List.of(sample));
         when(measurementStore.findPoints(eq(potId), eq(MeasurementMetric.AIR_TEMPERATURE_C), any(Instant.class)))
                 .thenReturn(List.of(new MeasurementPoint(sample.observedAt(), 27.1)));
         when(profileRepository.findActiveByCropCode("basil"))

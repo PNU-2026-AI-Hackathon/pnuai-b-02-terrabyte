@@ -249,7 +249,13 @@ class MeasurementApiIntegrationTests {
         long potId = jdbcTemplate.queryForObject("SELECT MIN(id) FROM pot WHERE device_id=?", Long.class, deviceId);
         selectCrop(token, deviceId, "lettuce");
         TelemetrySample sample = sample(potId, deviceId, Instant.now().minusSeconds(5));
+        TelemetrySample earlierSample = new TelemetrySample(
+                potId, deviceId, NODE_ID, "lettuce", HARDWARE_ID, UUID.randomUUID().toString(),
+                Instant.now().minusSeconds(60 * 60), 1041,
+                40.0, 1700, 20.0, 50.0, 500.0, 20.0,
+                true, true, true);
         when(measurementStore.findLatest(potId)).thenReturn(java.util.Optional.of(sample));
+        when(measurementStore.findSamples(eq(potId), any(Instant.class))).thenReturn(List.of(earlierSample, sample));
         when(measurementStore.findPoints(
                 eq(potId),
                 eq(MeasurementMetric.AIR_TEMPERATURE_C),
@@ -296,11 +302,13 @@ class MeasurementApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cropCode").value("lettuce"))
                 .andExpect(jsonPath("$.cropName").value("상추"))
-                .andExpect(jsonPath("$.total").value(96.1))
+                .andExpect(jsonPath("$.total").value(98.3))
                 .andExpect(jsonPath("$.grade").value("GOOD"))
                 .andExpect(jsonPath("$.factors[0].key").value("temperature"))
+                .andExpect(jsonPath("$.factors[0].current").value(23.55))
                 .andExpect(jsonPath("$.factors[2].key").value("plantLight"))
-                .andExpect(jsonPath("$.factors[2].score").value(88.7))
+                .andExpect(jsonPath("$.factors[2].current").value(365.25))
+                .andExpect(jsonPath("$.factors[2].score").value(100.0))
                 .andExpect(jsonPath("$.factors[3].key").value("soilMoisture"))
                 .andExpect(jsonPath("$.factors[4].key").value("soilTemperature"));
     }

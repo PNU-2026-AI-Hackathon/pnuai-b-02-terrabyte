@@ -29,6 +29,10 @@ export function SuitabilityFormulaModal({ onClose, scoreData, visible }: Suitabi
           </View>
 
           <ScrollView contentContainerStyle={styles.formulaContent}>
+            <View style={styles.formulaNotice}>
+              <Text style={styles.formulaNoticeTitle}>점수 기준 기간</Text>
+              <Text style={styles.formulaBody}>종합 적합도와 항목별 점수는 최근 24시간의 유효 측정값 산술 평균으로 계산합니다.</Text>
+            </View>
             <View style={styles.formulaSection}>
               <Text style={styles.formulaSectionTitle}>1. 지표별 점수 계산</Text>
               <Text style={styles.formulaBody}>
