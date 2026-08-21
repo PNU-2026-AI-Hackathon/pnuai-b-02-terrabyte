@@ -164,6 +164,9 @@ export function ShopScreen({
     () => new Map(cart.items.map((item) => [item.productId, item.quantity])),
     [cart.items],
   );
+  const cartHasUnavailableItems = cart.items.some(
+    (item) => !item.available || item.quantity > item.stockQuantity,
+  );
   const cartCount = cart.totalQuantity;
   const tabs: Array<{ key: ProductCategory; label: string }> = [
     { key: 'all', label: '전체' },
@@ -263,7 +266,7 @@ export function ShopScreen({
   };
 
   const openCheckout = () => {
-    if (cart.items.length === 0) return;
+    if (cart.items.length === 0 || cartHasUnavailableItems) return;
     setCartOpen(false);
     setCheckoutError(null);
     setCheckoutAmount(cart.totalPrice);
@@ -376,10 +379,22 @@ export function ShopScreen({
                     void addToCart(product);
                   }}
                   disabled={product.available === false || cartLoading}
-                  style={[styles.addButton, cartQuantities.get(product.id) ? styles.addButtonAdded : null]}
+                  style={[
+                    styles.addButton,
+                    product.available === false
+                      ? styles.addButtonSoldOut
+                      : cartQuantities.get(product.id) ? styles.addButtonAdded : null,
+                  ]}
                 >
-                  <Text style={[styles.addButtonText, cartQuantities.get(product.id) ? styles.addButtonTextAdded : null]}>
-                    {cartQuantities.get(product.id) ? `✓ ${cartQuantities.get(product.id)}개 담김` : '담기'}
+                  <Text style={[
+                    styles.addButtonText,
+                    product.available === false
+                      ? styles.addButtonTextSoldOut
+                      : cartQuantities.get(product.id) ? styles.addButtonTextAdded : null,
+                  ]}>
+                    {product.available === false
+                      ? '품절'
+                      : cartQuantities.get(product.id) ? `✓ ${cartQuantities.get(product.id)}개 담김` : '담기'}
                   </Text>
                 </Pressable>
               </View>
@@ -421,7 +436,6 @@ export function ShopScreen({
                   {selectedProduct.subCategory ? <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>세부 분류</Text><Text style={styles.productInfoValue}>{subCategoryLabel(selectedProduct.subCategory)}</Text></View> : null}
                   <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>구성 / 규격</Text><Text style={styles.productInfoValue}>{formatPackage(selectedProduct)}</Text></View>
                   <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>배송 안내</Text><Text style={styles.productInfoValue}>결제 후 2~3일 이내 출고</Text></View>
-                  <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>상품 상태</Text><Text style={styles.productInfoValue}>{selectedProduct.available === false ? '품절' : '구매 가능'}</Text></View>
                 </View>
                 <View style={styles.modalFooter}>
                   <Text style={styles.modalPrice}>{selectedProduct.price.toLocaleString('ko-KR')}원</Text>
@@ -539,7 +553,10 @@ export function ShopScreen({
               ) : cart.items.map((item) => (
                 <View key={item.productId} style={styles.cartItem}>
                   <View style={styles.cartItemCopy}>
-                    <Text style={styles.cartItemName}>{item.name}</Text>
+                    <View style={styles.cartItemNameRow}>
+                      <Text style={styles.cartItemName}>{item.name}</Text>
+                      {!item.available || item.quantity > item.stockQuantity ? <Text style={styles.soldOutBadge}>품절</Text> : null}
+                    </View>
                     <Text style={styles.cartItemPrice}>{item.price.toLocaleString('ko-KR')}원</Text>
                   </View>
                   <View style={styles.quantityControl}>
@@ -551,16 +568,27 @@ export function ShopScreen({
                       <Text style={styles.quantityButtonText}>−</Text>
                     </Pressable>
                     <Text style={styles.quantityValue}>{item.quantity}</Text>
-                    <Pressable disabled={cartLoading} onPress={() => { void changeCartQuantity(item.productId, item.quantity + 1); }} style={styles.quantityButton}><Text style={styles.quantityButtonText}>+</Text></Pressable>
+                    <Pressable
+                      disabled={cartLoading || !item.available || item.quantity >= item.stockQuantity}
+                      onPress={() => { void changeCartQuantity(item.productId, item.quantity + 1); }}
+                      style={[styles.quantityButton, (!item.available || item.quantity >= item.stockQuantity) && styles.pageDisabled]}
+                    >
+                      <Text style={styles.quantityButtonText}>+</Text>
+                    </Pressable>
                   </View>
                 </View>
               ))}
             </ScrollView>
+            {cartHasUnavailableItems ? <Text accessibilityRole="alert" style={styles.soldOutNotice}>품절된 상품을 장바구니에서 제거해 주세요.</Text> : null}
             <View style={styles.cartTotalRow}>
               <Text style={styles.cartTotalLabel}>총 결제 금액</Text>
               <Text style={styles.cartTotalValue}>{cart.totalPrice.toLocaleString('ko-KR')}원</Text>
             </View>
-            <ActionButton disabled={cartLoading || cart.items.length === 0} label="구매하기" onPress={openCheckout} />
+            <ActionButton
+              disabled={cartLoading || cart.items.length === 0 || cartHasUnavailableItems}
+              label={cartHasUnavailableItems ? '품절 상품 포함' : '구매하기'}
+              onPress={openCheckout}
+            />
           </Surface>
         </View>
       </Modal>
@@ -706,8 +734,10 @@ const styles = StyleSheet.create(scaleTypography({
   productPrice: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font, letterSpacing: -0.3 },
   addButton: { ...controlTokens.primary, minHeight: 38, paddingHorizontal: 14, paddingVertical: 9 },
   addButtonAdded: { backgroundColor: palette.greenSoft, borderColor: '#c9dfd1' },
+  addButtonSoldOut: { backgroundColor: palette.panelMuted, borderColor: palette.lineStrong },
   addButtonText: { ...typeScale.button, ...controlTextTokens.primary, fontFamily: font },
   addButtonTextAdded: { color: palette.greenDark },
+  addButtonTextSoldOut: { color: palette.muted },
   pagination: { alignItems: 'center', flexDirection: 'row', gap: 7, justifyContent: 'center', paddingTop: 4 },
   pageArrow: { ...controlTokens.outline, minHeight: 36, paddingHorizontal: 13 },
   pageDisabled: { opacity: 0.35 },
@@ -739,8 +769,11 @@ const styles = StyleSheet.create(scaleTypography({
   emptyProducts: { ...typeScale.body, color: palette.muted, paddingVertical: 34, textAlign: 'center', width: '100%' },
   cartItem: { alignItems: 'center', borderBottomColor: palette.line, borderBottomWidth: 1, flexDirection: 'row', gap: 18, justifyContent: 'space-between', minHeight: 74, paddingVertical: 12 },
   cartItemCopy: { flex: 1, gap: 5 },
+  cartItemNameRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cartItemName: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '600' },
   cartItemPrice: { ...typeScale.body, color: palette.secondary, fontFamily: font },
+  soldOutBadge: { ...typeScale.label, backgroundColor: '#f9e4e0', borderRadius: 999, color: palette.red, fontFamily: font, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 3 },
+  soldOutNotice: { ...typeScale.body, color: palette.red, fontFamily: font },
   quantityControl: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   quantityButton: { alignItems: 'center', backgroundColor: palette.panelMuted, borderColor: palette.line, borderRadius: 7, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
   quantityButtonText: { color: palette.greenDark, fontFamily: font, fontSize: 16, fontWeight: '700' },
