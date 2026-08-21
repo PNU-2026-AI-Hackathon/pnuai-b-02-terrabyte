@@ -443,24 +443,55 @@ export function ShopScreen({
           <Surface style={styles.detailModal}>
             {selectedProduct ? (
               <>
-                <View style={styles.modalHeader}>
-                  <View style={styles.modalHeaderCopy}>
-                    <Text style={styles.modalEyebrow}>상품 상세 정보</Text>
-                    <Text style={styles.modalTitle}>{selectedProduct.name}</Text>
+                <ScrollView contentContainerStyle={styles.detailModalContent} showsVerticalScrollIndicator={false} style={styles.detailScroll}>
+                  <View style={[styles.detailHero, compact && styles.detailHeroCompact]}>
+                  <View style={styles.detailTopBar}>
+                    <View style={styles.detailTagRow}>
+                      <Text style={styles.detailCategoryTag}>{categoryLabel(selectedProduct.category)}</Text>
+                      {selectedProduct.badge ? <Text style={styles.detailBadge}>{selectedProduct.badge}</Text> : null}
+                    </View>
+                    <Pressable
+                      accessibilityLabel="상품 상세 닫기"
+                      accessibilityRole="button"
+                      onPress={() => setSelectedProduct(null)}
+                      style={styles.detailClose}
+                    >
+                      <Text style={styles.detailCloseText}>닫기</Text>
+                    </Pressable>
                   </View>
-                  <Pressable onPress={() => setSelectedProduct(null)} style={styles.modalClose}>
-                    <Text style={styles.modalCloseText}>닫기</Text>
-                  </Pressable>
-                </View>
-                <Text style={styles.modalDescription}>{selectedProduct.desc}</Text>
-                <View style={styles.productInfoList}>
-                  <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>카테고리</Text><Text style={styles.productInfoValue}>{selectedProduct.category === 'parts' ? '부품' : selectedProduct.category === 'soil' ? '흙과 배지' : '씨앗'}</Text></View>
-                  {selectedProduct.subCategory ? <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>세부 분류</Text><Text style={styles.productInfoValue}>{subCategoryLabel(selectedProduct.subCategory)}</Text></View> : null}
-                  <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>구성 / 규격</Text><Text style={styles.productInfoValue}>{formatPackage(selectedProduct)}</Text></View>
-                  <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>배송 안내</Text><Text style={styles.productInfoValue}>결제 후 2~3일 이내 출고</Text></View>
-                </View>
-                <View style={styles.modalFooter}>
-                  <View style={styles.priceBlock}>
+                  <View style={styles.detailTitleGroup}>
+                    <Text style={styles.detailEyebrow}>상품 상세</Text>
+                    <Text style={styles.detailTitle}>{selectedProduct.name}</Text>
+                    <Text style={styles.detailDescription}>{selectedProduct.desc}</Text>
+                  </View>
+                  </View>
+                  <View style={[styles.detailInfoSection, compact && styles.detailInfoSectionCompact]}>
+                    <Text style={styles.detailSectionTitle}>상품 정보</Text>
+                    <View style={[styles.detailInfoGrid, compact && styles.detailInfoGridCompact]}>
+                      <View style={[styles.detailInfoCard, compact && styles.detailInfoCardCompact]}>
+                        <Text style={styles.detailInfoLabel}>카테고리</Text>
+                        <Text style={styles.detailInfoValue}>{categoryLabel(selectedProduct.category)}</Text>
+                      </View>
+                      {selectedProduct.subCategory ? (
+                        <View style={[styles.detailInfoCard, compact && styles.detailInfoCardCompact]}>
+                          <Text style={styles.detailInfoLabel}>세부 분류</Text>
+                          <Text style={styles.detailInfoValue}>{subCategoryLabel(selectedProduct.subCategory)}</Text>
+                        </View>
+                      ) : null}
+                      <View style={[styles.detailInfoCard, compact && styles.detailInfoCardCompact]}>
+                        <Text style={styles.detailInfoLabel}>구성 / 규격</Text>
+                        <Text style={styles.detailInfoValue}>{formatPackage(selectedProduct)}</Text>
+                      </View>
+                      <View style={[styles.detailInfoCard, compact && styles.detailInfoCardCompact]}>
+                        <Text style={styles.detailInfoLabel}>배송 안내</Text>
+                        <Text style={styles.detailInfoValue}>결제 후 2~3일 이내 출고</Text>
+                      </View>
+                    </View>
+                  </View>
+                </ScrollView>
+                <View style={[styles.detailPurchaseBar, compact && styles.detailPurchaseBarCompact]}>
+                  <View style={styles.detailPriceBlock}>
+                    <Text style={styles.detailPriceLabel}>판매가</Text>
                     {productIsDiscounted(selectedProduct) ? (
                       <View style={styles.discountMeta}>
                         <Text style={styles.discountRate}>{productDiscountRate(selectedProduct)}%</Text>
@@ -798,7 +829,34 @@ const styles = StyleSheet.create(scaleTypography({
   pageNumberText: { ...typeScale.label, color: palette.secondary, fontFamily: font },
   pageNumberTextActive: { color: '#ffffff' },
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
-  detailModal: { gap: 24, maxWidth: 560, padding: 28, width: '100%' },
+  detailModal: { maxHeight: '92%', maxWidth: 680, overflow: 'hidden', padding: 0, width: '100%' },
+  detailScroll: { flexShrink: 1, outlineStyle: 'none' } as any,
+  detailModalContent: { width: '100%' },
+  detailHero: { gap: 24, padding: 30 },
+  detailHeroCompact: { gap: 18, padding: 22 },
+  detailTopBar: { alignItems: 'center', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
+  detailTagRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  detailCategoryTag: { ...typeScale.label, backgroundColor: palette.greenSoft, borderRadius: 999, color: palette.greenDark, fontFamily: font, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 6 },
+  detailBadge: { ...typeScale.label, backgroundColor: '#ffffff', borderColor: '#c9dfd1', borderRadius: 999, borderWidth: 1, color: palette.greenDark, fontFamily: font, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 5 },
+  detailClose: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.46)', borderColor: palette.lineStrong, borderRadius: 999, borderWidth: 1, justifyContent: 'center', minHeight: 38, outlineStyle: 'none', paddingHorizontal: 15 } as any,
+  detailCloseText: { ...typeScale.button, color: palette.secondary, fontFamily: font },
+  detailTitleGroup: { gap: 8 },
+  detailEyebrow: { ...typeScale.label, color: palette.greenDark, fontFamily: font, letterSpacing: 0.8 },
+  detailTitle: { ...typeScale.dialogTitle, color: palette.text, fontFamily: font },
+  detailDescription: { ...typeScale.body, color: palette.secondary, fontFamily: font, maxWidth: 560 },
+  detailInfoSection: { backgroundColor: 'rgba(255,255,255,0.28)', borderTopColor: palette.lineStrong, borderTopWidth: 1, gap: 14, paddingHorizontal: 30, paddingVertical: 24 },
+  detailInfoSectionCompact: { paddingHorizontal: 22, paddingVertical: 20 },
+  detailSectionTitle: { ...typeScale.label, color: palette.secondary, fontFamily: font },
+  detailInfoGrid: { flexDirection: 'column', gap: 10 },
+  detailInfoGridCompact: { flexDirection: 'column' },
+  detailInfoCard: { backgroundColor: 'rgba(255,255,255,0.58)', borderColor: palette.lineStrong, borderRadius: 14, borderWidth: 1, flexBasis: 'auto', flexGrow: 0, gap: 5, minHeight: 72, minWidth: 0, paddingHorizontal: 16, paddingVertical: 14, width: '100%' },
+  detailInfoCardCompact: { flexBasis: 'auto', minHeight: 0, minWidth: 0, width: '100%' },
+  detailInfoLabel: { ...typeScale.caption, color: palette.muted, fontFamily: font },
+  detailInfoValue: { ...typeScale.bodyStrong, color: palette.text, fontFamily: font },
+  detailPurchaseBar: { alignItems: 'center', backgroundColor: 'rgba(228,241,233,0.78)', borderTopColor: '#c9dfd1', borderTopWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 22, justifyContent: 'space-between', paddingHorizontal: 30, paddingVertical: 24 },
+  detailPurchaseBarCompact: { alignItems: 'stretch', flexDirection: 'column' },
+  detailPriceBlock: { alignItems: 'flex-start', gap: 3 },
+  detailPriceLabel: { ...typeScale.caption, color: palette.muted, fontFamily: font },
   cartModal: { gap: 20, maxHeight: '82%', maxWidth: 620, padding: 28, width: '100%' },
   ordersModal: { gap: 20, maxHeight: '82%', maxWidth: 680, padding: 28, width: '100%' },
   checkoutModal: { gap: 22, maxHeight: '92%', maxWidth: 680, padding: 30, width: '100%' },
@@ -808,12 +866,6 @@ const styles = StyleSheet.create(scaleTypography({
   modalTitle: { ...typeScale.dialogTitle, color: palette.text, fontFamily: font },
   modalClose: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 36, paddingHorizontal: 12 },
   modalCloseText: { ...typeScale.button, color: palette.secondary, fontFamily: font },
-  modalDescription: { ...typeScale.body, color: palette.secondary, fontFamily: font },
-  productInfoList: { borderColor: palette.line, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
-  productInfoRow: { alignItems: 'center', borderBottomColor: palette.line, borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 50, paddingHorizontal: 16 },
-  productInfoLabel: { ...typeScale.label, color: palette.muted, fontFamily: font },
-  productInfoValue: { ...typeScale.bodyStrong, color: palette.text, fontFamily: font },
-  modalFooter: { alignItems: 'center', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
   modalPrice: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   cartList: { maxHeight: 380 },
   emptyCart: { ...typeScale.body, color: palette.muted, paddingVertical: 46, textAlign: 'center' },
