@@ -461,8 +461,7 @@ export function ShopScreen({
           <Surface style={styles.detailModal}>
             {selectedProduct ? (
               <>
-                <ScrollView contentContainerStyle={styles.detailModalContent} showsVerticalScrollIndicator={false} style={styles.detailScroll}>
-                  <View style={[styles.detailHero, compact && styles.detailHeroCompact]}>
+                <View style={[styles.detailHero, compact && styles.detailHeroCompact]}>
                   <View style={styles.detailTopBar}>
                     <View style={styles.detailTagRow}>
                       <Text style={styles.detailCategoryTag}>{categoryLabel(selectedProduct.category)}</Text>
@@ -482,7 +481,12 @@ export function ShopScreen({
                     <Text style={styles.detailTitle}>{selectedProduct.name}</Text>
                     <Text style={styles.detailDescription}>{selectedProduct.desc}</Text>
                   </View>
-                  </View>
+                </View>
+                <ScrollView
+                  contentContainerStyle={styles.detailInfoScrollContent}
+                  showsVerticalScrollIndicator={false}
+                  style={styles.detailInfoScroll}
+                >
                   <View style={[styles.detailInfoSection, compact && styles.detailInfoSectionCompact]}>
                     <Text style={styles.detailSectionTitle}>상품 정보</Text>
                     <View style={[styles.detailInfoGrid, compact && styles.detailInfoGridCompact]}>
@@ -855,8 +859,8 @@ const styles = StyleSheet.create(scaleTypography({
   pageNumberTextActive: { color: '#ffffff' },
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
   detailModal: { maxHeight: '92%', maxWidth: 680, overflow: 'hidden', padding: 0, width: '100%' },
-  detailScroll: { flexShrink: 1, outlineStyle: 'none' } as any,
-  detailModalContent: { width: '100%' },
+  detailInfoScroll: { flexGrow: 1, flexShrink: 1, minHeight: 0, outlineStyle: 'none' } as any,
+  detailInfoScrollContent: { width: '100%' },
   detailHero: { gap: 24, padding: 30 },
   detailHeroCompact: { gap: 18, padding: 22 },
   detailTopBar: { alignItems: 'center', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
