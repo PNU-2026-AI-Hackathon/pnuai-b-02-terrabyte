@@ -2,6 +2,8 @@ package com.terrabyte.backend.shop;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -64,6 +66,85 @@ public class ShopCatalogRepository {
                         id)
                 .stream()
                 .findFirst();
+    }
+
+    public List<ShopProduct> findAllForAdmin() {
+        return jdbcTemplate.query(
+                SELECT_COLUMNS + " ORDER BY display_order",
+                this::mapProduct);
+    }
+
+    public Optional<ShopProduct> findById(String id) {
+        return jdbcTemplate.query(
+                        SELECT_COLUMNS + " WHERE id = ?",
+                        this::mapProduct,
+                        id)
+                .stream()
+                .findFirst();
+    }
+
+    public void create(ShopProduct product) {
+        jdbcTemplate.update(
+                """
+                INSERT INTO product (
+                    id, category, name, emoji, description, price, badge,
+                    stock_quantity, status, image_url, package_quantity, package_unit,
+                    sub_category, display_order, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                product.id(),
+                product.category(),
+                product.name(),
+                product.emoji(),
+                product.description(),
+                product.price(),
+                product.badge(),
+                product.stockQuantity(),
+                product.status(),
+                product.imageUrl(),
+                product.packageQuantity(),
+                product.packageUnit(),
+                product.subCategory(),
+                product.displayOrder(),
+                Timestamp.from(product.createdAt()),
+                Timestamp.from(product.updatedAt()));
+    }
+
+    public int update(ShopProduct product) {
+        return jdbcTemplate.update(
+                """
+                UPDATE product
+                SET category = ?, name = ?, emoji = ?, description = ?, price = ?,
+                    badge = ?, status = ?, image_url = ?, package_quantity = ?,
+                    package_unit = ?, sub_category = ?, display_order = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                product.category(),
+                product.name(),
+                product.emoji(),
+                product.description(),
+                product.price(),
+                product.badge(),
+                product.status(),
+                product.imageUrl(),
+                product.packageQuantity(),
+                product.packageUnit(),
+                product.subCategory(),
+                product.displayOrder(),
+                Timestamp.from(product.updatedAt()),
+                product.id());
+    }
+
+    public int setStock(String productId, int stockQuantity, Instant updatedAt) {
+        return jdbcTemplate.update(
+                """
+                UPDATE product
+                SET stock_quantity = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                stockQuantity,
+                Timestamp.from(updatedAt),
+                productId);
     }
 
     public int decreaseStock(String productId, int quantity) {

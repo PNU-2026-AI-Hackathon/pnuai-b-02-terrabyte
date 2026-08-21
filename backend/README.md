@@ -39,6 +39,7 @@ export POSTGRES_USER='terrabyte'
 export POSTGRES_PASSWORD='terrabyte'
 export SQLITE_URL='jdbc:sqlite:./db/terrabyte-score.db'
 export JWT_SECRET='32바이트 이상의 운영용 비밀키로 변경하세요'
+export ADMIN_API_KEY='관리자 API용 별도 비밀키'
 export INFLUX_URL='http://localhost:8086'
 export INFLUX_TOKEN='InfluxDB API 토큰'
 export INFLUX_ORG='terrabyte'
@@ -258,6 +259,34 @@ GET   /api/devices/{deviceId}/score                 기기 최신 환경 적합�
 GET   /api/devices/{deviceId}/soil-recommendation   기기 토양 배합 추천 조회 (deprecated)
 
 GET   /api/products                                 상품 목록 조회
+GET   /api/products/{productId}                     상품 상세 조회
+
+GET   /api/cart                                     장바구니 조회
+POST  /api/cart/items                               장바구니 상품 추가
+PATCH /api/cart/items/{productId}                   장바구니 수량 변경
+DELETE /api/cart/items/{productId}                  장바구니 상품 삭제
+DELETE /api/cart                                    장바구니 비우기
+
+POST  /api/orders                                   주문 생성
+GET   /api/orders                                   내 주문 목록 조회
+GET   /api/orders/{orderId}                         내 주문 상세 조회
+POST  /api/orders/{orderId}/cancel                  결제 전 주문 취소
+
+POST  /api/payments/ready                           토스 결제 준비
+POST  /api/payments/confirm                         토스 결제 승인
+POST  /api/payments/fail                            결제창 실패 기록
+POST  /api/payments/{paymentId}/cancel              승인 결제 취소
+GET   /api/orders/{orderId}/payment                 주문 결제 정보 조회
+
+GET   /api/admin/products                           관리자 상품 전체 조회
+GET   /api/admin/products/{productId}               관리자 상품 상세 조회
+POST  /api/admin/products                           상품 등록
+PUT   /api/admin/products/{productId}               상품 정보 수정
+PATCH /api/admin/products/{productId}/stock         상품 재고 변경
+GET   /api/admin/orders                             전체 주문 조회
+GET   /api/admin/orders/{orderId}                   관리자 주문 상세 조회
+PATCH /api/admin/orders/{orderId}/status            배송 단계 변경
+
 POST  /api/telemetry                                하드웨어 센서 데이터 수신 (공개, 설정 시 활성화)
 ```
 
@@ -276,6 +305,16 @@ POST  /api/telemetry                                하드웨어 센서 데이�
 ```text
 Authorization: Bearer {accessToken}
 ```
+
+관리자 API는 Bearer 토큰과 별도로 `ADMIN_API_KEY`에 설정한 값을 함께 전달해야 합니다.
+키가 비어 있으면 관리자 API는 비활성화됩니다.
+
+```text
+X-Admin-Key: {ADMIN_API_KEY}
+```
+
+주문 상태 변경 API는 결제 완료 이후 `PAID → PREPARING → SHIPPED → DELIVERED` 순서만 허용합니다.
+결제 취소는 관리자 상태 변경 API가 아니라 토스 결제 취소 API를 사용해야 합니다.
 
 기기 등록 요청 예시:
 

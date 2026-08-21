@@ -43,6 +43,36 @@ public class OrderRepository {
                 userId);
     }
 
+    public List<ShopOrder> findAllForAdmin(OrderStatus status) {
+        if (status == null) {
+            return jdbcTemplate.query(
+                    SELECT_ORDER_COLUMNS + " ORDER BY ordered_at DESC, id DESC",
+                    this::mapOrder);
+        }
+        return jdbcTemplate.query(
+                SELECT_ORDER_COLUMNS + " WHERE status = ? ORDER BY ordered_at DESC, id DESC",
+                this::mapOrder,
+                status.name());
+    }
+
+    public Optional<ShopOrder> findByIdForAdmin(long orderId) {
+        return jdbcTemplate.query(
+                        SELECT_ORDER_COLUMNS + " WHERE id = ?",
+                        this::mapOrder,
+                        orderId)
+                .stream()
+                .findFirst();
+    }
+
+    public Optional<ShopOrder> findByIdForAdminForUpdate(long orderId) {
+        return jdbcTemplate.query(
+                        SELECT_ORDER_COLUMNS + " WHERE id = ? FOR UPDATE",
+                        this::mapOrder,
+                        orderId)
+                .stream()
+                .findFirst();
+    }
+
     public Optional<ShopOrder> findByIdAndUser(long orderId, long userId) {
         return jdbcTemplate.query(
                         SELECT_ORDER_COLUMNS + " WHERE id = ? AND user_id = ?",
@@ -188,6 +218,23 @@ public class OrderRepository {
                 timestamp,
                 orderId,
                 userId);
+    }
+
+    public int updateStatus(
+            long orderId,
+            OrderStatus currentStatus,
+            OrderStatus nextStatus,
+            Instant updatedAt) {
+        return jdbcTemplate.update(
+                """
+                UPDATE shop_order
+                SET status = ?, updated_at = ?
+                WHERE id = ? AND status = ?
+                """,
+                nextStatus.name(),
+                Timestamp.from(updatedAt),
+                orderId,
+                currentStatus.name());
     }
 
     private ShopOrder mapOrder(ResultSet resultSet, int rowNumber) throws SQLException {

@@ -1,4 +1,6 @@
 app:
+  admin:
+    api-key: terrabyte-test-admin-key
   security:
     jwt:
       secret: terrabyte-test-secret-must-be-at-least-32-bytes
