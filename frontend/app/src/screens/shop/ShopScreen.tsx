@@ -10,7 +10,7 @@ import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
 import { addCartItem, getCart, removeCartItem, updateCartItem, type CartResponse } from '../../cart/cartApi';
-import { createOrder } from '../../order/orderApi';
+import { cancelOrder, createOrder, getOrder, getOrders, type OrderDetail, type OrderStatus, type OrderSummary } from '../../order/orderApi';
 import { readyPayment } from '../../payment/paymentApi';
 import { requestTossPayment } from '../../payment/tossPayment';
 import { getShopProducts, type ShopCategory, type ShopProduct, type ShopSubCategory } from '../../shop/shopApi';
@@ -46,6 +46,31 @@ function errorMessage(caught: unknown, fallback: string) {
   return caught instanceof Error ? caught.message : fallback;
 }
 
+const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  PENDING: '결제 대기',
+  PAID: '결제 완료',
+  PREPARING: '상품 준비 중',
+  SHIPPED: '배송 중',
+  DELIVERED: '배송 완료',
+  CANCELLED: '주문 취소',
+};
+
+function orderStatusLabel(status: OrderStatus) {
+  return ORDER_STATUS_LABELS[status];
+}
+
+function formatOrderDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 const EMPTY_CART: CartResponse = { items: [], totalQuantity: 0, totalPrice: 0 };
 const EMPTY_SHIPPING = {
   recipientName: '',
@@ -71,6 +96,13 @@ export function ShopScreen({
   const [cartLoading, setCartLoading] = useState(true);
   const [cartError, setCartError] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
+  const [orders, setOrders] = useState<OrderSummary[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
+  const [orderDetailLoading, setOrderDetailLoading] = useState(false);
+  const [orderActionLoading, setOrderActionLoading] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -155,6 +187,52 @@ export function ShopScreen({
   const toggleRecommended = () => {
     setRecommendedOnly((current) => !current);
     setCurrentPage(1);
+  };
+
+  const loadOrders = async () => {
+    setOrdersLoading(true);
+    setOrdersError(null);
+    try {
+      setOrders(await getOrders());
+    } catch (caught) {
+      setOrdersError(errorMessage(caught, '주문 내역을 불러오지 못했습니다.'));
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const openOrders = () => {
+    setSelectedOrder(null);
+    setOrdersOpen(true);
+    void loadOrders();
+  };
+
+  const openOrder = async (orderId: number) => {
+    setSelectedOrder(null);
+    setOrderDetailLoading(true);
+    setOrdersError(null);
+    try {
+      setSelectedOrder(await getOrder(orderId));
+    } catch (caught) {
+      setOrdersError(errorMessage(caught, '주문 상세 정보를 불러오지 못했습니다.'));
+    } finally {
+      setOrderDetailLoading(false);
+    }
+  };
+
+  const cancelSelectedOrder = async () => {
+    if (!selectedOrder || selectedOrder.status !== 'PENDING') return;
+    setOrderActionLoading(true);
+    setOrdersError(null);
+    try {
+      const cancelled = await cancelOrder(selectedOrder.id);
+      setSelectedOrder(cancelled);
+      setOrders((current) => current.map((order) => order.id === cancelled.id ? cancelled : order));
+    } catch (caught) {
+      setOrdersError(errorMessage(caught, '주문을 취소하지 못했습니다.'));
+    } finally {
+      setOrderActionLoading(false);
+    }
   };
 
   const addToCart = async (product: ShopProduct) => {
@@ -251,8 +329,12 @@ export function ShopScreen({
           ) : null}
         </View>
         <View style={[styles.shopToolbarActions, compact && styles.shopToolbarActionsCompact]}>
+          <Pressable accessibilityRole="button" onPress={openOrders} style={styles.cartButton}>
+            <Text style={styles.toolbarButtonText}>주문 내역</Text>
+          </Pressable>
           <Pressable accessibilityRole="button" onPress={() => setCartOpen(true)} style={styles.cartButton}>
-            <Text style={styles.cartCount}>장바구니 {cartCount}</Text>
+            <Text style={styles.toolbarButtonText}>장바구니</Text>
+            <Text style={styles.cartCount}>{cartCount}</Text>
           </Pressable>
         </View>
       </View>
@@ -356,6 +438,82 @@ export function ShopScreen({
                 </View>
               </>
             ) : null}
+          </Surface>
+        </View>
+      </Modal>
+
+      <Modal animationType="fade" onRequestClose={() => setOrdersOpen(false)} transparent visible={ordersOpen}>
+        <View style={styles.modalBackdrop}>
+          <Surface style={styles.ordersModal}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>구매 관리</Text>
+                <Text style={styles.modalTitle}>{selectedOrder ? '주문 상세' : '주문 내역'}</Text>
+              </View>
+              <Pressable onPress={() => setOrdersOpen(false)} style={styles.modalClose}>
+                <Text style={styles.modalCloseText}>닫기</Text>
+              </Pressable>
+            </View>
+
+            {selectedOrder ? (
+              <ScrollView contentContainerStyle={styles.orderDetailScroll}>
+                <Pressable onPress={() => { setSelectedOrder(null); setOrdersError(null); }} style={styles.orderBackButton}>
+                  <Text style={styles.orderBackButtonText}>← 주문 목록</Text>
+                </Pressable>
+                <View style={styles.orderDetailHeader}>
+                  <View style={styles.orderDetailCopy}>
+                    <Text style={styles.orderNumber}>{selectedOrder.orderNumber}</Text>
+                    <Text style={styles.orderDate}>{formatOrderDate(selectedOrder.orderedAt)}</Text>
+                  </View>
+                  <Text style={[styles.orderStatus, selectedOrder.status === 'CANCELLED' && styles.orderStatusCancelled]}>
+                    {orderStatusLabel(selectedOrder.status)}
+                  </Text>
+                </View>
+                <View style={styles.orderItemList}>
+                  {selectedOrder.items.map((item) => (
+                    <View key={item.productId} style={styles.orderItem}>
+                      <View style={styles.orderItemCopy}>
+                        <Text style={styles.orderItemName}>{item.name}</Text>
+                        <Text style={styles.orderItemQuantity}>{item.quantity}개 · {item.unitPrice.toLocaleString('ko-KR')}원</Text>
+                      </View>
+                      <Text style={styles.orderItemPrice}>{item.subtotal.toLocaleString('ko-KR')}원</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.orderInfoList}>
+                  <View style={styles.orderInfoRow}><Text style={styles.orderInfoLabel}>받는 분</Text><Text style={styles.orderInfoValue}>{selectedOrder.recipientName}</Text></View>
+                  <View style={styles.orderInfoRow}><Text style={styles.orderInfoLabel}>연락처</Text><Text style={styles.orderInfoValue}>{selectedOrder.recipientPhone}</Text></View>
+                  <View style={styles.orderInfoRow}><Text style={styles.orderInfoLabel}>배송지</Text><Text style={styles.orderInfoValue}>{selectedOrder.address}{selectedOrder.addressDetail ? ` ${selectedOrder.addressDetail}` : ''}</Text></View>
+                </View>
+                <View style={styles.orderTotalRow}>
+                  <Text style={styles.cartTotalLabel}>총 결제 금액</Text>
+                  <Text style={styles.cartTotalValue}>{selectedOrder.totalPrice.toLocaleString('ko-KR')}원</Text>
+                </View>
+                {selectedOrder.status === 'PENDING' ? (
+                  <Pressable disabled={orderActionLoading} onPress={() => { void cancelSelectedOrder(); }} style={[styles.orderCancelButton, orderActionLoading && styles.pageDisabled]}>
+                    <Text style={styles.orderCancelButtonText}>{orderActionLoading ? '취소 처리 중…' : '주문 취소'}</Text>
+                  </Pressable>
+                ) : null}
+              </ScrollView>
+            ) : (
+              <ScrollView contentContainerStyle={styles.ordersList}>
+                {ordersError ? <Text accessibilityRole="alert" style={styles.orderError}>{ordersError}</Text> : null}
+                {ordersLoading || orderDetailLoading ? <Text style={styles.emptyCart}>주문 내역을 불러오는 중입니다.</Text> : null}
+                {!ordersLoading && !orderDetailLoading && !ordersError && orders.length === 0 ? <Text style={styles.emptyCart}>아직 주문한 상품이 없습니다.</Text> : null}
+                {!ordersLoading && !orderDetailLoading && !ordersError ? orders.map((order) => (
+                  <Pressable key={order.id} disabled={orderDetailLoading} onPress={() => { void openOrder(order.id); }} style={styles.orderCard}>
+                    <View style={styles.orderCardCopy}>
+                      <Text style={styles.orderNumber}>{order.orderNumber}</Text>
+                      <Text style={styles.orderDate}>{formatOrderDate(order.orderedAt)} · {order.totalQuantity}개</Text>
+                    </View>
+                    <View style={styles.orderCardMeta}>
+                      <Text style={[styles.orderStatus, order.status === 'CANCELLED' && styles.orderStatusCancelled]}>{orderStatusLabel(order.status)}</Text>
+                      <Text style={styles.orderCardPrice}>{order.totalPrice.toLocaleString('ko-KR')}원</Text>
+                    </View>
+                  </Pressable>
+                )) : null}
+              </ScrollView>
+            )}
           </Surface>
         </View>
       </Modal>
@@ -531,8 +689,9 @@ const styles = StyleSheet.create(scaleTypography({
   recommendationButtonActive: { backgroundColor: palette.green },
   recommendationButtonText: { ...typeScale.button, ...controlTextTokens.outline, fontFamily: font },
   recommendationButtonTextActive: { color: '#ffffff' },
-  cartButton: { ...controlTokens.secondary, minHeight: 42, paddingHorizontal: 17 },
-  cartCount: { ...typeScale.button, ...controlTextTokens.secondary, fontFamily: font, fontWeight: '700' },
+  cartButton: { ...controlTokens.secondary, alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 42, paddingHorizontal: 17 },
+  toolbarButtonText: { ...typeScale.button, ...controlTextTokens.secondary, fontFamily: font, fontWeight: '500' },
+  cartCount: { ...typeScale.button, ...controlTextTokens.secondary, fontFamily: font, fontWeight: '800' },
   productPanel: { gap: 34, padding: 36 },
   productGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   productCard: { backgroundColor: 'rgba(255,255,255,0.16)', borderColor: 'rgba(86,120,101,0.24)', borderRadius: 16, borderWidth: 1, flexBasis: '31%', flexGrow: 1, gap: 16, maxWidth: '32%', minHeight: 250, minWidth: 240, padding: 27 },
@@ -560,6 +719,7 @@ const styles = StyleSheet.create(scaleTypography({
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
   detailModal: { gap: 24, maxWidth: 560, padding: 28, width: '100%' },
   cartModal: { gap: 20, maxHeight: '82%', maxWidth: 620, padding: 28, width: '100%' },
+  ordersModal: { gap: 20, maxHeight: '82%', maxWidth: 680, padding: 28, width: '100%' },
   checkoutModal: { gap: 22, maxHeight: '92%', maxWidth: 680, padding: 30, width: '100%' },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
   modalHeaderCopy: { flex: 1, gap: 5 },
@@ -588,6 +748,34 @@ const styles = StyleSheet.create(scaleTypography({
   cartTotalRow: { alignItems: 'center', borderTopColor: palette.lineStrong, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 18 },
   cartTotalLabel: { ...typeScale.label, color: palette.secondary, fontFamily: font },
   cartTotalValue: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
+  ordersList: { gap: 10 },
+  orderCard: { alignItems: 'center', borderColor: palette.line, borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 16, justifyContent: 'space-between', padding: 16 },
+  orderCardCopy: { flex: 1, gap: 5 },
+  orderCardMeta: { alignItems: 'flex-end', gap: 5 },
+  orderCardPrice: { ...typeScale.bodyStrong, color: palette.text, fontFamily: font },
+  orderNumber: { ...typeScale.bodyStrong, color: palette.text, fontFamily: font },
+  orderDate: { ...typeScale.label, color: palette.muted, fontFamily: font },
+  orderStatus: { ...typeScale.label, backgroundColor: palette.greenSoft, borderRadius: 999, color: palette.greenDark, fontFamily: font, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 5 },
+  orderStatusCancelled: { backgroundColor: '#f9e4e0', color: palette.red },
+  orderDetailScroll: { gap: 18 },
+  orderBackButton: { alignSelf: 'flex-start' },
+  orderBackButtonText: { ...typeScale.button, color: palette.greenDark, fontFamily: font },
+  orderDetailHeader: { alignItems: 'center', flexDirection: 'row', gap: 16, justifyContent: 'space-between' },
+  orderDetailCopy: { flex: 1, gap: 5 },
+  orderItemList: { borderColor: palette.line, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  orderItem: { alignItems: 'center', borderBottomColor: palette.line, borderBottomWidth: 1, flexDirection: 'row', gap: 16, justifyContent: 'space-between', padding: 14 },
+  orderItemCopy: { flex: 1, gap: 4 },
+  orderItemName: { ...typeScale.bodyStrong, color: palette.text, fontFamily: font },
+  orderItemQuantity: { ...typeScale.label, color: palette.muted, fontFamily: font },
+  orderItemPrice: { ...typeScale.bodyStrong, color: palette.text, fontFamily: font },
+  orderInfoList: { borderColor: palette.line, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  orderInfoRow: { alignItems: 'flex-start', borderBottomColor: palette.line, borderBottomWidth: 1, flexDirection: 'row', gap: 16, justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 13 },
+  orderInfoLabel: { ...typeScale.label, color: palette.muted, fontFamily: font },
+  orderInfoValue: { ...typeScale.body, color: palette.text, flex: 1, fontFamily: font, textAlign: 'right' },
+  orderTotalRow: { alignItems: 'center', borderTopColor: palette.lineStrong, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 18 },
+  orderCancelButton: { alignItems: 'center', borderColor: palette.lineStrong, borderRadius: 10, borderWidth: 1, minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
+  orderCancelButtonText: { ...typeScale.button, color: palette.red, fontFamily: font },
+  orderError: { ...typeScale.body, color: palette.red, fontFamily: font, paddingVertical: 12 },
   checkoutForm: { gap: 16 },
   fieldRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   fieldHalf: { flex: 1, gap: 7, minWidth: 220 },
