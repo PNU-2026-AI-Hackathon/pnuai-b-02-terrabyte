@@ -53,6 +53,26 @@ public class OrderRepository {
                 .findFirst();
     }
 
+    public Optional<ShopOrder> findByOrderNumberAndUser(String orderNumber, long userId) {
+        return jdbcTemplate.query(
+                        SELECT_ORDER_COLUMNS + " WHERE order_number = ? AND user_id = ?",
+                        this::mapOrder,
+                        orderNumber,
+                        userId)
+                .stream()
+                .findFirst();
+    }
+
+    public Optional<ShopOrder> findByIdAndUserForUpdate(long orderId, long userId) {
+        return jdbcTemplate.query(
+                        SELECT_ORDER_COLUMNS + " WHERE id = ? AND user_id = ? FOR UPDATE",
+                        this::mapOrder,
+                        orderId,
+                        userId)
+                .stream()
+                .findFirst();
+    }
+
     public List<ShopOrderItem> findItems(long orderId) {
         return jdbcTemplate.query(
                 SELECT_ITEM_COLUMNS + " WHERE order_id = ? ORDER BY id",
@@ -137,6 +157,32 @@ public class OrderRepository {
                 UPDATE shop_order
                 SET status = 'CANCELLED', cancelled_at = ?, updated_at = ?
                 WHERE id = ? AND user_id = ? AND status = 'PENDING'
+                """,
+                timestamp,
+                timestamp,
+                orderId,
+                userId);
+    }
+
+    public int markPaid(long orderId, long userId, Instant paidAt) {
+        return jdbcTemplate.update(
+                """
+                UPDATE shop_order
+                SET status = 'PAID', updated_at = ?
+                WHERE id = ? AND user_id = ? AND status = 'PENDING'
+                """,
+                Timestamp.from(paidAt),
+                orderId,
+                userId);
+    }
+
+    public int cancelPaid(long orderId, long userId, Instant cancelledAt) {
+        Timestamp timestamp = Timestamp.from(cancelledAt);
+        return jdbcTemplate.update(
+                """
+                UPDATE shop_order
+                SET status = 'CANCELLED', cancelled_at = ?, updated_at = ?
+                WHERE id = ? AND user_id = ? AND status = 'PAID'
                 """,
                 timestamp,
                 timestamp,

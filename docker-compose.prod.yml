@@ -70,6 +70,11 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 을 32바이트 이상으로 설정하세요}
       JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT1H}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8088}
+      TOSS_PAYMENTS_ENABLED: ${TOSS_PAYMENTS_ENABLED:-false}
+      TOSS_PAYMENTS_CLIENT_KEY: ${TOSS_PAYMENTS_CLIENT_KEY:-}
+      TOSS_PAYMENTS_SECRET_KEY: ${TOSS_PAYMENTS_SECRET_KEY:-}
+      TOSS_PAYMENTS_SUCCESS_URL: ${TOSS_PAYMENTS_SUCCESS_URL:-http://localhost:8088/payment/success}
+      TOSS_PAYMENTS_FAIL_URL: ${TOSS_PAYMENTS_FAIL_URL:-http://localhost:8088/payment/fail}
     volumes:
       - backend-data:/app/data
     restart: unless-stopped

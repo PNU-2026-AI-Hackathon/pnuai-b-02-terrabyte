@@ -66,6 +66,29 @@ public class ShopCatalogRepository {
                 .findFirst();
     }
 
+    public int decreaseStock(String productId, int quantity) {
+        return jdbcTemplate.update(
+                """
+                UPDATE product
+                SET stock_quantity = stock_quantity - ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ? AND status = 'ACTIVE' AND stock_quantity >= ?
+                """,
+                quantity,
+                productId,
+                quantity);
+    }
+
+    public void increaseStock(String productId, int quantity) {
+        jdbcTemplate.update(
+                """
+                UPDATE product
+                SET stock_quantity = stock_quantity + ?, updated_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                """,
+                quantity,
+                productId);
+    }
+
     private ShopProduct mapProduct(ResultSet resultSet, int rowNumber) throws SQLException {
         return new ShopProduct(
                 resultSet.getString("id"),

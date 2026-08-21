@@ -118,6 +118,11 @@ services:
       JWT_SECRET: ${JWT_SECRET:-terrabyte-local-development-secret-change-me-2026}
       JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT1H}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8081,http://localhost:19006,http://localhost:3000,http://localhost:8088}
+      TOSS_PAYMENTS_ENABLED: ${TOSS_PAYMENTS_ENABLED:-false}
+      TOSS_PAYMENTS_CLIENT_KEY: ${TOSS_PAYMENTS_CLIENT_KEY:-}
+      TOSS_PAYMENTS_SECRET_KEY: ${TOSS_PAYMENTS_SECRET_KEY:-}
+      TOSS_PAYMENTS_SUCCESS_URL: ${TOSS_PAYMENTS_SUCCESS_URL:-http://localhost:8081/payment/success}
+      TOSS_PAYMENTS_FAIL_URL: ${TOSS_PAYMENTS_FAIL_URL:-http://localhost:8081/payment/fail}
       # 원격 디버거(IDE)가 5005 로 붙을 수 있게 bootRun JVM 에 JDWP 를 붙인다.
       BOOT_RUN_JVM_ARGS: -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
     ports:

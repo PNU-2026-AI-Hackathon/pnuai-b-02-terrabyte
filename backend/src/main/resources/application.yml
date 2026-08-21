@@ -55,3 +55,11 @@ app:
   telemetry:
     http-ingest:
       enabled: ${TELEMETRY_HTTP_INGEST_ENABLED:false}
+  payment:
+    toss:
+      enabled: ${TOSS_PAYMENTS_ENABLED:false}
+      base-url: ${TOSS_PAYMENTS_BASE_URL:https://api.tosspayments.com}
+      client-key: ${TOSS_PAYMENTS_CLIENT_KEY:}
+      secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
+      success-url: ${TOSS_PAYMENTS_SUCCESS_URL:http://localhost:8081/payment/success}
+      fail-url: ${TOSS_PAYMENTS_FAIL_URL:http://localhost:8081/payment/fail}
