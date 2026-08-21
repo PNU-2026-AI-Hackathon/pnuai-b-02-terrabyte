@@ -939,7 +939,7 @@ const styles = StyleSheet.create(scaleTypography({
   orderInfoLabel: { ...typeScale.label, color: palette.muted, fontFamily: font },
   orderInfoValue: { ...typeScale.body, color: palette.text, flex: 1, fontFamily: font, textAlign: 'right' },
   orderTotalRow: { alignItems: 'center', borderTopColor: palette.lineStrong, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 18 },
-  orderCancelButton: { alignItems: 'center', borderColor: palette.lineStrong, borderRadius: 10, borderWidth: 1, minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
+  orderCancelButton: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: palette.lineStrong, borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 48, minWidth: 154, paddingHorizontal: 24, paddingVertical: 12 },
   orderCancelButtonText: { ...typeScale.button, color: palette.red, fontFamily: font },
   orderActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
   orderError: { ...typeScale.body, color: palette.red, fontFamily: font, paddingVertical: 12 },
