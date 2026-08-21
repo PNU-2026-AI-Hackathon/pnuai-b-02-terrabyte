@@ -1,0 +1,6 @@
+# Shell scripts are executed inside Linux containers, where a CRLF line ending
+# makes the shebang resolve to `bash\r` and the container dies with exit 127.
+# Windows checkouts must therefore keep these files LF regardless of
+# core.autocrlf.
+*.sh text eol=lf
+gradlew text eol=lf
