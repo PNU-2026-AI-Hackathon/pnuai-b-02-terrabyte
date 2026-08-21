@@ -10,6 +10,9 @@ export type ShopProduct = {
   emoji: string;
   desc: string;
   price: number;
+  discountRate?: number;
+  salePrice?: number;
+  discounted?: boolean;
   badge?: string;
   stockQuantity?: number;
   status?: 'ACTIVE' | 'INACTIVE' | 'DISCONTINUED';

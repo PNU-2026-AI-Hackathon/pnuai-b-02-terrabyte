@@ -10,6 +10,8 @@ public record ShopOrderItem(
         String productName,
         String productEmoji,
         String productDescription,
+        int originalUnitPrice,
+        int discountRate,
         int unitPrice,
         int quantity,
         long subtotal,

@@ -25,7 +25,8 @@ public class OrderRepository {
 
     private static final String SELECT_ITEM_COLUMNS = """
             SELECT id, order_id, product_id, category, product_name, product_emoji,
-                   product_description, unit_price, quantity, subtotal,
+                   product_description, original_unit_price, discount_rate,
+                   unit_price, quantity, subtotal,
                    package_quantity, package_unit, sub_category
             FROM shop_order_item
             """;
@@ -158,9 +159,10 @@ public class OrderRepository {
                 """
                 INSERT INTO shop_order_item (
                     order_id, product_id, category, product_name, product_emoji,
-                    product_description, unit_price, quantity, subtotal,
+                    product_description, original_unit_price, discount_rate,
+                    unit_price, quantity, subtotal,
                     package_quantity, package_unit, sub_category
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 items,
                 items.size(),
@@ -171,12 +173,14 @@ public class OrderRepository {
                     statement.setString(4, item.productName());
                     statement.setString(5, item.productEmoji());
                     statement.setString(6, item.productDescription());
-                    statement.setInt(7, item.unitPrice());
-                    statement.setInt(8, item.quantity());
-                    statement.setLong(9, item.subtotal());
-                    statement.setBigDecimal(10, item.packageQuantity());
-                    statement.setString(11, item.packageUnit());
-                    statement.setString(12, item.subCategory());
+                    statement.setInt(7, item.originalUnitPrice());
+                    statement.setInt(8, item.discountRate());
+                    statement.setInt(9, item.unitPrice());
+                    statement.setInt(10, item.quantity());
+                    statement.setLong(11, item.subtotal());
+                    statement.setBigDecimal(12, item.packageQuantity());
+                    statement.setString(13, item.packageUnit());
+                    statement.setString(14, item.subCategory());
                 });
     }
 
@@ -265,6 +269,8 @@ public class OrderRepository {
                 resultSet.getString("product_name"),
                 resultSet.getString("product_emoji"),
                 resultSet.getString("product_description"),
+                resultSet.getInt("original_unit_price"),
+                resultSet.getInt("discount_rate"),
                 resultSet.getInt("unit_price"),
                 resultSet.getInt("quantity"),
                 resultSet.getLong("subtotal"),

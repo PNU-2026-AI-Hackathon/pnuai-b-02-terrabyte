@@ -17,7 +17,7 @@ import org.springframework.stereotype.Repository;
 public class ShopCatalogRepository {
 
     private static final String SELECT_COLUMNS = """
-            SELECT id, category, name, emoji, description, price, badge,
+            SELECT id, category, name, emoji, description, price, discount_rate, badge,
                    stock_quantity, status, image_url, package_quantity, package_unit,
                    sub_category,
                    display_order, created_at, updated_at
@@ -87,10 +87,10 @@ public class ShopCatalogRepository {
         jdbcTemplate.update(
                 """
                 INSERT INTO product (
-                    id, category, name, emoji, description, price, badge,
+                    id, category, name, emoji, description, price, discount_rate, badge,
                     stock_quantity, status, image_url, package_quantity, package_unit,
                     sub_category, display_order, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 product.id(),
                 product.category(),
@@ -98,6 +98,7 @@ public class ShopCatalogRepository {
                 product.emoji(),
                 product.description(),
                 product.price(),
+                product.discountRate(),
                 product.badge(),
                 product.stockQuantity(),
                 product.status(),
@@ -115,7 +116,7 @@ public class ShopCatalogRepository {
                 """
                 UPDATE product
                 SET category = ?, name = ?, emoji = ?, description = ?, price = ?,
-                    badge = ?, status = ?, image_url = ?, package_quantity = ?,
+                    discount_rate = ?, badge = ?, status = ?, image_url = ?, package_quantity = ?,
                     package_unit = ?, sub_category = ?, display_order = ?, updated_at = ?
                 WHERE id = ?
                 """,
@@ -124,6 +125,7 @@ public class ShopCatalogRepository {
                 product.emoji(),
                 product.description(),
                 product.price(),
+                product.discountRate(),
                 product.badge(),
                 product.status(),
                 product.imageUrl(),
@@ -178,6 +180,7 @@ public class ShopCatalogRepository {
                 resultSet.getString("emoji"),
                 resultSet.getString("description"),
                 resultSet.getInt("price"),
+                resultSet.getInt("discount_rate"),
                 resultSet.getString("badge"),
                 resultSet.getInt("stock_quantity"),
                 resultSet.getString("status"),

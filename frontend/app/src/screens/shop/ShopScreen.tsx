@@ -42,6 +42,18 @@ function productTagLabel(product: ShopProduct) {
   return product.subCategory ? subCategoryLabel(product.subCategory) : categoryLabel(product.category);
 }
 
+function productSalePrice(product: ShopProduct) {
+  return product.salePrice ?? product.price;
+}
+
+function productDiscountRate(product: ShopProduct) {
+  return product.discountRate ?? 0;
+}
+
+function productIsDiscounted(product: ShopProduct) {
+  return product.discounted ?? productDiscountRate(product) > 0;
+}
+
 function errorMessage(caught: unknown, fallback: string) {
   return caught instanceof Error ? caught.message : fallback;
 }
@@ -371,7 +383,17 @@ export function ShopScreen({
               <Text style={styles.productDescription}>{product.desc}</Text>
               <View style={styles.productDivider} />
               <View style={styles.productBottom}>
-                <Text style={styles.productPrice}>{product.price.toLocaleString('ko-KR')}원</Text>
+                <View style={styles.priceBlock}>
+                  {productIsDiscounted(product) ? (
+                    <View style={styles.discountMeta}>
+                      <Text style={styles.discountRate}>{productDiscountRate(product)}%</Text>
+                      <Text style={styles.originalPrice}>{product.price.toLocaleString('ko-KR')}원</Text>
+                    </View>
+                  ) : null}
+                  <Text style={[styles.productPrice, productIsDiscounted(product) && styles.discountedPrice]}>
+                    {productSalePrice(product).toLocaleString('ko-KR')}원
+                  </Text>
+                </View>
                 <Pressable
                   accessibilityRole="button"
                   onPress={(event) => {
@@ -438,7 +460,17 @@ export function ShopScreen({
                   <View style={styles.productInfoRow}><Text style={styles.productInfoLabel}>배송 안내</Text><Text style={styles.productInfoValue}>결제 후 2~3일 이내 출고</Text></View>
                 </View>
                 <View style={styles.modalFooter}>
-                  <Text style={styles.modalPrice}>{selectedProduct.price.toLocaleString('ko-KR')}원</Text>
+                  <View style={styles.priceBlock}>
+                    {productIsDiscounted(selectedProduct) ? (
+                      <View style={styles.discountMeta}>
+                        <Text style={styles.discountRate}>{productDiscountRate(selectedProduct)}%</Text>
+                        <Text style={styles.originalPrice}>{selectedProduct.price.toLocaleString('ko-KR')}원</Text>
+                      </View>
+                    ) : null}
+                    <Text style={[styles.modalPrice, productIsDiscounted(selectedProduct) && styles.discountedPrice]}>
+                      {productSalePrice(selectedProduct).toLocaleString('ko-KR')}원
+                    </Text>
+                  </View>
                   <ActionButton
                     disabled={selectedProduct.available === false || cartLoading}
                     label={selectedProduct.available === false
@@ -488,6 +520,12 @@ export function ShopScreen({
                     <View key={item.productId} style={styles.orderItem}>
                       <View style={styles.orderItemCopy}>
                         <Text style={styles.orderItemName}>{item.name}</Text>
+                        {item.discountRate > 0 ? (
+                          <View style={styles.discountMeta}>
+                            <Text style={styles.discountRateSmall}>{item.discountRate}% 할인</Text>
+                            <Text style={styles.originalPriceSmall}>{item.originalUnitPrice.toLocaleString('ko-KR')}원</Text>
+                          </View>
+                        ) : null}
                         <Text style={styles.orderItemQuantity}>{item.quantity}개 · {item.unitPrice.toLocaleString('ko-KR')}원</Text>
                       </View>
                       <Text style={styles.orderItemPrice}>{item.subtotal.toLocaleString('ko-KR')}원</Text>
@@ -557,7 +595,13 @@ export function ShopScreen({
                       <Text style={styles.cartItemName}>{item.name}</Text>
                       {!item.available || item.quantity > item.stockQuantity ? <Text style={styles.soldOutBadge}>품절</Text> : null}
                     </View>
-                    <Text style={styles.cartItemPrice}>{item.price.toLocaleString('ko-KR')}원</Text>
+                    {item.discounted ? (
+                      <View style={styles.discountMeta}>
+                        <Text style={styles.discountRateSmall}>{item.discountRate}% 할인</Text>
+                        <Text style={styles.originalPriceSmall}>{item.price.toLocaleString('ko-KR')}원</Text>
+                      </View>
+                    ) : null}
+                    <Text style={[styles.cartItemPrice, item.discounted && styles.cartItemDiscountedPrice]}>{item.salePrice.toLocaleString('ko-KR')}원</Text>
                   </View>
                   <View style={styles.quantityControl}>
                     <Pressable
@@ -731,7 +775,14 @@ const styles = StyleSheet.create(scaleTypography({
   productDescription: { ...typeScale.body, color: palette.secondary, flex: 1, fontFamily: font },
   productDivider: { backgroundColor: palette.lineStrong, height: 1 },
   productBottom: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  priceBlock: { alignItems: 'flex-start', gap: 2 },
+  discountMeta: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+  discountRate: { ...typeScale.label, color: palette.text, fontFamily: font, fontWeight: '800' },
+  discountRateSmall: { ...typeScale.label, color: palette.text, fontFamily: font, fontWeight: '700' },
+  originalPrice: { ...typeScale.label, color: palette.muted, fontFamily: font, textDecorationLine: 'line-through' },
+  originalPriceSmall: { ...typeScale.label, color: palette.muted, fontFamily: font, textDecorationLine: 'line-through' },
   productPrice: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font, letterSpacing: -0.3 },
+  discountedPrice: { color: palette.red },
   addButton: { ...controlTokens.primary, minHeight: 38, paddingHorizontal: 14, paddingVertical: 9 },
   addButtonAdded: { backgroundColor: palette.greenSoft, borderColor: '#c9dfd1' },
   addButtonSoldOut: { backgroundColor: palette.panelMuted, borderColor: palette.lineStrong },
@@ -772,6 +823,7 @@ const styles = StyleSheet.create(scaleTypography({
   cartItemNameRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cartItemName: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '600' },
   cartItemPrice: { ...typeScale.body, color: palette.secondary, fontFamily: font },
+  cartItemDiscountedPrice: { color: palette.red, fontWeight: '700' },
   soldOutBadge: { ...typeScale.label, backgroundColor: '#f9e4e0', borderRadius: 999, color: palette.red, fontFamily: font, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 3 },
   soldOutNotice: { ...typeScale.body, color: palette.red, fontFamily: font },
   quantityControl: { alignItems: 'center', flexDirection: 'row', gap: 10 },

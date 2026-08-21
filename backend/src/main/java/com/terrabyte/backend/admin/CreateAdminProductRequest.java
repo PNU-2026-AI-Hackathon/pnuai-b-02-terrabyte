@@ -3,6 +3,8 @@ package com.terrabyte.backend.admin;
 import java.math.BigDecimal;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
@@ -22,6 +24,7 @@ public record CreateAdminProductRequest(
         @NotBlank @Size(max = 20) String emoji,
         @NotBlank @Size(max = 300) String description,
         @NotNull @Positive Integer price,
+        @NotNull @Min(0) @Max(90) Integer discountRate,
         @Pattern(regexp = "추천", message = "상품 배지는 추천만 사용할 수 있습니다.") String badge,
         @NotNull @PositiveOrZero Integer stockQuantity,
         @NotBlank

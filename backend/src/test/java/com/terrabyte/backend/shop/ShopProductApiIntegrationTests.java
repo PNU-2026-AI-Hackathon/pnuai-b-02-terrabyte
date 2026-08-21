@@ -31,6 +31,9 @@ class ShopProductApiIntegrationTests {
                 .andExpect(jsonPath("$[0].id").value("grow-light"))
                 .andExpect(jsonPath("$[0].desc").value("실내 재배 공간에 설치하기 좋은 바 타입 조명"))
                 .andExpect(jsonPath("$[0].price").value(29900))
+                .andExpect(jsonPath("$[0].discountRate").value(10))
+                .andExpect(jsonPath("$[0].salePrice").value(26910))
+                .andExpect(jsonPath("$[0].discounted").value(true))
                 .andExpect(jsonPath("$[0].packageQuantity").value(1))
                 .andExpect(jsonPath("$[0].packageUnit").value("개"))
                 .andExpect(jsonPath("$[0].subCategory").doesNotExist())
@@ -81,6 +84,8 @@ class ShopProductApiIntegrationTests {
                 .andExpect(jsonPath("$.name").value("토양 pH·수분 측정기"))
                 .andExpect(jsonPath("$.packageQuantity").value(1))
                 .andExpect(jsonPath("$.packageUnit").value("개"))
+                .andExpect(jsonPath("$.discountRate").value(10))
+                .andExpect(jsonPath("$.salePrice").value(19710))
                 .andExpect(jsonPath("$.stockQuantity").value(20))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
 

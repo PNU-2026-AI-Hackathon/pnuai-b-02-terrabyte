@@ -76,16 +76,22 @@ class OrderApiIntegrationTests {
                 .andExpect(jsonPath("$.orderNumber", Matchers.startsWith("ORD-")))
                 .andExpect(jsonPath("$.status").value("PENDING"))
                 .andExpect(jsonPath("$.totalQuantity").value(3))
-                .andExpect(jsonPath("$.totalPrice").value(13300))
+                .andExpect(jsonPath("$.totalPrice").value(12950))
                 .andExpect(jsonPath("$.recipientName").value("김테라"))
                 .andExpect(jsonPath("$.postalCode").value("46241"))
                 .andExpect(jsonPath("$.items.length()").value(2))
                 .andExpect(jsonPath("$.items[0].productId").value("perlite"))
+                .andExpect(jsonPath("$.items[0].originalUnitPrice").value(4900))
+                .andExpect(jsonPath("$.items[0].discountRate").value(0))
                 .andExpect(jsonPath("$.items[0].unitPrice").value(4900))
                 .andExpect(jsonPath("$.items[0].quantity").value(2))
                 .andExpect(jsonPath("$.items[0].subtotal").value(9800))
                 .andExpect(jsonPath("$.items[0].packageQuantity").value(3))
                 .andExpect(jsonPath("$.items[0].packageUnit").value("L"))
+                .andExpect(jsonPath("$.items[1].originalUnitPrice").value(3500))
+                .andExpect(jsonPath("$.items[1].discountRate").value(10))
+                .andExpect(jsonPath("$.items[1].unitPrice").value(3150))
+                .andExpect(jsonPath("$.items[1].subtotal").value(3150))
                 .andReturn()
                 .getResponse()
                 .getContentAsString();
@@ -103,7 +109,7 @@ class OrderApiIntegrationTests {
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value(orderId))
                 .andExpect(jsonPath("$[0].status").value("PENDING"))
-                .andExpect(jsonPath("$[0].totalPrice").value(13300));
+                .andExpect(jsonPath("$[0].totalPrice").value(12950));
 
         mockMvc.perform(get("/api/orders/{orderId}", orderId)
                         .header("Authorization", authorization))

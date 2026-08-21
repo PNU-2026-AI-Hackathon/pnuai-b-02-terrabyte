@@ -15,6 +15,8 @@ export type OrderItem = {
   name: string;
   emoji: string;
   desc: string;
+  originalUnitPrice: number;
+  discountRate: number;
   unitPrice: number;
   quantity: number;
   subtotal: number;

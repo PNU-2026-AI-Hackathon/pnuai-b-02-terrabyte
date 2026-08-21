@@ -290,6 +290,9 @@ PATCH /api/admin/orders/{orderId}/status            배송 단계 변경
 POST  /api/telemetry                                하드웨어 센서 데이터 수신 (공개, 설정 시 활성화)
 ```
 
+상품 응답의 `price`는 정상가, `discountRate`는 할인율, `salePrice`는 서버에서 계산한 판매가입니다.
+장바구니·주문·결제 금액에는 `salePrice`가 적용되며, 관리자 상품 등록·수정 요청은 `discountRate`(0~90)를 포함합니다.
+
 회원가입 요청 예시:
 
 ```json

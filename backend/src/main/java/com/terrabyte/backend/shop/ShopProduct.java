@@ -10,6 +10,7 @@ public record ShopProduct(
         String emoji,
         String description,
         int price,
+        int discountRate,
         String badge,
         int stockQuantity,
         String status,

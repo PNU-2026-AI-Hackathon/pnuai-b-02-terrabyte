@@ -104,7 +104,12 @@ class CartApiIntegrationTests {
                         .header("Authorization", authorization)
                         .contentType(APPLICATION_JSON)
                         .content(addItemBody("basil-seeds", 2)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].price").value(3500))
+                .andExpect(jsonPath("$.items[0].discountRate").value(10))
+                .andExpect(jsonPath("$.items[0].salePrice").value(3150))
+                .andExpect(jsonPath("$.items[0].subtotal").value(6300))
+                .andExpect(jsonPath("$.totalPrice").value(6300));
 
         mockMvc.perform(delete("/api/cart")
                         .header("Authorization", authorization))

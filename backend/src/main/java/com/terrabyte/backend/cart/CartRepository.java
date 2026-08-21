@@ -14,7 +14,8 @@ import org.springframework.stereotype.Repository;
 public class CartRepository {
 
     private static final String SELECT_CART_LINES = """
-            SELECT ci.product_id, p.category, p.name, p.emoji, p.description, p.price, p.badge,
+            SELECT ci.product_id, p.category, p.name, p.emoji, p.description,
+                   p.price, p.discount_rate, p.badge,
                    ci.quantity, p.stock_quantity, p.status, p.image_url,
                    p.package_quantity, p.package_unit, p.sub_category
             FROM cart c
@@ -148,6 +149,7 @@ public class CartRepository {
                 resultSet.getString("emoji"),
                 resultSet.getString("description"),
                 resultSet.getInt("price"),
+                resultSet.getInt("discount_rate"),
                 resultSet.getString("badge"),
                 resultSet.getInt("quantity"),
                 resultSet.getInt("stock_quantity"),

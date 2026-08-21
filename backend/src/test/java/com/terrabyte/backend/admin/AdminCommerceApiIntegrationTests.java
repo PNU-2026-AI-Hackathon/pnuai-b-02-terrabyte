@@ -83,6 +83,7 @@ class AdminCommerceApiIntegrationTests {
                                 Map.entry("emoji", "🧰"),
                                 Map.entry("description", "관리자 상품 등록 API 테스트"),
                                 Map.entry("price", 12000),
+                                Map.entry("discountRate", 10),
                                 Map.entry("stockQuantity", 7),
                                 Map.entry("status", "ACTIVE"),
                                 Map.entry("packageQuantity", 1),
@@ -90,6 +91,8 @@ class AdminCommerceApiIntegrationTests {
                                 Map.entry("displayOrder", 999)))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(TEST_PRODUCT_ID))
+                .andExpect(jsonPath("$.discountRate").value(10))
+                .andExpect(jsonPath("$.salePrice").value(10800))
                 .andExpect(jsonPath("$.stockQuantity").value(7))
                 .andExpect(jsonPath("$.available").value(true));
 
@@ -103,6 +106,7 @@ class AdminCommerceApiIntegrationTests {
                                 Map.entry("emoji", "🛠️"),
                                 Map.entry("description", "관리자 상품 수정 API 테스트"),
                                 Map.entry("price", 13500),
+                                Map.entry("discountRate", 20),
                                 Map.entry("badge", "추천"),
                                 Map.entry("status", "ACTIVE"),
                                 Map.entry("packageQuantity", 1),
@@ -111,6 +115,8 @@ class AdminCommerceApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("수정된 관리자 테스트 상품"))
                 .andExpect(jsonPath("$.price").value(13500))
+                .andExpect(jsonPath("$.discountRate").value(20))
+                .andExpect(jsonPath("$.salePrice").value(10800))
                 .andExpect(jsonPath("$.badge").value("추천"))
                 .andExpect(jsonPath("$.stockQuantity").value(7));
 

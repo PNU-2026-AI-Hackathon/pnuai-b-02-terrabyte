@@ -8,6 +8,9 @@ export type CartItem = {
   emoji: string;
   desc: string;
   price: number;
+  discountRate: number;
+  salePrice: number;
+  discounted: boolean;
   badge?: string;
   quantity: number;
   subtotal: number;
