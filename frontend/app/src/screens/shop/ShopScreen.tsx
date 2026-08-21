@@ -15,7 +15,7 @@ import { readyPayment } from '../../payment/paymentApi';
 import { requestTossPayment } from '../../payment/tossPayment';
 import { getShopProducts, type ShopCategory, type ShopProduct, type ShopSubCategory } from '../../shop/shopApi';
 
-type ProductCategory = 'all' | ShopCategory;
+type ProductCategory = 'all' | ShopCategory | 'nutrient';
 type ProductSubCategory = 'all' | ShopSubCategory;
 
 function formatPackage(product: ShopProduct) {
@@ -28,6 +28,18 @@ function subCategoryLabel(subCategory: ProductSubCategory) {
   if (subCategory === 'MEDIA') return '배지';
   if (subCategory === 'NUTRIENT') return '영양제';
   return '전체';
+}
+
+function categoryLabel(category: ProductCategory) {
+  if (category === 'parts') return '부품';
+  if (category === 'soil') return '흙과 배지';
+  if (category === 'nutrient') return '영양제';
+  if (category === 'seeds') return '씨앗';
+  return '전체';
+}
+
+function productTagLabel(product: ShopProduct) {
+  return product.subCategory ? subCategoryLabel(product.subCategory) : categoryLabel(product.category);
 }
 
 function errorMessage(caught: unknown, fallback: string) {
@@ -102,9 +114,11 @@ export function ShopScreen({
     () => {
       const categoryProducts = category === 'all'
         ? products
-        : products.filter((product) => product.category === category);
+        : category === 'nutrient'
+          ? products.filter((product) => product.category === 'soil' && product.subCategory === 'NUTRIENT')
+          : products.filter((product) => product.category === category);
       const subCategoryProducts = subCategory === 'all'
-        ? categoryProducts
+        ? categoryProducts.filter((product) => category !== 'soil' || product.subCategory !== 'NUTRIENT')
         : categoryProducts.filter((product) => product.subCategory === subCategory);
       return recommendedOnly
         ? subCategoryProducts.filter((product) => product.badge?.includes('추천'))
@@ -123,6 +137,7 @@ export function ShopScreen({
     { key: 'all', label: '전체' },
     { key: 'parts', label: '부품' },
     { key: 'soil', label: '흙과 배지' },
+    { key: 'nutrient', label: '영양제' },
     { key: 'seeds', label: '씨앗' },
   ];
 
@@ -227,7 +242,7 @@ export function ShopScreen({
           </View>
           {category === 'soil' ? (
             <View style={styles.subCategoryTabs}>
-              {(['all', 'SOIL', 'MEDIA', 'NUTRIENT'] as ProductSubCategory[]).map((tab) => (
+              {(['all', 'SOIL', 'MEDIA'] as ProductSubCategory[]).map((tab) => (
                 <Pressable key={tab} onPress={() => changeSubCategory(tab)} style={[styles.subCategoryTab, subCategory === tab && styles.subCategoryTabActive]}>
                   <Text style={[styles.subCategoryTabText, subCategory === tab && styles.subCategoryTabTextActive]}>{subCategoryLabel(tab)}</Text>
                 </Pressable>
@@ -254,7 +269,7 @@ export function ShopScreen({
               <Text style={[styles.recommendationButtonText, recommendedOnly && styles.recommendationButtonTextActive]}>추천 제품 보기</Text>
             </Pressable>
           )}
-          title={recommendedOnly ? `${category === 'all' ? '' : `${tabs.find((tab) => tab.key === category)?.label} `}추천 제품` : category === 'all' ? '전체 제품' : tabs.find((tab) => tab.key === category)?.label ?? '제품'}
+          title={recommendedOnly ? `${category === 'all' ? '' : `${categoryLabel(category)} `}추천 제품` : `${categoryLabel(category)} 제품`}
           description={recommendedOnly ? `추천 태그가 붙은 제품 ${filteredProducts.length}개` : `제품 ${filteredProducts.length}개 · ${currentPage} / ${pageCount} 페이지`}
         />
         <View style={[styles.productGrid, compact && styles.stack]}>
@@ -264,7 +279,7 @@ export function ShopScreen({
           {!loading && !error && visibleProducts.map((product) => (
             <Pressable key={product.id} onPress={() => setSelectedProduct(product)} style={[styles.productCard, compact && styles.productCardCompact]}>
               <View style={styles.productCardTop}>
-                <Text style={styles.productCategoryText}>{product.category === 'parts' ? '부품' : product.category === 'soil' ? '흙과 배지' : '씨앗'}</Text>
+                <Text style={styles.productCategoryText}>{productTagLabel(product)}</Text>
                 {product.badge ? <Text style={styles.productBadge}>{product.badge}</Text> : null}
               </View>
               <Text style={styles.productName}>{product.name}</Text>
@@ -486,15 +501,15 @@ export function ShopScreen({
 const styles = StyleSheet.create(scaleTypography({
   pageBody: { gap: 30, maxWidth: 1320, width: '100%' },
   stack: { flexDirection: 'column' },
-  shopToolbar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
+  shopToolbar: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
   shopToolbarCompact: { alignItems: 'flex-start', flexDirection: 'column', gap: 12 },
-  shopFilters: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  shopFilters: { alignItems: 'flex-start', gap: 12 },
   shopToolbarActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
   shopToolbarActionsCompact: { justifyContent: 'flex-start', width: '100%' },
-  shopTabs: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 11, borderWidth: 1, flexDirection: 'row', gap: 3, padding: 5 },
-  subCategoryTabs: { backgroundColor: 'rgba(255,255,255,0.28)', borderColor: palette.line, borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 3, padding: 4 },
+  shopTabs: { backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 11, borderWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 3, padding: 5 },
+  subCategoryTabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   shopTab: { borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
-  subCategoryTab: { borderRadius: 7, paddingHorizontal: 14, paddingVertical: 8 },
+  subCategoryTab: { ...controlTokens.outline, borderRadius: 999, minHeight: 46, paddingHorizontal: 20, paddingVertical: 10 },
   subCategoryTabActive: { backgroundColor: palette.greenSoft },
   subCategoryTabText: { ...typeScale.label, color: palette.secondary, fontFamily: font },
   subCategoryTabTextActive: { color: palette.greenDark, fontWeight: '700' },
