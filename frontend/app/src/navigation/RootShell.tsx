@@ -15,6 +15,8 @@ import { createPot, getDevice, type DeviceResponse, updatePot as updatePotReques
 import { Login } from '../onboarding/Login';
 import { SetupFlow } from '../onboarding/SetupFlow';
 import { getPot, getPots } from '../pot/potApi';
+import { clearPaymentReturnUrl, readPaymentReturn } from '../payment/paymentReturn';
+import { PaymentReturnScreen } from '../screens/payment/PaymentReturnScreen';
 import { AppTabNavigator } from './AppTabNavigator';
 import { GlassBackdrop } from './GlassBackdrop';
 import type { FlowStage } from './types';
@@ -28,6 +30,8 @@ export default function RootShell() {
   const [deviceId, setDeviceId] = useState<number | undefined>();
   const [device, setDevice] = useState<DeviceResponse | null>(null);
   const [selectedPotId, setSelectedPotId] = useState<number | undefined>();
+  const [paymentReturn] = useState(readPaymentReturn);
+  const [paymentReturnDismissed, setPaymentReturnDismissed] = useState(false);
   const { width } = useWindowDimensions();
   const compact = width < 900;
   const selectedCrop = Math.max(0, crops.findIndex((crop) => crop.code === selectedCropCode));
@@ -197,6 +201,22 @@ export default function RootShell() {
     );
   }
 
+  if (paymentReturn && !paymentReturnDismissed) {
+    return (
+      <View style={styles.root}>
+        <GlassBackdrop />
+        <PaymentReturnScreen
+          result={paymentReturn}
+          onDone={() => {
+            clearPaymentReturnUrl();
+            setPaymentReturnDismissed(true);
+          }}
+        />
+        <StatusBar style="dark" />
+      </View>
+    );
+  }
+
   if (flow !== 'app') {
     const previousStage: Record<Exclude<FlowStage, 'auth' | 'app'>, FlowStage> = {
       device: 'auth',
@@ -233,6 +253,7 @@ export default function RootShell() {
         compact={compact}
         cropName={(crops[selectedCrop] ?? crops[0]).name}
         device={device ?? undefined}
+        initialPage={paymentReturn ? 'shop' : 'dashboard'}
         onCreatePot={addPot}
         onSelectPot={setSelectedPotId}
         onUpdatePot={updatePot}

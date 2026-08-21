@@ -71,6 +71,7 @@ type AppTabNavigatorProps = {
   compact: boolean;
   cropName: string;
   device?: DeviceResponse;
+  initialPage?: Page;
   onLogout: () => void;
   onCreatePot: (label: string, cropCode: string) => Promise<void>;
   onSelectCrop: (cropCode: string) => Promise<void>;
@@ -83,9 +84,9 @@ type AppTabNavigatorProps = {
 
 const appShellFill = { flex: 1 };
 
-export function AppTabNavigator({ compact, cropName, device, onCreatePot, onLogout, onSelectCrop, onSelectPot, onUpdatePot, pots, selectedCrop, selectedPotId }: AppTabNavigatorProps) {
+export function AppTabNavigator({ compact, cropName, device, initialPage = 'dashboard', onCreatePot, onLogout, onSelectCrop, onSelectPot, onUpdatePot, pots, selectedCrop, selectedPotId }: AppTabNavigatorProps) {
   const navigationRef = useNavigationContainerRef<AppTabParamList>();
-  const [page, setPage] = useState<Page>('dashboard');
+  const [page, setPage] = useState<Page>(initialPage);
   const [sidebarHidden, setSidebarHidden] = useState(false);
 
   const syncActivePage = () => {
@@ -114,7 +115,7 @@ export function AppTabNavigator({ compact, cropName, device, onCreatePot, onLogo
           />
         )}
         <NavigationContainer onReady={syncActivePage} onStateChange={syncActivePage} ref={navigationRef}>
-          <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
+          <Tab.Navigator initialRouteName={routeNameByPage[initialPage]} screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
             <Tab.Screen name="Dashboard">
               {() => (
                 <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} onUpdatePot={onUpdatePot} page="dashboard" pots={pots} selectedPotId={selectedPotId}>

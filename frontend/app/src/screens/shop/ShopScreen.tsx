@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { controlTextTokens, controlTokens } from '../../appTheme/controls';
 import { font } from '../../appTheme/glass';
@@ -10,6 +10,9 @@ import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
 import { addCartItem, getCart, removeCartItem, updateCartItem, type CartResponse } from '../../cart/cartApi';
+import { createOrder } from '../../order/orderApi';
+import { readyPayment } from '../../payment/paymentApi';
+import { requestTossPayment } from '../../payment/tossPayment';
 import { getShopProducts, type ShopCategory, type ShopProduct, type ShopSubCategory } from '../../shop/shopApi';
 
 type ProductCategory = 'all' | ShopCategory;
@@ -32,6 +35,13 @@ function errorMessage(caught: unknown, fallback: string) {
 }
 
 const EMPTY_CART: CartResponse = { items: [], totalQuantity: 0, totalPrice: 0 };
+const EMPTY_SHIPPING = {
+  recipientName: '',
+  recipientPhone: '',
+  postalCode: '',
+  address: '',
+  addressDetail: '',
+};
 
 export function ShopScreen({
   compact,
@@ -49,6 +59,12 @@ export function ShopScreen({
   const [cartLoading, setCartLoading] = useState(true);
   const [cartError, setCartError] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [checkoutAmount, setCheckoutAmount] = useState(0);
+  const [pendingOrderId, setPendingOrderId] = useState<number | null>(null);
+  const [shipping, setShipping] = useState(EMPTY_SHIPPING);
   const [selectedProduct, setSelectedProduct] = useState<ShopProduct | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [products, setProducts] = useState<ShopProduct[]>([]);
@@ -150,6 +166,51 @@ export function ShopScreen({
       setCartError(errorMessage(caught, '장바구니 수량을 변경하지 못했습니다.'));
     } finally {
       setCartLoading(false);
+    }
+  };
+
+  const openCheckout = () => {
+    if (cart.items.length === 0) return;
+    setCartOpen(false);
+    setCheckoutError(null);
+    setCheckoutAmount(cart.totalPrice);
+    setCheckoutOpen(true);
+  };
+
+  const startPayment = async () => {
+    if (Platform.OS !== 'web') {
+      setCheckoutError('현재 토스 테스트 결제는 웹에서만 지원합니다.');
+      return;
+    }
+    if (!shipping.recipientName.trim()
+        || !shipping.recipientPhone.trim()
+        || !shipping.postalCode.trim()
+        || !shipping.address.trim()) {
+      setCheckoutError('받는 분, 연락처, 우편번호, 주소를 모두 입력해 주세요.');
+      return;
+    }
+
+    setCheckoutLoading(true);
+    setCheckoutError(null);
+    try {
+      let orderId = pendingOrderId;
+      if (orderId == null) {
+        const order = await createOrder({
+          recipientName: shipping.recipientName.trim(),
+          recipientPhone: shipping.recipientPhone.trim(),
+          postalCode: shipping.postalCode.trim(),
+          address: shipping.address.trim(),
+          addressDetail: shipping.addressDetail.trim() || undefined,
+        });
+        orderId = order.id;
+        setPendingOrderId(order.id);
+        setCart(EMPTY_CART);
+      }
+      const ready = await readyPayment(orderId);
+      await requestTossPayment(ready);
+    } catch (caught) {
+      setCheckoutError(errorMessage(caught, '결제창을 열지 못했습니다.'));
+      setCheckoutLoading(false);
     }
   };
 
@@ -315,7 +376,105 @@ export function ShopScreen({
               <Text style={styles.cartTotalLabel}>총 결제 금액</Text>
               <Text style={styles.cartTotalValue}>{cart.totalPrice.toLocaleString('ko-KR')}원</Text>
             </View>
-            <ActionButton label="구매하기" onPress={() => setCartOpen(false)} />
+            <ActionButton disabled={cartLoading || cart.items.length === 0} label="구매하기" onPress={openCheckout} />
+          </Surface>
+        </View>
+      </Modal>
+
+      <Modal animationType="fade" onRequestClose={() => setCheckoutOpen(false)} transparent visible={checkoutOpen}>
+        <View style={styles.modalBackdrop}>
+          <Surface style={styles.checkoutModal}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderCopy}>
+                <Text style={styles.modalEyebrow}>주문 및 결제</Text>
+                <Text style={styles.modalTitle}>배송 정보를 입력해 주세요</Text>
+              </View>
+              <Pressable disabled={checkoutLoading} onPress={() => setCheckoutOpen(false)} style={styles.modalClose}>
+                <Text style={styles.modalCloseText}>닫기</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.checkoutForm}>
+              <View style={styles.fieldRow}>
+                <View style={styles.fieldHalf}>
+                  <Text style={styles.fieldLabel}>받는 분</Text>
+                  <TextInput
+                    autoComplete="name"
+                    onChangeText={(recipientName) => setShipping((current) => ({ ...current, recipientName }))}
+                    placeholder="홍길동"
+                    placeholderTextColor={palette.muted}
+                    style={styles.fieldInput}
+                    value={shipping.recipientName}
+                  />
+                </View>
+                <View style={styles.fieldHalf}>
+                  <Text style={styles.fieldLabel}>연락처</Text>
+                  <TextInput
+                    autoComplete="tel"
+                    keyboardType="phone-pad"
+                    onChangeText={(recipientPhone) => setShipping((current) => ({ ...current, recipientPhone }))}
+                    placeholder="010-1234-5678"
+                    placeholderTextColor={palette.muted}
+                    style={styles.fieldInput}
+                    value={shipping.recipientPhone}
+                  />
+                </View>
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>우편번호</Text>
+                <TextInput
+                  autoComplete="postal-code"
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  onChangeText={(postalCode) => setShipping((current) => ({ ...current, postalCode }))}
+                  placeholder="46241"
+                  placeholderTextColor={palette.muted}
+                  style={[styles.fieldInput, styles.postalInput]}
+                  value={shipping.postalCode}
+                />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>주소</Text>
+                <TextInput
+                  autoComplete="street-address"
+                  onChangeText={(address) => setShipping((current) => ({ ...current, address }))}
+                  placeholder="도로명 주소"
+                  placeholderTextColor={palette.muted}
+                  style={styles.fieldInput}
+                  value={shipping.address}
+                />
+              </View>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.fieldLabel}>상세 주소</Text>
+                <TextInput
+                  onChangeText={(addressDetail) => setShipping((current) => ({ ...current, addressDetail }))}
+                  placeholder="동·호수 등 선택 입력"
+                  placeholderTextColor={palette.muted}
+                  style={styles.fieldInput}
+                  value={shipping.addressDetail}
+                />
+              </View>
+              <View style={styles.paymentMethodBox}>
+                <View style={styles.paymentMethodCopy}>
+                  <Text style={styles.paymentMethodTitle}>토스페이먼츠 테스트 결제</Text>
+                  <Text style={styles.paymentMethodDescription}>카드와 네이버페이 등 간편결제를 선택할 수 있으며 실제 금액은 결제되지 않습니다.</Text>
+                </View>
+                <Text style={styles.paymentMethodBadge}>TEST</Text>
+              </View>
+              {checkoutError ? <Text accessibilityRole="alert" style={styles.checkoutError}>{checkoutError}</Text> : null}
+            </ScrollView>
+
+            <View style={styles.checkoutFooter}>
+              <View style={styles.checkoutTotalCopy}>
+                <Text style={styles.cartTotalLabel}>최종 결제 금액</Text>
+                <Text style={styles.cartTotalValue}>{checkoutAmount.toLocaleString('ko-KR')}원</Text>
+              </View>
+              <ActionButton
+                disabled={checkoutLoading}
+                label={checkoutLoading ? '결제창 여는 중…' : pendingOrderId ? '결제 다시 시도' : `${checkoutAmount.toLocaleString('ko-KR')}원 결제하기`}
+                onPress={() => { void startPayment(); }}
+              />
+            </View>
           </Surface>
         </View>
       </Modal>
@@ -373,6 +532,7 @@ const styles = StyleSheet.create(scaleTypography({
   modalBackdrop: { alignItems: 'center', backgroundColor: 'rgba(21, 46, 35, 0.34)', flex: 1, justifyContent: 'center', padding: 22 },
   detailModal: { gap: 24, maxWidth: 560, padding: 28, width: '100%' },
   cartModal: { gap: 20, maxHeight: '82%', maxWidth: 620, padding: 28, width: '100%' },
+  checkoutModal: { gap: 22, maxHeight: '92%', maxWidth: 680, padding: 30, width: '100%' },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
   modalHeaderCopy: { flex: 1, gap: 5 },
   modalEyebrow: { ...typeScale.label, color: palette.greenDark, fontFamily: font, letterSpacing: 1 },
@@ -400,4 +560,19 @@ const styles = StyleSheet.create(scaleTypography({
   cartTotalRow: { alignItems: 'center', borderTopColor: palette.lineStrong, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 18 },
   cartTotalLabel: { ...typeScale.label, color: palette.secondary, fontFamily: font },
   cartTotalValue: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
+  checkoutForm: { gap: 16 },
+  fieldRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  fieldHalf: { flex: 1, gap: 7, minWidth: 220 },
+  fieldGroup: { gap: 7 },
+  fieldLabel: { ...typeScale.label, color: palette.secondary, fontFamily: font },
+  fieldInput: { ...typeScale.body, backgroundColor: 'rgba(255,255,255,0.5)', borderColor: palette.lineStrong, borderRadius: 10, borderWidth: 1, color: palette.text, fontFamily: font, minHeight: 48, outlineStyle: 'none', paddingHorizontal: 14, paddingVertical: 11 } as any,
+  postalInput: { maxWidth: 220 },
+  paymentMethodBox: { alignItems: 'center', backgroundColor: palette.greenSoft, borderColor: '#c9dfd1', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 14, justifyContent: 'space-between', padding: 16 },
+  paymentMethodCopy: { flex: 1, gap: 4 },
+  paymentMethodTitle: { ...typeScale.bodyStrong, color: palette.greenDark, fontFamily: font },
+  paymentMethodDescription: { ...typeScale.body, color: palette.secondary, fontFamily: font },
+  paymentMethodBadge: { ...typeScale.label, backgroundColor: palette.green, borderRadius: 999, color: '#ffffff', fontFamily: font, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 5 },
+  checkoutError: { ...typeScale.body, color: palette.red, fontFamily: font },
+  checkoutFooter: { alignItems: 'center', borderTopColor: palette.lineStrong, borderTopWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 18, justifyContent: 'space-between', paddingTop: 18 },
+  checkoutTotalCopy: { gap: 4 },
 }));
