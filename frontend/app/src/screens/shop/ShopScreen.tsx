@@ -250,6 +250,24 @@ export function ShopScreen({
     }
   };
 
+  const openPendingOrderCheckout = (order: OrderDetail) => {
+    if (order.status !== 'PENDING') return;
+    setOrdersError(null);
+    setCheckoutError(null);
+    setPendingOrderId(order.id);
+    setCheckoutAmount(order.totalPrice);
+    setShipping({
+      recipientName: order.recipientName,
+      recipientPhone: order.recipientPhone,
+      postalCode: order.postalCode,
+      address: order.address,
+      addressDetail: order.addressDetail ?? '',
+    });
+    setSelectedOrder(null);
+    setOrdersOpen(false);
+    setCheckoutOpen(true);
+  };
+
   const addToCart = async (product: ShopProduct) => {
     if (product.available === false) return;
     setCartLoading(true);
@@ -573,9 +591,16 @@ export function ShopScreen({
                   <Text style={styles.cartTotalValue}>{selectedOrder.totalPrice.toLocaleString('ko-KR')}원</Text>
                 </View>
                 {selectedOrder.status === 'PENDING' ? (
-                  <Pressable disabled={orderActionLoading} onPress={() => { void cancelSelectedOrder(); }} style={[styles.orderCancelButton, orderActionLoading && styles.pageDisabled]}>
-                    <Text style={styles.orderCancelButtonText}>{orderActionLoading ? '취소 처리 중…' : '주문 취소'}</Text>
-                  </Pressable>
+                  <View style={styles.orderActions}>
+                    <ActionButton
+                      disabled={orderActionLoading}
+                      label="결제하기"
+                      onPress={() => { openPendingOrderCheckout(selectedOrder); }}
+                    />
+                    <Pressable disabled={orderActionLoading} onPress={() => { void cancelSelectedOrder(); }} style={[styles.orderCancelButton, orderActionLoading && styles.pageDisabled]}>
+                      <Text style={styles.orderCancelButtonText}>{orderActionLoading ? '취소 처리 중…' : '주문 취소'}</Text>
+                    </Pressable>
+                  </View>
                 ) : null}
               </ScrollView>
             ) : (
@@ -912,6 +937,7 @@ const styles = StyleSheet.create(scaleTypography({
   orderTotalRow: { alignItems: 'center', borderTopColor: palette.lineStrong, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 18 },
   orderCancelButton: { alignItems: 'center', borderColor: palette.lineStrong, borderRadius: 10, borderWidth: 1, minHeight: 44, justifyContent: 'center', paddingHorizontal: 16 },
   orderCancelButtonText: { ...typeScale.button, color: palette.red, fontFamily: font },
+  orderActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
   orderError: { ...typeScale.body, color: palette.red, fontFamily: font, paddingVertical: 12 },
   checkoutForm: { gap: 16 },
   fieldRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
