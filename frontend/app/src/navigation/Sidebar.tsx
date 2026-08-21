@@ -90,7 +90,6 @@ export function Sidebar({ compact, cropName, device, onHide, onLogout, onNavigat
   return (
     <>
     <View style={[styles.sidebar, glassWebStyle]}>
-      <ScrollView showsVerticalScrollIndicator style={styles.sidebarScroll}>
       <View style={styles.brandRow}>
         <Text style={styles.brandName}>TerraByte</Text>
         {onHide ? (
@@ -100,6 +99,7 @@ export function Sidebar({ compact, cropName, device, onHide, onLogout, onNavigat
         ) : null}
       </View>
 
+      <ScrollView showsVerticalScrollIndicator style={styles.sidebarScroll}>
       <Text style={styles.navCaption}>메뉴</Text>
       <View style={styles.navList}>
         {navItems.map((item) => {
@@ -188,8 +188,8 @@ export function Sidebar({ compact, cropName, device, onHide, onLogout, onNavigat
 const styles = StyleSheet.create(scaleTypography({
   pressed: { opacity: 0.78 },
   sidebar: { backgroundColor: 'rgba(255,255,255,0.44)', borderColor: palette.line, borderRightWidth: 1, paddingBottom: 30, paddingHorizontal: 22, paddingTop: 38, width: 240, zIndex: 2 },
-  sidebarScroll: { flex: 1, minHeight: 0, scrollbarColor: 'rgba(72, 104, 83, 0.35) transparent', scrollbarWidth: 'thin' } as any,
-  brandRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10 },
+  sidebarScroll: { flex: 1, minHeight: 0, scrollbarColor: 'rgba(31, 102, 70, 0.32) transparent', scrollbarWidth: 'thin' } as any,
+  brandRow: { alignItems: 'center', flexDirection: 'row', flexShrink: 0, justifyContent: 'space-between', paddingHorizontal: 10 },
   brandName: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   hideButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, height: 30, justifyContent: 'center', width: 30 },
   hideButtonText: { color: palette.secondary, fontFamily: font, fontSize: 17, fontWeight: '700' },

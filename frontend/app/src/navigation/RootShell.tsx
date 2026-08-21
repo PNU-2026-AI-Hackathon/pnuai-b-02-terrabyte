@@ -36,6 +36,43 @@ export default function RootShell() {
   const compact = width < 900;
   const selectedCrop = Math.max(0, crops.findIndex((crop) => crop.code === selectedCropCode));
 
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const style = document.createElement('style');
+    style.setAttribute('data-terrabyte-scrollbar', 'true');
+    style.textContent = `
+      *::-webkit-scrollbar {
+        width: 11px;
+        height: 11px;
+      }
+      *::-webkit-scrollbar-track {
+        background: transparent !important;
+        border: 1px solid transparent !important;
+        border-radius: 999px;
+      }
+      *::-webkit-scrollbar-thumb {
+        background: rgba(31, 102, 70, 0.32) !important;
+        border: 2px solid rgba(255, 255, 255, 0.58) !important;
+        border-radius: 999px;
+        background-clip: padding-box;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.24), 0 1px 4px rgba(21, 46, 35, 0.08) !important;
+      }
+      *::-webkit-scrollbar-thumb:hover {
+        background: rgba(31, 102, 70, 0.46) !important;
+        background-clip: padding-box;
+      }
+      *::-webkit-scrollbar-corner {
+        background: transparent;
+      }
+      * {
+        scrollbar-color: rgba(31, 102, 70, 0.32) transparent !important;
+        scrollbar-width: thin !important;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
+  }, []);
+
   const applyAuthenticatedFlow = (me: MeResponse) => {
     setDeviceId(me.device?.id);
     setDevice(null);
