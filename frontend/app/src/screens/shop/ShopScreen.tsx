@@ -294,9 +294,11 @@ export function ShopScreen({
                     void addToCart(product);
                   }}
                   disabled={product.available === false || cartLoading}
-                  style={styles.addButton}
+                  style={[styles.addButton, cartQuantities.get(product.id) ? styles.addButtonAdded : null]}
                 >
-                  <Text style={styles.addButtonText}>{cartQuantities.get(product.id) ? `${cartQuantities.get(product.id)}개 담김` : '담기'}</Text>
+                  <Text style={[styles.addButtonText, cartQuantities.get(product.id) ? styles.addButtonTextAdded : null]}>
+                    {cartQuantities.get(product.id) ? `✓ ${cartQuantities.get(product.id)}개 담김` : '담기'}
+                  </Text>
                 </Pressable>
               </View>
             </Pressable>
@@ -341,7 +343,16 @@ export function ShopScreen({
                 </View>
                 <View style={styles.modalFooter}>
                   <Text style={styles.modalPrice}>{selectedProduct.price.toLocaleString('ko-KR')}원</Text>
-                  <ActionButton disabled={selectedProduct.available === false || cartLoading} label={selectedProduct.available === false ? '품절' : '장바구니 담기'} onPress={() => { void addToCart(selectedProduct); }} />
+                  <ActionButton
+                    disabled={selectedProduct.available === false || cartLoading}
+                    label={selectedProduct.available === false
+                      ? '품절'
+                      : cartQuantities.get(selectedProduct.id)
+                        ? `✓ ${cartQuantities.get(selectedProduct.id)}개 담김`
+                        : '장바구니 담기'}
+                    onPress={() => { void addToCart(selectedProduct); }}
+                    quiet={Boolean(cartQuantities.get(selectedProduct.id))}
+                  />
                 </View>
               </>
             ) : null}
@@ -535,7 +546,9 @@ const styles = StyleSheet.create(scaleTypography({
   productBottom: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   productPrice: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font, letterSpacing: -0.3 },
   addButton: { ...controlTokens.primary, minHeight: 38, paddingHorizontal: 14, paddingVertical: 9 },
+  addButtonAdded: { backgroundColor: palette.greenSoft, borderColor: '#c9dfd1' },
   addButtonText: { ...typeScale.button, ...controlTextTokens.primary, fontFamily: font },
+  addButtonTextAdded: { color: palette.greenDark },
   pagination: { alignItems: 'center', flexDirection: 'row', gap: 7, justifyContent: 'center', paddingTop: 4 },
   pageArrow: { ...controlTokens.outline, minHeight: 36, paddingHorizontal: 13 },
   pageDisabled: { opacity: 0.35 },
