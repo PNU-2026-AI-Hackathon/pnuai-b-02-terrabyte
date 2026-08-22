@@ -382,6 +382,122 @@ docker compose -f docker-compose.prod.yml down
 ```
 
 더 자세한 원격 디버깅, DB 접속, 모바일 기기 연결 방법은 [Docker 개발·배포 환경 가이드](docs/docker_dev_environment.md)를 참고합니다.
+
+#### 4.9. Orange Pi 게이트웨이 상태판(tkinter) 원격 실행
+
+게이트웨이에 연결된 모니터에는 tkinter 전체화면 상태판이 뜹니다. 브릿지(`terrabyte-edge.service`)가 1초마다 `/run/terrabyte-edge/status.json`에 상태를 쓰고 상태판은 그 파일만 읽습니다. 두 프로세스는 분리되어 있어 **상태판을 껐다 켜도 텔레메트리 수집·전송은 영향받지 않습니다.**
+
+##### 4.9.1. SSH 접속
+
+공개키를 한 번 등록해 두면 이후에는 비밀번호 없이 접속합니다.
+
+```bash
+ssh-copy-id -i ~/.ssh/terrabyte_orangepi_ed25519.pub root@192.168.50.27   # 최초 1회
+ssh -i ~/.ssh/terrabyte_orangepi_ed25519 root@192.168.50.27
+```
+
+##### 4.9.2. 실행 전 확인
+
+상태판은 데스크톱 세션의 X 서버에 창을 띄우므로 아래가 모두 참이어야 합니다.
+
+```bash
+pgrep -a Xorg                        # X 서버(:0)가 떠 있는가
+systemctl is-active terrabyte-edge   # active
+ls -l /run/terrabyte-edge/status.json
+python3 -c "import tkinter; print(tkinter.TkVersion)"
+```
+
+`DISPLAY`와 `XAUTHORITY`는 추측하지 말고 데스크톱 세션 소유자(`orangepi`)의 실제 값을 읽어옵니다.
+
+```bash
+pid=$(pgrep -u orangepi -f xfce4-session | head -1)
+tr '\0' '\n' < /proc/$pid/environ | grep -E '^(DISPLAY|XAUTHORITY)='
+# DISPLAY=:0
+# XAUTHORITY=/home/orangepi/.Xauthority
+```
+
+##### 4.9.3. 상태판 띄우기
+
+`root`로 접속한 뒤 데스크톱 세션 사용자로 전환해 실행합니다. `setsid --fork`를 쓰면 SSH 세션이 프로세스를 붙잡지 않고 바로 반환됩니다.
+
+```bash
+runuser -u orangepi -- sh -c 'cd /opt/terrabyte-edge && \
+  exec setsid --fork env DISPLAY=:0 XAUTHORITY=/home/orangepi/.Xauthority \
+  .venv/bin/python -m terrabyte_edge dashboard \
+  >/tmp/tb-dash.log 2>&1 </dev/null'
+```
+
+`cd /opt/terrabyte-edge`는 생략할 수 없습니다. 패키지가 venv에 설치되어 있지 않고 소스 디렉터리를 작업 디렉터리로 두고 `-m`으로 실행하는 구조라, 생략하면 `No module named terrabyte_edge`가 납니다.
+
+확인과 종료:
+
+```bash
+pgrep -af 'terrabyte_edge dashboard'
+cat /tmp/tb-dash.log        # 비어 있으면 정상 기동
+pkill -f 'terrabyte_edge dashboard'
+```
+
+`pkill -f`를 `ssh host '...'` 한 줄 안에서 다른 명령과 함께 쓰면 원격 셸 자신의 명령줄에도 그 문자열이 들어 있어 셸이 스스로를 죽이고 SSH가 255로 끊깁니다. 종료는 별도 명령으로 실행하거나 PID를 지정합니다.
+
+개발 중에는 전체화면 대신 창 모드로 띄울 수 있습니다.
+
+```bash
+.venv/bin/python -m terrabyte_edge dashboard --windowed
+```
+
+##### 4.9.4. 부팅 시 자동 실행
+
+`.desktop` 파일을 autostart에 넣으면 데스크톱 로그인 5초 뒤 자동으로 뜹니다.
+
+```bash
+sudo cp /opt/terrabyte-edge/deploy/terrabyte-dashboard.desktop /etc/xdg/autostart/
+```
+
+##### 4.9.5. 원격에서 화면 확인
+
+모니터 앞에 가지 않고 실제 렌더링을 확인하려면 스크린샷을 찍어 가져옵니다.
+
+```bash
+ssh -i ~/.ssh/terrabyte_orangepi_ed25519 root@192.168.50.27 \
+  'su orangepi -c "DISPLAY=:0 XAUTHORITY=/home/orangepi/.Xauthority \
+   xfce4-screenshooter -f -s /tmp/tb-shot.png"'
+scp -i ~/.ssh/terrabyte_orangepi_ed25519 root@192.168.50.27:/tmp/tb-shot.png .
+```
+
+##### 4.9.6. 문제 해결
+
+| 증상 | 원인 | 조치 |
+| --- | --- | --- |
+| `No module named terrabyte_edge` | `cd /opt/terrabyte-edge` 누락 | 실행 전 해당 디렉터리로 이동 |
+| SSH 명령이 끝나지 않고 매달림 | 백그라운드 프로세스가 SSH 채널의 stdout/stderr를 잡고 있음 | `setsid --fork`와 `>파일 2>&1 </dev/null`을 함께 사용 |
+| root인데도 `/tmp/...: Permission denied` | `fs.protected_regular`가 sticky 디렉터리에서 타 사용자 소유 파일 열기를 차단 | 리다이렉션을 `runuser ... sh -c '...'` 안쪽에서 수행 |
+| 화면은 뜨는데 모든 화분이 `연결 대기` | Arduino 프레임 미수신 | `journalctl -u terrabyte-edge -f`에서 `serial` 경고 확인 |
+| 로그에 `discarding incomplete serial message` 반복 | 보드가 보내는 보드레이트나 펌웨어가 계약과 다름 | 브릿지를 멈추고 여러 보드레이트로 원시 바이트를 덤프해 확인(4.9.7) |
+| 상태판에 `브리지 서비스 응답 없음` | 스냅샷이 8초 이상 낡음 | `systemctl status terrabyte-edge` |
+
+##### 4.9.7. 시리얼 원시 바이트 덤프
+
+`frames=0`인데 원인을 모를 때는 브릿지를 잠시 멈추고 포트를 직접 읽는 것이 가장 빠릅니다. 포트는 배타적으로 열리므로 브릿지가 켜져 있으면 읽을 수 없습니다.
+
+```bash
+systemctl stop terrabyte-edge
+/opt/terrabyte-edge/.venv/bin/python - <<'PY'
+import time, serial
+port = "/dev/serial/by-id/usb-1a86_USB_Serial-if00-port0"
+for baud in (9600, 57600, 115200):
+    s = serial.Serial(port=port, baudrate=baud, timeout=1)
+    s.reset_input_buffer(); t0 = time.time(); buf = b""
+    while time.time() - t0 < 5:
+        buf += s.read(4096)
+    s.close()
+    printable = sum(1 for b in buf if 32 <= b < 127)
+    print(f"baud={baud:6d} total={len(buf):6d} nulls={buf.count(0)} "
+          f"printable={printable} sample={buf[:40]!r}")
+PY
+systemctl start terrabyte-edge
+```
+
+읽는 값이 전부 `\x00`이면 그 보드레이트가 틀린 것입니다. 사람이 읽을 수 있는 문자가 나오는 보드레이트가 보드의 실제 설정이며, 그 출력이 JSON Lines가 아니라면 텔레메트리 펌웨어가 아닌 다른 스케치가 올라가 있는 것입니다. 계약상 보드레이트는 115200이고 한 줄에 JSON 객체 하나입니다(`edge/arduino/include/TelemetryConfig.h`의 `TB_SERIAL_BAUD`).
 <br/>
 
 ### 5. 소개 및 시연영상
