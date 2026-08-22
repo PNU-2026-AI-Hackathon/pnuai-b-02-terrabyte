@@ -60,6 +60,13 @@ public class InfluxMeasurementStore implements MeasurementStore {
                   |> range(start: 1970-01-01T00:00:00Z)
                   |> filter(fn: (r) => r._measurement == "%s" and r.pot_id == "%s")
                   |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+                  // A pot spans several series — selecting a crop changes the
+                  // crop_code tag, and an unset crop stores no tag at all — and
+                  // Flux applies sort/limit per table. Without this group() the
+                  // "latest" sample is the newest row of whichever series
+                  // happens to come first, which freezes at the moment the crop
+                  // was chosen.
+                  |> group()
                   |> sort(columns: ["_time"], desc: true)
                   |> limit(n: 1)
                 """.formatted(
@@ -77,6 +84,7 @@ public class InfluxMeasurementStore implements MeasurementStore {
                   |> range(start: time(v: "%s"))
                   |> filter(fn: (r) => r._measurement == "%s" and r.pot_id == "%s")
                   |> pivot(rowKey: ["_time"], columnKey: ["_field"], valueColumn: "_value")
+                  |> group()
                   |> sort(columns: ["_time"])
                 """.formatted(
                 escape(properties.bucket()),
@@ -97,6 +105,7 @@ public class InfluxMeasurementStore implements MeasurementStore {
                   |> range(start: time(v: "%s"))
                   |> filter(fn: (r) => r._measurement == "%s" and r.pot_id == "%s")
                   |> filter(fn: (r) => r._field == "%s")
+                  |> group()
                   |> sort(columns: ["_time"])
                 """.formatted(
                 escape(properties.bucket()),
@@ -124,7 +133,11 @@ public class InfluxMeasurementStore implements MeasurementStore {
                 Long.parseLong(string(values, "pot_id")),
                 Long.parseLong(string(values, "device_id")),
                 string(values, "node_id"),
-                string(values, "crop_code"),
+                // InfluxDB stores no tag at all for an empty value, so a
+                // sample written before a crop was selected comes back without
+                // crop_code. That is the documented "no crop" state, not a
+                // corrupt row, so it must read back as null rather than throw.
+                optional(values, "crop_code"),
                 optional(values, "gateway_hardware_id"),
                 optional(values, "event_id"),
                 record.getTime(),
