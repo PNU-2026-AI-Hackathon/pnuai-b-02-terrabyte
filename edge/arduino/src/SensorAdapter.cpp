@@ -167,7 +167,18 @@ SensorSample readSensorSample() {
 
 #if !TB_MOCK_SENSOR_ENABLED && TB_SOIL_TEMPERATURE_ENABLED
   soilTemperatureSensors.requestTemperatures();
-  const float soilTemperature = soilTemperatureSensors.getTempCByIndex(0);
+  float soilTemperature = soilTemperatureSensors.getTempCByIndex(0);
+  if (soilTemperature == DEVICE_DISCONNECTED_C) {
+    // begin() enumerates the bus once and caches the result, so a probe that
+    // was not answering at start-up stays absent for the rest of the run and
+    // every later read returns DEVICE_DISCONNECTED_C -- seen on a node whose
+    // sensor a standalone OneWire scan found on every single pass.
+    // Re-enumerate before giving up, the same way the TSL2591 path recovers
+    // from a failed read.
+    soilTemperatureSensors.begin();
+    soilTemperatureSensors.requestTemperatures();
+    soilTemperature = soilTemperatureSensors.getTempCByIndex(0);
+  }
   if (soilTemperature != DEVICE_DISCONNECTED_C && isfinite(soilTemperature)) {
     sample.soilTemperatureC = soilTemperature;
     sample.validity |= kSoilTemperatureValid;
