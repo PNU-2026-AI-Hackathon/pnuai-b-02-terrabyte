@@ -14,8 +14,8 @@ help: ## 사용 가능한 명령 목록
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 init: ## .env 파일 생성 (없을 때만)
-	@test -f .env || (cp .env.example .env && echo ".env 생성 완료 — 필요하면 값을 수정하세요")
-	@test -f .env && echo ".env 준비됨"
+	@test -f .env || (cp .env.example .env && echo "created .env from .env.example")
+	@echo ".env ready (edit values if needed)"
 
 up: init ## 전체 스택 실행 (포그라운드, 로그 확인용)
 	$(COMPOSE) up --build
