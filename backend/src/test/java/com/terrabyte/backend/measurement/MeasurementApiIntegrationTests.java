@@ -265,6 +265,8 @@ class MeasurementApiIntegrationTests {
                 .andExpect(jsonPath("$.measurements.airTemperatureC").value(27.1))
                 .andExpect(jsonPath("$.measurements.plantLightPpfdUmolM2S").value(230.5))
                 .andExpect(jsonPath("$.measurements.soilTemperatureC").value(21.0))
+                // lux 가 없는 레거시 표본이라 저장된 PPFD 를 그대로 쓴다.
+                .andExpect(jsonPath("$.ppfdBasis").value("LEGACY_DEVICE_VALUE"))
                 .andExpect(jsonPath("$.quality.airSensorValid").value(true));
 
         mockMvc.perform(get("/api/devices/{deviceId}/measurements", deviceId)
@@ -303,6 +305,123 @@ class MeasurementApiIntegrationTests {
                 .andExpect(jsonPath("$.factors[2].score").value(88.7))
                 .andExpect(jsonPath("$.factors[3].key").value("soilMoisture"))
                 .andExpect(jsonPath("$.factors[4].key").value("soilTemperature"));
+    }
+
+    @Test
+    void 공간_광원_계수로_PPFD_를_유도해_응답한다() throws Exception {
+        String token = signupAndGetToken();
+        long deviceId = registerAndGetDeviceId(token);
+        long potId = firstPotId(deviceId);
+        setLightSource(deviceId, "INDOOR_LIGHTING");
+        when(measurementStore.findLatest(potId)).thenReturn(java.util.Optional.of(
+                sampleWithLux(potId, deviceId, Instant.now().minusSeconds(5), 10000.0)));
+
+        mockMvc.perform(get("/api/pots/{potId}/measurements/latest", potId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                // 실내 조명 0.0135 × 10000 lx = 135.0
+                .andExpect(jsonPath("$.measurements.plantLightPpfdUmolM2S").value(135.0))
+                .andExpect(jsonPath("$.ppfdBasis").value("USER_SELECTED"));
+    }
+
+    @Test
+    void 광원_미설정이면_공간_유형으로_추정한_계수를_쓴다() throws Exception {
+        String token = signupAndGetToken();
+        long deviceId = registerAndGetDeviceId(token);
+        long potId = firstPotId(deviceId);
+        when(measurementStore.findLatest(potId)).thenReturn(java.util.Optional.of(
+                sampleWithLux(potId, deviceId, Instant.now().minusSeconds(5), 10000.0)));
+
+        mockMvc.perform(get("/api/pots/{potId}/measurements/latest", potId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                // 등록 시 만든 공간의 유형은 "건물 옥상" → 자연광 0.0185
+                .andExpect(jsonPath("$.measurements.plantLightPpfdUmolM2S").value(185.0))
+                .andExpect(jsonPath("$.ppfdBasis").value("INFERRED_FROM_SPACE_TYPE"));
+    }
+
+    @Test
+    void PPFD_시계열은_lux_를_공간_광원으로_환산한다() throws Exception {
+        String token = signupAndGetToken();
+        long deviceId = registerAndGetDeviceId(token);
+        long potId = firstPotId(deviceId);
+        setLightSource(deviceId, "INDOOR_LIGHTING");
+        Instant observedAt = Instant.now().minusSeconds(5);
+        when(measurementStore.findPoints(
+                eq(potId), eq(MeasurementMetric.ILLUMINANCE_LUX), any(Instant.class)))
+                .thenReturn(List.of(new MeasurementPoint(observedAt, 10000.0)));
+
+        mockMvc.perform(get("/api/pots/{potId}/measurements", potId)
+                        .header("Authorization", bearer(token))
+                        .queryParam("metric", "plant_light_ppfd_umol_m2_s")
+                        .queryParam("range", "24h"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.metric").value("plant_light_ppfd_umol_m2_s"))
+                .andExpect(jsonPath("$.unit").value("μmol/m²/s"))
+                .andExpect(jsonPath("$.points[0].value").value(135.0));
+    }
+
+    @Test
+    void lux_구간이_없으면_저장된_PPFD_시계열을_그대로_돌려준다() throws Exception {
+        String token = signupAndGetToken();
+        long deviceId = registerAndGetDeviceId(token);
+        long potId = firstPotId(deviceId);
+        setLightSource(deviceId, "INDOOR_LIGHTING");
+        Instant observedAt = Instant.now().minusSeconds(5);
+        // ILLUMINANCE_LUX 는 스텁하지 않는다 → 빈 목록(= lux 도입 이전 구간)
+        when(measurementStore.findPoints(
+                eq(potId), eq(MeasurementMetric.PLANT_LIGHT_PPFD_UMOL_M2_S), any(Instant.class)))
+                .thenReturn(List.of(new MeasurementPoint(observedAt, 230.5)));
+
+        mockMvc.perform(get("/api/pots/{potId}/measurements", potId)
+                        .header("Authorization", bearer(token))
+                        .queryParam("metric", "plant_light_ppfd_umol_m2_s")
+                        .queryParam("range", "24h"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.points[0].value").value(230.5));
+    }
+
+    @Test
+    void 점수도_유도된_PPFD_를_광량_인자로_쓴다() throws Exception {
+        String token = signupAndGetToken();
+        long deviceId = registerAndGetDeviceId(token);
+        long potId = firstPotId(deviceId);
+        selectCrop(token, deviceId, "lettuce");
+        setLightSource(deviceId, "INDOOR_LIGHTING");
+        when(measurementStore.findLatest(potId)).thenReturn(java.util.Optional.of(
+                sampleWithLux(potId, deviceId, Instant.now().minusSeconds(5), 10000.0)));
+        when(profileRepository.findActiveByCropCode("lettuce"))
+                .thenReturn(java.util.Optional.of(profile("lettuce", "상추")));
+
+        mockMvc.perform(get("/api/pots/{potId}/score", potId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.factors[2].key").value("plantLight"))
+                .andExpect(jsonPath("$.factors[2].current").value(135.0));
+    }
+
+    @Test
+    void 광량_값이_전혀_없으면_점수를_계산하지_않는다() throws Exception {
+        String token = signupAndGetToken();
+        long deviceId = registerAndGetDeviceId(token);
+        long potId = firstPotId(deviceId);
+        selectCrop(token, deviceId, "lettuce");
+        TelemetrySample sample = sampleWithLux(potId, deviceId, Instant.now().minusSeconds(5), null);
+        when(measurementStore.findLatest(potId)).thenReturn(java.util.Optional.of(sample));
+        when(profileRepository.findActiveByCropCode("lettuce"))
+                .thenReturn(java.util.Optional.of(profile("lettuce", "상추")));
+
+        mockMvc.perform(get("/api/pots/{potId}/score", potId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("INVALID_SCORE_INPUT"));
+
+        // 값이 없으면 근거도 싣지 않는다.
+        mockMvc.perform(get("/api/pots/{potId}/measurements/latest", potId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements.plantLightPpfdUmolM2S").doesNotExist())
+                .andExpect(jsonPath("$.ppfdBasis").doesNotExist());
     }
 
     @Test
@@ -379,6 +498,45 @@ class MeasurementApiIntegrationTests {
                 true,
                 true,
                 true);
+    }
+
+    private TelemetrySample sampleWithLux(
+            long potId, long deviceId, Instant observedAt, Double illuminanceLux) {
+        return new TelemetrySample(
+                potId,
+                deviceId,
+                NODE_ID,
+                "lettuce",
+                HARDWARE_ID,
+                UUID.randomUUID().toString(),
+                observedAt,
+                1042,
+                58.0,
+                1847,
+                27.1,
+                58.0,
+                illuminanceLux,
+                // 신규 노드는 PPFD 를 보내지 않는다. 서버가 lux 로 유도한다.
+                null,
+                21.0,
+                true,
+                true,
+                true);
+    }
+
+    private long firstPotId(long deviceId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT MIN(id) FROM pot WHERE device_id=?", Long.class, deviceId);
+    }
+
+    private void setLightSource(long deviceId, String lightSource) {
+        jdbcTemplate.update(
+                """
+                UPDATE cultivation_space SET light_source = ?
+                WHERE id = (SELECT space_id FROM device WHERE id = ?)
+                """,
+                lightSource,
+                deviceId);
     }
 
     private CropScoreProfile profile(String cropCode, String cropName) {

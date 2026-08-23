@@ -11,6 +11,8 @@ import com.terrabyte.backend.device.DeviceRepository;
 import com.terrabyte.backend.device.DeviceStatus;
 import com.terrabyte.backend.pot.Pot;
 import com.terrabyte.backend.pot.PotRepository;
+import com.terrabyte.backend.space.CultivationSpace;
+import com.terrabyte.backend.space.CultivationSpaceRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,8 @@ public class MeasurementService {
     private final PotRepository potRepository;
     private final MeasurementStore measurementStore;
     private final TelemetryEventRepository telemetryEventRepository;
+    private final CultivationSpaceRepository spaceRepository;
+    private final PpfdConverter ppfdConverter;
     private final Clock clock;
 
     public MeasurementService(
@@ -33,11 +37,15 @@ public class MeasurementService {
             PotRepository potRepository,
             MeasurementStore measurementStore,
             TelemetryEventRepository telemetryEventRepository,
+            CultivationSpaceRepository spaceRepository,
+            PpfdConverter ppfdConverter,
             Clock clock) {
         this.deviceRepository = deviceRepository;
         this.potRepository = potRepository;
         this.measurementStore = measurementStore;
         this.telemetryEventRepository = telemetryEventRepository;
+        this.spaceRepository = spaceRepository;
+        this.ppfdConverter = ppfdConverter;
         this.clock = clock;
     }
 
@@ -118,7 +126,15 @@ public class MeasurementService {
                         HttpStatus.NOT_FOUND,
                         "MEASUREMENT_NOT_FOUND",
                         "아직 수신된 측정 데이터가 없습니다."));
-        return LatestMeasurementsResponse.from(pot.id(), sample);
+        CultivationSpace space = spaceOf(userId, pot);
+        Double ppfd = ppfd(sample, space);
+        return LatestMeasurementsResponse.from(
+                pot.id(),
+                sample,
+                ppfd,
+                // 값이 없으면 근거도 없다. 유도하지 못한 PPFD 에 "기기가 보낸
+                // 값" 같은 근거를 붙이면 프론트가 없는 값을 설명하게 된다.
+                ppfd == null ? null : basis(sample, space));
     }
 
     public MeasurementSeriesResponse series(
@@ -129,13 +145,16 @@ public class MeasurementService {
         Pot pot = ownedPot(userId, potId);
         MeasurementMetric metric = MeasurementMetric.from(metricValue);
         MeasurementRange range = MeasurementRange.from(rangeValue);
+        Instant start = clock.instant().minus(range.duration());
+        List<MeasurementPoint> points = metric == MeasurementMetric.PLANT_LIGHT_PPFD_UMOL_M2_S
+                ? ppfdPoints(pot, spaceOf(userId, pot), start)
+                : measurementStore.findPoints(pot.id(), metric, start);
         return new MeasurementSeriesResponse(
                 pot.id(),
                 metric.field(),
                 metric.unit(),
                 range.value(),
-                        measurementStore.findPoints(
-                        pot.id(), metric, clock.instant().minus(range.duration())));
+                points);
     }
 
     public DeviceSensorStatusResponse sensorStatus(long userId, long deviceId) {
@@ -214,6 +233,62 @@ public class MeasurementService {
                 label,
                 metric,
                 status);
+    }
+
+    /**
+     * PPFD 시계열을 만든다.
+     *
+     * <p>저장은 실측 lux 만 하므로 요청 지표가 PPFD 여도 실제로 읽어야 하는
+     * 것은 lux 다. lux 포인트가 하나도 없으면 lux 도입 이전 구간이라는
+     * 뜻이라 저장된 PPFD 를 그대로 돌려준다.
+     *
+     * <p>두 구간을 한 응답 안에서 이어 붙이지는 않는다. 도입 시점을 걸쳐
+     * 조회하면 lux 구간만 나오는데, 이는 전환기의 짧은 기간에만 해당하고,
+     * 광원 설정을 바꿔도 소급되지 않는 옛 PPFD 를 새 값과 섞어 한 그래프에
+     * 그리는 쪽이 더 나쁘기 때문이다.
+     */
+    private List<MeasurementPoint> ppfdPoints(Pot pot, CultivationSpace space, Instant start) {
+        if (space != null) {
+            List<MeasurementPoint> lux = measurementStore.findPoints(
+                    pot.id(), MeasurementMetric.ILLUMINANCE_LUX, start);
+            if (!lux.isEmpty()) {
+                double ppfdPerLux = ppfdConverter.resolve(space).ppfdPerLux();
+                return lux.stream()
+                        .map(point -> new MeasurementPoint(point.time(), point.value() * ppfdPerLux))
+                        .toList();
+            }
+        }
+        return measurementStore.findPoints(
+                pot.id(), MeasurementMetric.PLANT_LIGHT_PPFD_UMOL_M2_S, start);
+    }
+
+    private Double ppfd(TelemetrySample sample, CultivationSpace space) {
+        return space == null
+                ? sample.plantLightPpfdUmolM2S()
+                : ppfdConverter.ppfd(
+                        sample.illuminanceLux(), sample.plantLightPpfdUmolM2S(), space);
+    }
+
+    private PpfdBasis basis(TelemetrySample sample, CultivationSpace space) {
+        return space == null
+                ? PpfdBasis.LEGACY_DEVICE_VALUE
+                : ppfdConverter.basis(sample.illuminanceLux(), space);
+    }
+
+    /**
+     * 화분 → 기기 → 공간. 광원은 공간의 속성이므로 여기까지 거슬러 올라가야
+     * 환산 계수를 얻는다.
+     *
+     * <p>{@code device.space_id} 는 NULL 을 허용하고 공간이 삭제되면
+     * {@code ON DELETE SET NULL} 로 끊긴다. 그때는 계수를 알 수 없으므로
+     * 임의의 계수를 지어내지 않고 기기가 보내온 값(레거시 PPFD)만 쓴다.
+     */
+    private CultivationSpace spaceOf(long userId, Pot pot) {
+        Device device = deviceRepository.findByIdAndUserId(pot.deviceId(), userId).orElse(null);
+        if (device == null || device.spaceId() == null) {
+            return null;
+        }
+        return spaceRepository.findByIdAndUserId(device.spaceId(), userId).orElse(null);
     }
 
     private Pot ownedPot(long userId, long potId) {
