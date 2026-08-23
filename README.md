@@ -10,6 +10,7 @@
 
 **TerraByte는 설치 전 환경 데이터를 수집해 작물별 생육 기준과 비교함으로써 후보 공간의 적합성을 진단하고, 설치 후에도 동일한 플랫폼에서 재배 환경을 지속적으로 모니터링할 수 있도록 개발한 서비스입니다.**
 <br/>
+<br/>
 
 ### 1.2. 개발목표 및 주요내용
 
@@ -287,6 +288,7 @@ docker compose version
 docker buildx version
 docker run --rm hello-world
 ```
+<br/>
 
 ### 4.2. 저장소 받기
 
@@ -294,6 +296,7 @@ docker run --rm hello-world
 git clone https://github.com/PNU-2026-AI-Hackathon/pnuai-b-02-terrabyte.git
 cd pnuai-b-02-terrabyte
 ```
+<br/>
 
 ### 4.3. Make를 사용해 한 번에 실행(권장)
 
@@ -302,6 +305,7 @@ macOS, Linux 또는 Make가 설치된 Windows 환경에서는 아래 한 줄을 
 ```bash
 make up-d
 ```
+<br/>
 
 ### 4.4. Docker Compose로 직접 한 번에 실행
 
@@ -320,6 +324,8 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }; docker compose up -d --b
 ```
 
 `.env.example`의 계정과 비밀키는 로컬 개발 전용입니다. 외부에 공개되는 환경에서는 반드시 안전한 값으로 교체해야 합니다.
+<br/>
+<br/>
 
 ### 4.5. 실행 확인
 
@@ -348,6 +354,7 @@ docker compose logs -f
 curl --fail http://localhost:8080/actuator/health
 curl --fail http://localhost:8086/health
 ```
+<br/>
 
 ### 4.6. 테스트
 
@@ -383,6 +390,7 @@ curl -i -X POST http://localhost:8080/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"docker-test@terrabyte.local","password":"password1"}'
 ```
+<br/>
 
 ### 4.7. 자주 사용하는 명령
 
@@ -401,6 +409,8 @@ curl -i -X POST http://localhost:8080/api/auth/login \
 | 중지 및 DB 초기화 | `make down-v` | `docker compose down -v` |
 
 `docker compose down -v`와 `make down-v`는 PostgreSQL·InfluxDB 데이터와 Mosquitto의 retained 메시지·로그 볼륨을 삭제하므로 초기화가 필요할 때만 사용합니다.
+<br/>
+<br/>
 
 ### 4.8. 프로덕션 유사 스택
 
@@ -428,6 +438,7 @@ docker compose -f docker-compose.prod.yml down
 ```
 
 더 자세한 원격 디버깅, DB 접속, 모바일 기기 연결 방법은 [Docker 개발·배포 환경 가이드](docs/docker_dev_environment.md)를 참고합니다.
+<br/>
 <br/>
 
 ## 5. 소개 및 시연영상
