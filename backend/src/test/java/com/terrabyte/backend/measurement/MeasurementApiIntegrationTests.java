@@ -381,6 +381,69 @@ class MeasurementApiIntegrationTests {
                 .andExpect(jsonPath("$.points[0].value").value(230.5));
     }
 
+    /**
+     * 이 기능의 존재 이유. 저장은 실측 lux 만 하므로, 광원 설정을 고치면
+     * 이미 저장된 표본의 PPFD 까지 소급 정정된다.
+     *
+     * <p>두 번의 조회 사이에 텔레메트리를 다시 넣지 않는다. 재수집하면
+     * "새 값이 새 계수로 들어왔다"만 증명할 뿐 소급 정정을 증명하지 못한다.
+     * 화분별로 계수를 캐시하거나 수집 시점에 PPFD 를 저장하도록 바뀌면
+     * 이 테스트가 깨져야 한다.
+     */
+    @Test
+    void 광원을_고치면_이미_저장된_표본의_PPFD_가_소급_정정된다() throws Exception {
+        String token = signupAndGetToken();
+        long deviceId = registerAndGetDeviceId(token);
+        long potId = firstPotId(deviceId);
+        setLightSource(deviceId, "INDOOR_LIGHTING");
+        when(measurementStore.findLatest(potId)).thenReturn(java.util.Optional.of(
+                sampleWithLux(potId, deviceId, Instant.now().minusSeconds(5), 10000.0)));
+
+        mockMvc.perform(get("/api/pots/{potId}/measurements/latest", potId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements.plantLightPpfdUmolM2S").value(135.0));
+
+        setLightSource(deviceId, "NATURAL_LIGHT");
+
+        // 같은 표본, 같은 lux. 계수만 0.0135 → 0.0185 로 바뀐다.
+        mockMvc.perform(get("/api/pots/{potId}/measurements/latest", potId)
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.measurements.plantLightPpfdUmolM2S").value(185.0));
+    }
+
+    /** 시계열도 같은 보장을 받는다. 그래야 그래프 전체가 소급 정정된다. */
+    @Test
+    void 광원을_고치면_PPFD_시계열_전체가_소급_정정된다() throws Exception {
+        String token = signupAndGetToken();
+        long deviceId = registerAndGetDeviceId(token);
+        long potId = firstPotId(deviceId);
+        setLightSource(deviceId, "INDOOR_LIGHTING");
+        Instant observedAt = Instant.now().minusSeconds(5);
+        when(measurementStore.findPoints(
+                eq(potId), eq(MeasurementMetric.ILLUMINANCE_LUX), any(Instant.class)))
+                .thenReturn(List.of(
+                        new MeasurementPoint(observedAt.minusSeconds(3600), 10000.0),
+                        new MeasurementPoint(observedAt, 20000.0)));
+
+        mockMvc.perform(get("/api/pots/{potId}/measurements", potId)
+                        .header("Authorization", bearer(token))
+                        .queryParam("metric", "plant_light_ppfd_umol_m2_s"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.points[0].value").value(135.0))
+                .andExpect(jsonPath("$.points[1].value").value(270.0));
+
+        setLightSource(deviceId, "NATURAL_LIGHT");
+
+        mockMvc.perform(get("/api/pots/{potId}/measurements", potId)
+                        .header("Authorization", bearer(token))
+                        .queryParam("metric", "plant_light_ppfd_umol_m2_s"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.points[0].value").value(185.0))
+                .andExpect(jsonPath("$.points[1].value").value(370.0));
+    }
+
     @Test
     void 점수도_유도된_PPFD_를_광량_인자로_쓴다() throws Exception {
         String token = signupAndGetToken();
