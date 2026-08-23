@@ -154,7 +154,7 @@ class MeasurementApiIntegrationTests {
                         NODE_ID,
                         1,
                         new TelemetryEnvelope.Measurements(
-                                27.1, 58.0, 230.5, null, null, null),
+                                27.1, 58.0, null, 230.5, null, null, null),
                         new TelemetryEnvelope.Quality(true, true, null)))));
 
         mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
@@ -203,7 +203,7 @@ class MeasurementApiIntegrationTests {
                         NODE_ID,
                         1,
                         new TelemetryEnvelope.Measurements(
-                                27.1, 58.0, 230.5, 19.4, 45.0, 1847L),
+                                27.1, 58.0, null, 230.5, 19.4, 45.0, 1847L),
                         new TelemetryEnvelope.Quality(true, true, true)))));
 
         mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
@@ -228,7 +228,7 @@ class MeasurementApiIntegrationTests {
                         NODE_ID,
                         1,
                         new TelemetryEnvelope.Measurements(
-                                27.1, 58.0, 230.5, null, null, null),
+                                27.1, 58.0, null, 230.5, null, null, null),
                         new TelemetryEnvelope.Quality(true, true, null)))));
 
         mockMvc.perform(post("/api/telemetry").contentType(APPLICATION_JSON).content(body))
@@ -322,7 +322,7 @@ class MeasurementApiIntegrationTests {
         return new TelemetryEnvelope.Node(
                 nodeId,
                 sequence,
-                new TelemetryEnvelope.Measurements(27.0, 58.0, 230.0, 21.0, 40.0, 1000L),
+                new TelemetryEnvelope.Measurements(27.0, 58.0, null, 230.0, 21.0, 40.0, 1000L),
                 new TelemetryEnvelope.Quality(true, true, true));
     }
 
@@ -354,7 +354,7 @@ class MeasurementApiIntegrationTests {
                         nodeId,
                         sequence,
                         new TelemetryEnvelope.Measurements(
-                                27.1, humidity, 230.5, 31.2, 45.0, 1847L),
+                                27.1, humidity, null, 230.5, 31.2, 45.0, 1847L),
                         new TelemetryEnvelope.Quality(true, true, true))));
         return objectMapper.writeValueAsString(envelope);
     }
@@ -373,6 +373,7 @@ class MeasurementApiIntegrationTests {
                 1847,
                 27.1,
                 58.0,
+                null,
                 230.5,
                 21.0,
                 true,

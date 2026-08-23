@@ -8,6 +8,7 @@ public enum MeasurementMetric {
     SOIL_MOISTURE_RAW_ADC("soil_moisture_raw_adc", "adc"),
     AIR_TEMPERATURE_C("air_temperature_c", "℃"),
     AIR_HUMIDITY_PCT("air_humidity_pct", "%"),
+    ILLUMINANCE_LUX("illuminance_lux", "lx"),
     PLANT_LIGHT_PPFD_UMOL_M2_S("plant_light_ppfd_umol_m2_s", "μmol/m²/s"),
     SOIL_TEMPERATURE_C("soil_temperature_c", "℃");
 
