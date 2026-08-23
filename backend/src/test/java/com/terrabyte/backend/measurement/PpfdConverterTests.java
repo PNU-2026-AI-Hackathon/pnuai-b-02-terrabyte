@@ -36,6 +36,8 @@ class PpfdConverterTests {
                 .isEqualTo(LightSource.NATURAL_LIGHT);
         assertThat(converter.resolve(space("건물 옥상", null)))
                 .isEqualTo(LightSource.NATURAL_LIGHT);
+        assertThat(converter.resolve(space("기타", null)))
+                .isEqualTo(LightSource.NATURAL_LIGHT);
     }
 
     @Test
