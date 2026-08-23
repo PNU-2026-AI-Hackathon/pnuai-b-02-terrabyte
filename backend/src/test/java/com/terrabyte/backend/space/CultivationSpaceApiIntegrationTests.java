@@ -1,6 +1,7 @@
 package com.terrabyte.backend.space;
 
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -71,11 +72,70 @@ class CultivationSpaceApiIntegrationTests {
                 .andExpect(jsonPath("$.lightSource").doesNotExist());
     }
 
+    @Test
+    void 광원만_수정할_수_있다() throws Exception {
+        long spaceId = createSpace(token, "옥상");
+
+        mockMvc.perform(patch("/api/spaces/{id}", spaceId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lightSource\":\"WHITE_GROW_LED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lightSource").value("WHITE_GROW_LED"));
+    }
+
+    @Test
+    void 남의_공간은_수정할_수_없다() throws Exception {
+        String otherToken = signupAndGetToken("other-owner@example.com", "다른소유자");
+        long otherUsersSpaceId = createSpace(otherToken, "온실");
+
+        mockMvc.perform(patch("/api/spaces/{id}", otherUsersSpaceId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lightSource\":\"NATURAL_LIGHT\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 광원을_null_로_되돌릴_수_있다() throws Exception {
+        long spaceId = createSpace(token, "옥상");
+        mockMvc.perform(patch("/api/spaces/{id}", spaceId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lightSource\":\"WHITE_GROW_LED\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/spaces/{id}", spaceId)
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"lightSource\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lightSource").doesNotExist());
+    }
+
+    private long createSpace(String authToken, String name) throws Exception {
+        String response = mockMvc.perform(post("/api/spaces")
+                        .header("Authorization", "Bearer " + authToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"%s","spaceType":"건물 옥상","areaSquareMeters":10.0}
+                                """.formatted(name)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).get("id").asLong();
+    }
+
     private String signupAndGetToken() throws Exception {
+        return signupAndGetToken("space-owner@example.com", "공간소유자");
+    }
+
+    private String signupAndGetToken(String email, String name) throws Exception {
         String response = mockMvc.perform(post("/api/auth/signup")
                         .contentType(APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(
-                                new SignupRequest("space-owner@example.com", "password1", "공간소유자"))))
+                                new SignupRequest(email, "password1", name))))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()

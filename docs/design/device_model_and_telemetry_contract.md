@@ -228,7 +228,7 @@ SQLite outbox는 손대지 않는다.
       "measurements": {
         "air_temperature_c": 27.1,
         "air_humidity_pct": 58.0,
-        "plant_light_ppfd_umol_m2_s": 230.5,
+        "illuminance_lux": 16100.0,
         "soil_temperature_c": 21.4,
         "soil_moisture_pct": 31.2,
         "soil_moisture_raw_adc": 1847
@@ -250,13 +250,20 @@ SQLite outbox는 손대지 않는다.
 |---|---|---|
 | `air_temperature_c` | ✅ | −50 ~ 80 |
 | `air_humidity_pct` | ✅ | 0 ~ 100 |
-| `plant_light_ppfd_umol_m2_s` | ✅ | 0 ~ 5000 |
+| `illuminance_lux` | 선택 | **신규**. 0 ~ 200000 |
+| `plant_light_ppfd_umol_m2_s` | 선택 | **기존 필수에서 선택으로 완화.** 구버전 노드 호환용 |
 | `soil_temperature_c` | 선택 | 신규 metric. −20 ~ 80 |
 | `soil_moisture_pct` | 선택 | 0 ~ 100 |
 | `soil_moisture_raw_adc` | 선택 | **기존 필수에서 선택으로 완화** |
 
 `soil_moisture_raw_adc`를 필수에서 뺀 이유는, Arduino가 raw ADC를 emit하지 않는데 Spring이 필수로
 요구해 계약이 깨져 있었기 때문이다. 보정 검증용으로 유용하므로 필드는 유지하되 선택으로 둔다.
+
+`illuminance_lux`와 `plant_light_ppfd_umol_m2_s`는 각각 개별적으로는 선택이지만, 둘 다 비어 있으면
+안 된다 — 최소 하나는 있어야 한다. 신규 노드는 `illuminance_lux`만 보내고 PPFD는 서버가 공간의
+광원 계수로 유도한다. 구버전 노드가 아직 `plant_light_ppfd_umol_m2_s`만 보내는 동안은 레거시
+값으로 그대로 받아준다. 모든 노드가 lux 전송으로 전환되면 후속 작업으로 `plant_light_ppfd_umol_m2_s`를
+계약에서 제거하고 `illuminance_lux`를 필수로 올린다.
 
 `event_id`는 Orange Pi outbox의 UUID를 그대로 쓴다. 백엔드는 이 값으로 중복 수집을 차단한다.
 

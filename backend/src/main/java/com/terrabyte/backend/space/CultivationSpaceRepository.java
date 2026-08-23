@@ -76,6 +76,15 @@ public class CultivationSpaceRepository {
                         "Created cultivation space could not be loaded"));
     }
 
+    public Optional<CultivationSpace> updateLightSource(
+            long spaceId, long userId, LightSource lightSource) {
+        int updated = jdbcTemplate.update("""
+                UPDATE cultivation_space SET light_source = ?
+                WHERE id = ? AND user_id = ?
+                """, lightSource == null ? null : lightSource.name(), spaceId, userId);
+        return updated == 0 ? Optional.empty() : findByIdAndUserId(spaceId, userId);
+    }
+
     private CultivationSpace mapSpace(ResultSet resultSet, int rowNumber) throws SQLException {
         return new CultivationSpace(
                 resultSet.getLong("id"),
