@@ -39,7 +39,8 @@ public class CultivationSpaceController {
                 Long.parseLong(jwt.getSubject()),
                 request.name().trim(),
                 request.spaceType().trim(),
-                request.areaSquareMeters());
+                request.areaSquareMeters(),
+                request.lightSource());
         return CultivationSpaceResponse.from(space);
     }
 }
