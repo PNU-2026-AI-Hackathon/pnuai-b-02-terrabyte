@@ -253,9 +253,14 @@
 #define TB_PUMP_OFF_LEVEL LOW
 #endif
 
-// Guarded by ARDUINO because HIGH and LOW do not exist in the host test build,
-// where both would preprocess to 0 and trip this check.
-#if defined(ARDUINO) && (TB_PUMP_ON_LEVEL == TB_PUMP_OFF_LEVEL)
+// Guarded on HIGH/LOW being defined, not on ARDUINO. Both symbols come from
+// <Arduino.h>, and the guard translation units deliberately do not include it
+// so that they stay host-testable. ARDUINO is defined for every file in an
+// Arduino build regardless, so keying off it made this check fire in exactly
+// the units where HIGH and LOW are absent: an undefined identifier is 0 in a
+// preprocessor expression, so `HIGH == LOW` became `0 == 0`. The result was
+// that the whole firmware failed to compile for the board.
+#if defined(HIGH) && defined(LOW) && (TB_PUMP_ON_LEVEL == TB_PUMP_OFF_LEVEL)
 #error "TB_PUMP_ON_LEVEL and TB_PUMP_OFF_LEVEL must differ"
 #endif
 
