@@ -7,14 +7,15 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.messaging.FirebaseMessaging;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(NotificationProperties.class)
+@EnableScheduling
 public class NotificationConfig {
 
     @Bean(destroyMethod = "delete")
@@ -50,7 +51,20 @@ public class NotificationConfig {
     }
 
     @Bean
-    @ConditionalOnMissingBean(PushSender.class)
+    @ConditionalOnProperty(
+            prefix = "app.notification.firebase",
+            name = "enabled",
+            havingValue = "true")
+    public PushSender firebasePushSender(FirebaseMessaging firebaseMessaging) {
+        return new FirebasePushSender(firebaseMessaging);
+    }
+
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "app.notification.firebase",
+            name = "enabled",
+            havingValue = "false",
+            matchIfMissing = true)
     public PushSender noOpPushSender() {
         return (token, message) -> PushSendResult.skipped("firebase_disabled");
     }

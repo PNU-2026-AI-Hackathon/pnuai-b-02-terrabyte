@@ -59,10 +59,6 @@ public class NotificationRecordService {
         if (request.externalRef() == null || request.externalRef().isBlank()) {
             throw new IllegalArgumentException("A one-time notification requires an external reference");
         }
-        if (eventRepository.existsByExternalReference(
-                request.userId(), request.type(), request.externalRef())) {
-            return Optional.empty();
-        }
-        return Optional.of(eventRepository.save(request, clock.instant()));
+        return eventRepository.saveOnce(request, clock.instant());
     }
 }

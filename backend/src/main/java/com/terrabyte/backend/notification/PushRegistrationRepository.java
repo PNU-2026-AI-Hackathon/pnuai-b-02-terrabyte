@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -62,6 +63,30 @@ public class PushRegistrationRepository {
                 "UPDATE push_registration SET active = FALSE, updated_at = ?"
                         + " WHERE user_id = ? AND token = ? AND active = TRUE",
                 Timestamp.from(now), userId, token);
+    }
+
+    public Optional<PushRegistration> findById(long registrationId) {
+        return jdbcTemplate.query(
+                        SELECT_COLUMNS + " WHERE id = ?",
+                        this::map,
+                        registrationId)
+                .stream()
+                .findFirst();
+    }
+
+    public int deactivatePrevious(
+            long userId, String previousToken, String replacementToken, Instant now) {
+        return jdbcTemplate.update(
+                "UPDATE push_registration SET active = FALSE, updated_at = ?"
+                        + " WHERE user_id = ? AND token = ? AND token <> ? AND active = TRUE",
+                Timestamp.from(now), userId, previousToken, replacementToken);
+    }
+
+    public int deactivateAll(long userId, Instant now) {
+        return jdbcTemplate.update(
+                "UPDATE push_registration SET active = FALSE, updated_at = ?"
+                        + " WHERE user_id = ? AND active = TRUE",
+                Timestamp.from(now), userId);
     }
 
     public void deactivateToken(String token, Instant now) {

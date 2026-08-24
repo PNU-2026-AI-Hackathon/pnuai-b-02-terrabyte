@@ -2,11 +2,10 @@ package com.terrabyte.backend.notification;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 
 import com.terrabyte.backend.api.ApiException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,32 +13,37 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class NotificationService {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(NotificationService.class);
-
     private final PushRegistrationRepository registrationRepository;
     private final NotificationEventRepository eventRepository;
     private final NotificationRecordService recordService;
-    private final PushSender pushSender;
+    private final NotificationDeliveryRepository deliveryRepository;
     private final Clock clock;
 
     public NotificationService(
             PushRegistrationRepository registrationRepository,
             NotificationEventRepository eventRepository,
             NotificationRecordService recordService,
-            PushSender pushSender,
+            NotificationDeliveryRepository deliveryRepository,
             Clock clock) {
         this.registrationRepository = registrationRepository;
         this.eventRepository = eventRepository;
         this.recordService = recordService;
-        this.pushSender = pushSender;
+        this.deliveryRepository = deliveryRepository;
         this.clock = clock;
     }
 
     @Transactional
     public PushRegistrationResponse register(
             long userId, RegisterPushTokenRequest request) {
-        return PushRegistrationResponse.from(registrationRepository.register(
-                userId, request.token().trim(), request.platform(), clock.instant()));
+        Instant now = clock.instant();
+        String token = request.token().trim();
+        PushRegistration registration = registrationRepository.register(
+                userId, token, request.platform(), now);
+        if (request.previousToken() != null && !request.previousToken().isBlank()) {
+            registrationRepository.deactivatePrevious(
+                    userId, request.previousToken().trim(), token, now);
+        }
+        return PushRegistrationResponse.from(registration);
     }
 
     @Transactional
@@ -47,10 +51,19 @@ public class NotificationService {
         registrationRepository.deactivate(userId, request.token().trim(), clock.instant());
     }
 
+    @Transactional
+    public void unregisterAll(long userId) {
+        registrationRepository.deactivateAll(userId, clock.instant());
+    }
+
     public List<NotificationResponse> findAll(long userId, int limit) {
         return eventRepository.findAllForUser(userId, limit).stream()
                 .map(NotificationResponse::from)
                 .toList();
+    }
+
+    public UnreadNotificationCountResponse unreadCount(long userId) {
+        return new UnreadNotificationCountResponse(eventRepository.countUnreadForUser(userId));
     }
 
     @Transactional
@@ -69,39 +82,21 @@ public class NotificationService {
         eventRepository.markAllRead(userId, clock.instant());
     }
 
+    @Transactional
     public void handleCondition(
             NotificationRequest request,
             boolean active,
             Duration reminderInterval) {
         recordService.recordCondition(request, active, reminderInterval)
-                .ifPresent(this::dispatch);
+                .ifPresent(this::enqueue);
     }
 
+    @Transactional
     public void handleOnce(NotificationRequest request) {
-        recordService.recordOnce(request).ifPresent(this::dispatch);
+        recordService.recordOnce(request).ifPresent(this::enqueue);
     }
 
-    private void dispatch(NotificationEvent event) {
-        PushMessage message = new PushMessage(event.title(), event.body(), pushData(event));
-        for (PushRegistration registration
-                : registrationRepository.findActiveByUser(event.userId())) {
-            PushSendResult result = pushSender.send(registration.token(), message);
-            if (result.status() == PushSendResult.Status.INVALID_TOKEN) {
-                registrationRepository.deactivateToken(registration.token(), clock.instant());
-            } else if (result.status() == PushSendResult.Status.FAILED) {
-                LOGGER.warn(
-                        "push delivery failed notification_id={} registration_id={} detail={}",
-                        event.id(), registration.id(), result.detail());
-            }
-        }
-    }
-
-    private java.util.Map<String, String> pushData(NotificationEvent event) {
-        java.util.Map<String, String> data = new java.util.HashMap<>(event.data());
-        data.put("notificationId", Long.toString(event.id()));
-        data.put("type", event.type().name());
-        if (event.deviceId() != null) data.put("deviceId", event.deviceId().toString());
-        if (event.potId() != null) data.put("potId", event.potId().toString());
-        return data;
+    private void enqueue(NotificationEvent event) {
+        deliveryRepository.enqueue(event.id(), event.userId(), clock.instant());
     }
 }

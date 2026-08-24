@@ -21,3 +21,10 @@ app:
       secret-key: test_sk_test_terrabyte
       success-url: http://localhost:8081/payment/success
       fail-url: http://localhost:8081/payment/fail
+  notification:
+    delivery:
+      poll-delay-ms: 3600000
+      batch-size: 50
+      max-attempts: 5
+      retry-interval: PT0.01S
+      claim-timeout: PT5M

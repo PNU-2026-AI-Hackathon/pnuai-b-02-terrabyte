@@ -40,6 +40,7 @@ class NotificationApiIntegrationTests {
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
     private final NotificationService notificationService;
+    private final NotificationDeliveryWorker deliveryWorker;
 
     @MockitoBean
     private PushSender pushSender;
@@ -49,15 +50,18 @@ class NotificationApiIntegrationTests {
             MockMvc mockMvc,
             ObjectMapper objectMapper,
             @Qualifier("postgresJdbcTemplate") JdbcTemplate jdbcTemplate,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            NotificationDeliveryWorker deliveryWorker) {
         this.mockMvc = mockMvc;
         this.objectMapper = objectMapper;
         this.jdbcTemplate = jdbcTemplate;
         this.notificationService = notificationService;
+        this.deliveryWorker = deliveryWorker;
     }
 
     @BeforeEach
     void resetNotificationData() {
+        jdbcTemplate.update("DELETE FROM notification_delivery");
         jdbcTemplate.update("DELETE FROM notification_event");
         jdbcTemplate.update("DELETE FROM notification_condition_state");
         jdbcTemplate.update("DELETE FROM push_registration");
@@ -94,6 +98,53 @@ class NotificationApiIntegrationTests {
     }
 
     @Test
+    void replacesThePreviousTokenAndCanRevokeAllTokens() throws Exception {
+        String token = signupAndGetToken("push-replace@example.com");
+
+        mockMvc.perform(post("/api/push-tokens")
+                        .header("Authorization", bearer(token))
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"token\":\"old-token\",\"platform\":\"ANDROID\"}"))
+                .andExpect(status().isCreated());
+        mockMvc.perform(post("/api/push-tokens")
+                        .header("Authorization", bearer(token))
+                        .contentType(APPLICATION_JSON)
+                        .content("""
+                                {"token":"new-token","platform":"ANDROID",\
+                                 "previousToken":"old-token"}
+                                """))
+                .andExpect(status().isCreated());
+
+        Integer oldActive = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM push_registration WHERE token = 'old-token' AND active = TRUE",
+                Integer.class);
+        Integer newActive = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM push_registration WHERE token = 'new-token' AND active = TRUE",
+                Integer.class);
+        org.assertj.core.api.Assertions.assertThat(oldActive).isZero();
+        org.assertj.core.api.Assertions.assertThat(newActive).isEqualTo(1);
+
+        mockMvc.perform(delete("/api/push-tokens/all")
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isNoContent());
+        Integer active = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM push_registration WHERE active = TRUE",
+                Integer.class);
+        org.assertj.core.api.Assertions.assertThat(active).isZero();
+    }
+
+    @Test
+    void rejectsUnsupportedIosRegistrations() throws Exception {
+        String token = signupAndGetToken("push-ios@example.com");
+
+        mockMvc.perform(post("/api/push-tokens")
+                        .header("Authorization", bearer(token))
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"token\":\"apns-token\",\"platform\":\"IOS\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void exposesPersistedNotificationsAndReadState() throws Exception {
         String token = signupAndGetToken("alert-owner@example.com");
         long userId = userId("alert-owner@example.com");
@@ -118,6 +169,11 @@ class NotificationApiIntegrationTests {
         mockMvc.perform(get("/api/notifications")
                         .header("Authorization", bearer(token)))
                 .andExpect(jsonPath("$[0].readAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/notifications/unread-count")
+                        .header("Authorization", bearer(token)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unreadCount").value(0));
     }
 
     @Test
@@ -138,6 +194,7 @@ class NotificationApiIntegrationTests {
                 Integer.class,
                 userId);
         org.assertj.core.api.Assertions.assertThat(events).isEqualTo(2);
+        org.assertj.core.api.Assertions.assertThat(deliveryWorker.drainOnce()).isEqualTo(2);
         verify(pushSender, times(2)).send(eq("dedupe-token"), any(PushMessage.class));
     }
 

@@ -7,11 +7,7 @@ import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.MessagingErrorCode;
 import com.google.firebase.messaging.Notification;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.stereotype.Component;
 
-@Component
-@ConditionalOnBean(FirebaseMessaging.class)
 public class FirebasePushSender implements PushSender {
 
     private static final String CHANNEL_ID = "terrabyte-alerts";

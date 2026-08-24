@@ -38,13 +38,24 @@ public class NotificationEventRepository {
     }
 
     public NotificationEvent save(NotificationRequest request, Instant now) {
+        return insert(request, now, false)
+                .orElseThrow(() -> new IllegalStateException("Notification event was not inserted"));
+    }
+
+    public Optional<NotificationEvent> saveOnce(NotificationRequest request, Instant now) {
+        return insert(request, now, true);
+    }
+
+    private Optional<NotificationEvent> insert(
+            NotificationRequest request, Instant now, boolean ignoreConflict) {
         GeneratedKeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
+        int inserted = jdbcTemplate.update(connection -> {
             PreparedStatement statement = connection.prepareStatement(
                     "INSERT INTO notification_event"
                             + " (user_id, type, title, body, device_id, pot_id, external_ref,"
                             + " dedupe_key, data_json, created_at)"
-                            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                            + (ignoreConflict ? " ON CONFLICT DO NOTHING" : ""),
                     new String[]{"id"});
             statement.setLong(1, request.userId());
             statement.setString(2, request.type().name());
@@ -58,12 +69,13 @@ public class NotificationEventRepository {
             statement.setTimestamp(10, Timestamp.from(now));
             return statement;
         }, keyHolder);
+        if (inserted == 0) return Optional.empty();
         Number key = keyHolder.getKey();
         if (key == null) {
             throw new IllegalStateException("Notification event id was not returned");
         }
-        return findById(key.longValue())
-                .orElseThrow(() -> new IllegalStateException("Notification event could not be loaded"));
+        return Optional.of(findById(key.longValue())
+                .orElseThrow(() -> new IllegalStateException("Notification event could not be loaded")));
     }
 
     public Optional<NotificationEvent> findById(long eventId) {
@@ -75,24 +87,20 @@ public class NotificationEventRepository {
                 .findFirst();
     }
 
-    public boolean existsByExternalReference(
-            long userId, NotificationType type, String externalReference) {
-        Integer count = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM notification_event"
-                        + " WHERE user_id = ? AND type = ? AND external_ref = ?",
-                Integer.class,
-                userId,
-                type.name(),
-                externalReference);
-        return count != null && count > 0;
-    }
-
     public List<NotificationEvent> findAllForUser(long userId, int limit) {
         return jdbcTemplate.query(
                 SELECT_COLUMNS + " WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ?",
                 this::map,
                 userId,
                 limit);
+    }
+
+    public long countUnreadForUser(long userId) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM notification_event WHERE user_id = ? AND read_at IS NULL",
+                Long.class,
+                userId);
+        return count == null ? 0L : count;
     }
 
     public int markRead(long userId, long eventId, Instant now) {

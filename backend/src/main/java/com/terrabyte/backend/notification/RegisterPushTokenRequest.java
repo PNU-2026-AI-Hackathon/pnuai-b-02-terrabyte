@@ -6,5 +6,10 @@ import jakarta.validation.constraints.Size;
 
 public record RegisterPushTokenRequest(
         @NotBlank @Size(max = 2048) String token,
-        @NotNull PushPlatform platform) {
+        @NotNull PushPlatform platform,
+        @Size(max = 2048) String previousToken) {
+
+    public RegisterPushTokenRequest(String token, PushPlatform platform) {
+        this(token, platform, null);
+    }
 }

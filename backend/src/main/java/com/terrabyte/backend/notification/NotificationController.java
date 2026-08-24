@@ -47,11 +47,22 @@ public class NotificationController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/push-tokens/all")
+    public ResponseEntity<Void> unregisterAll(@AuthenticationPrincipal Jwt jwt) {
+        notificationService.unregisterAll(userId(jwt));
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/notifications")
     public List<NotificationResponse> notifications(
             @AuthenticationPrincipal Jwt jwt,
             @RequestParam(defaultValue = "50") @Min(1) @Max(100) int limit) {
         return notificationService.findAll(userId(jwt), limit);
+    }
+
+    @GetMapping("/notifications/unread-count")
+    public UnreadNotificationCountResponse unreadCount(@AuthenticationPrincipal Jwt jwt) {
+        return notificationService.unreadCount(userId(jwt));
     }
 
     @PatchMapping("/notifications/{notificationId}/read")

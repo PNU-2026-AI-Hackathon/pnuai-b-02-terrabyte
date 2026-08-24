@@ -27,7 +27,7 @@ public class NotificationDomainListener {
     }
 
     @TransactionalEventListener(
-            phase = TransactionPhase.AFTER_COMMIT,
+            phase = TransactionPhase.BEFORE_COMMIT,
             fallbackExecution = true)
     public void sensorQualityObserved(SensorQualityObservedEvent event) {
         sensorCondition(event, "air", "온·습도 센서", event.airSensorValid());
@@ -39,7 +39,7 @@ public class NotificationDomainListener {
     }
 
     @TransactionalEventListener(
-            phase = TransactionPhase.AFTER_COMMIT,
+            phase = TransactionPhase.BEFORE_COMMIT,
             fallbackExecution = true)
     public void devicePresenceObserved(DevicePresenceObservedEvent event) {
         String conditionKey = "device-offline:" + event.deviceId();
@@ -61,7 +61,7 @@ public class NotificationDomainListener {
     }
 
     @TransactionalEventListener(
-            phase = TransactionPhase.AFTER_COMMIT,
+            phase = TransactionPhase.BEFORE_COMMIT,
             fallbackExecution = true)
     public void irrigationCompleted(IrrigationCompletedEvent event) {
         Map<String, String> data = new HashMap<>();

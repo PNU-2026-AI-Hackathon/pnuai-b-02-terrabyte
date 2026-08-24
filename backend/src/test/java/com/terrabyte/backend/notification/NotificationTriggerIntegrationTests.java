@@ -39,6 +39,9 @@ class NotificationTriggerIntegrationTests {
     private NotificationService notificationService;
 
     @Autowired
+    private NotificationDeliveryWorker deliveryWorker;
+
+    @Autowired
     private ApplicationEventPublisher eventPublisher;
 
     @Autowired
@@ -55,6 +58,7 @@ class NotificationTriggerIntegrationTests {
 
     @BeforeEach
     void prepareClaimedDevice() {
+        jdbcTemplate.update("DELETE FROM notification_delivery");
         jdbcTemplate.update("DELETE FROM notification_event");
         jdbcTemplate.update("DELETE FROM notification_condition_state");
         jdbcTemplate.update("DELETE FROM push_registration");
@@ -98,6 +102,7 @@ class NotificationTriggerIntegrationTests {
         measurementService.updateGatewayPresence(HARDWARE_ID, false);
 
         assertThat(countEvents(NotificationType.DEVICE_OFFLINE)).isEqualTo(2);
+        assertThat(deliveryWorker.drainOnce()).isEqualTo(2);
         verify(pushSender, times(2)).send(eq("trigger-token"), any(PushMessage.class));
     }
 
@@ -133,6 +138,7 @@ class NotificationTriggerIntegrationTests {
         eventPublisher.publishEvent(event);
 
         assertThat(countEvents(NotificationType.IRRIGATION_COMPLETED)).isEqualTo(1);
+        assertThat(deliveryWorker.drainOnce()).isEqualTo(1);
         verify(pushSender, times(1)).send(eq("trigger-token"), any(PushMessage.class));
     }
 

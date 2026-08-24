@@ -60,6 +60,12 @@ app:
   notification:
     sensor-reminder-interval: ${NOTIFICATION_SENSOR_REMINDER_INTERVAL:PT1H}
     offline-reminder-interval: ${NOTIFICATION_OFFLINE_REMINDER_INTERVAL:PT6H}
+    delivery:
+      poll-delay-ms: ${NOTIFICATION_DELIVERY_POLL_DELAY_MS:5000}
+      batch-size: ${NOTIFICATION_DELIVERY_BATCH_SIZE:50}
+      max-attempts: ${NOTIFICATION_DELIVERY_MAX_ATTEMPTS:5}
+      retry-interval: ${NOTIFICATION_DELIVERY_RETRY_INTERVAL:PT30S}
+      claim-timeout: ${NOTIFICATION_DELIVERY_CLAIM_TIMEOUT:PT5M}
     firebase:
       enabled: ${FIREBASE_ENABLED:false}
       project-id: ${FIREBASE_PROJECT_ID:}

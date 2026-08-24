@@ -8,8 +8,17 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record NotificationProperties(
         Duration sensorReminderInterval,
         Duration offlineReminderInterval,
-        Firebase firebase) {
+        Firebase firebase,
+        Delivery delivery) {
 
     public record Firebase(boolean enabled, String projectId, String credentialsPath) {
+    }
+
+    public record Delivery(
+            long pollDelayMs,
+            int batchSize,
+            int maxAttempts,
+            Duration retryInterval,
+            Duration claimTimeout) {
     }
 }
