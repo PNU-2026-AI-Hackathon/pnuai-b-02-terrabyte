@@ -10,17 +10,17 @@ export type NotificationRecord = {
   type: NotificationType;
   title: string;
   body: string;
-  deviceId?: number;
-  potId?: number;
+  deviceId: number | null;
+  potId: number | null;
   data: Record<string, string>;
   createdAt: string;
-  readAt?: string;
+  readAt: string | null;
 };
 
-export function registerPushToken(token: string) {
+export function registerPushToken(token: string, previousToken?: string) {
   return authenticatedRequest('/api/push-tokens', {
     method: 'POST',
-    body: JSON.stringify({ token, platform: 'ANDROID' }),
+    body: JSON.stringify({ token, platform: 'ANDROID', previousToken }),
   });
 }
 
@@ -31,8 +31,18 @@ export function unregisterPushToken(token: string) {
   });
 }
 
+export function unregisterAllPushTokens() {
+  return authenticatedRequest<void>('/api/push-tokens/all', {
+    method: 'DELETE',
+  });
+}
+
 export function getNotifications(limit = 50) {
   return authenticatedRequest<NotificationRecord[]>(`/api/notifications?limit=${limit}`);
+}
+
+export function getUnreadNotificationCount() {
+  return authenticatedRequest<{ unreadCount: number }>('/api/notifications/unread-count');
 }
 
 export function markNotificationRead(notificationId: number) {

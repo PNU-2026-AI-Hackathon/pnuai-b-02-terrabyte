@@ -54,8 +54,8 @@ export function Header({ compact, onCreatePot, onSelectPot, onUpdatePot, page, p
     loading: alertsLoading,
     load: loadAlerts,
     markAllRead: markAllAlertsRead,
+    unreadCount: unreadAlertCount,
   } = useNotificationInbox();
-  const unreadAlertCount = alerts.filter((alert) => !alert.readAt).length;
 
   useEffect(() => {
     if (alertsOpen) void loadAlerts();

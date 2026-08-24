@@ -17,10 +17,10 @@ import { SetupFlow } from '../onboarding/SetupFlow';
 import { getPot, getPots } from '../pot/potApi';
 import { clearPaymentReturnUrl, readPaymentReturn } from '../payment/paymentReturn';
 import {
-  registerForPushNotifications,
+  activatePushNotifications,
+  deactivatePushNotifications,
   subscribeToNotificationResponses,
   subscribeToPushTokenChanges,
-  unregisterFromPushNotifications,
 } from '../notification/pushNotifications';
 import { PaymentReturnScreen } from '../screens/payment/PaymentReturnScreen';
 import { AppTabNavigator } from './AppTabNavigator';
@@ -222,13 +222,18 @@ export default function RootShell() {
   useEffect(() => {
     if (!authenticated) return undefined;
 
-    void registerForPushNotifications().catch((error) => {
+    void activatePushNotifications().catch((error) => {
       // Expo Go and builds without Firebase native configuration cannot obtain an FCM token.
       console.warn('푸시 알림을 등록하지 못했습니다.', error);
     });
     const tokenSubscription = subscribeToPushTokenChanges();
     const responseSubscription = subscribeToNotificationResponses((data) => {
+      const nextDeviceId = typeof data.deviceId === 'string' ? Number(data.deviceId) : data.deviceId;
       const potId = typeof data.potId === 'string' ? Number(data.potId) : data.potId;
+      if (typeof nextDeviceId === 'number' && Number.isFinite(nextDeviceId)) {
+        setDevice(null);
+        setDeviceId(nextDeviceId);
+      }
       if (typeof potId === 'number' && Number.isFinite(potId)) setSelectedPotId(potId);
     });
 
@@ -245,7 +250,7 @@ export default function RootShell() {
 
   const logout = async () => {
     try {
-      await unregisterFromPushNotifications();
+      await deactivatePushNotifications();
     } catch (error) {
       console.warn('로그아웃 중 푸시 토큰 해제에 실패했습니다.', error);
     } finally {

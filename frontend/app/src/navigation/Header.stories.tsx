@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 
 import { Header } from './Header';
+import { NotificationInboxProvider } from '../notification/NotificationInboxContext';
 
 const meta = {
   title: 'navigation/Header',
@@ -8,6 +9,13 @@ const meta = {
   parameters: {
     layout: 'fullscreen',
   },
+  decorators: [
+    (Story) => (
+      <NotificationInboxProvider enabled={false}>
+        <Story />
+      </NotificationInboxProvider>
+    ),
+  ],
 } satisfies Meta<typeof Header>;
 
 export default meta;
