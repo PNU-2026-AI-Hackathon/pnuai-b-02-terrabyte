@@ -8,8 +8,10 @@ package com.terrabyte.backend.irrigation;
  * from the model version being null.
  */
 public enum VolumeSource {
+    /** The AI server's prediction, in range and confident enough to be used as-is. */
+    AI_MODEL,
     /** The edge's own water-balance estimate, sent with the reading it was derived from. */
     EDGE_SUGGESTION,
-    /** No usable suggestion, so the fixed pot-size table decided. */
+    /** No usable prediction or suggestion, so the fixed pot-size table decided. */
     POT_SIZE_FALLBACK
 }

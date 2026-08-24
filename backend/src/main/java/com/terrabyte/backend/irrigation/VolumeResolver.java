@@ -1,19 +1,36 @@
 package com.terrabyte.backend.irrigation;
 
+import com.terrabyte.backend.ai.AiOutcome;
+import com.terrabyte.backend.ai.AiProperties;
+import com.terrabyte.backend.ai.IrrigationAiClient;
+import com.terrabyte.backend.ai.IrrigationPredictionRequest;
+import com.terrabyte.backend.ai.IrrigationPredictionResponse;
 import com.terrabyte.backend.measurement.IrrigationSuggestion;
 import com.terrabyte.backend.measurement.TelemetrySample;
 import com.terrabyte.backend.pot.Pot;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
  * Decides how much water to <em>request</em> for one pot.
  *
- * <p>The edge computes a dose from a water-balance formula and ships it with the
- * reading it was derived from. This class either accepts that number or reaches
- * for a fixed table — it never invents a third one.
+ * <p>Three sources, tried in order, and never a fourth number invented here:
+ *
+ * <ol>
+ *   <li>the AI server's prediction, when {@code app.ai.enabled} and the answer is
+ *       in range and confident;
+ *   <li>the edge's water-balance dose, shipped with the reading it was derived from;
+ *   <li>a fixed pot-size table.
+ * </ol>
+ *
+ * <p>The order is deliberate and each step is a strict fallback: the AI is the
+ * only source that can be unreachable, so it is asked first and its failure costs
+ * precision rather than the watering itself. With {@code app.ai.enabled=false} —
+ * the default — no HTTP call is made and the behaviour is exactly the edge-then-table
+ * path.
  *
  * <p>The value returned here is still a <em>request</em>. {@link IrrigationGovernor}
  * re-checks it against the per-dose ceiling and the daily budget before any
@@ -37,22 +54,52 @@ public class VolumeResolver {
     private static final int MIN_SUGGESTION_ML = 1;
     private static final int MAX_SUGGESTION_ML = 500;
 
-    /**
-     * @param volumeMl       what the caller should request
-     * @param source         what decided it
-     * @param modelVersion   the edge formula behind it, or null when the table decided.
-     *                       Written to {@code irrigation_decision.ai_model_version}
-     * @param edgeProposedMl what the edge actually proposed, **kept even when it was
-     *                       rejected as out of range**. Written to
-     *                       {@code irrigation_decision.ai_requested_ml}. A 99999 that
-     *                       survives only in a log line cannot be used to blame the
-     *                       formula afterwards; a stored one can.
-     */
-    public record ResolvedVolume(
-            int volumeMl, VolumeSource source, String modelVersion, Integer edgeProposedMl) {
+    /** Null when this backend runs without an AI server, which is the default. */
+    private final IrrigationAiClient aiClient;
+    private final AiProperties aiProperties;
+
+    // Explicit, because the AI-less constructor below makes the choice ambiguous.
+    @Autowired
+    public VolumeResolver(IrrigationAiClient aiClient, AiProperties aiProperties) {
+        this.aiClient = aiClient;
+        this.aiProperties = aiProperties;
     }
 
     /**
+     * Wiring without an AI server: the model is never consulted and the edge
+     * suggestion is the first source. Used by the tests that cover the local path.
+     */
+    VolumeResolver() {
+        this(null, null);
+    }
+
+    /**
+     * @param volumeMl     what the caller should request
+     * @param source       what decided it
+     * @param modelVersion the AI model or edge formula behind it, or null when the
+     *                     table decided with nothing to attribute. Written to
+     *                     {@code irrigation_decision.ai_model_version}
+     * @param proposedMl   what the upstream source actually proposed, **kept even when
+     *                     it was rejected as out of range**. Written to
+     *                     {@code irrigation_decision.ai_requested_ml}. A 99999 that
+     *                     survives only in a log line cannot be used to blame the model
+     *                     afterwards; a stored one can.
+     *
+     *                     <p>One column, two possible proposers: when the AI answered at
+     *                     all — even unusably — its number is the one stored, because a
+     *                     deployment that turned the AI on is asking about the AI. The
+     *                     edge's own number is still visible in the telemetry row that
+     *                     carried it.
+     */
+    public record ResolvedVolume(
+            int volumeMl, VolumeSource source, String modelVersion, Integer proposedMl) {
+    }
+
+    /**
+     * The local answer only: edge suggestion, else the table. Equivalent to
+     * {@link #resolve(Pot, TelemetrySample, IrrigationPredictionRequest)} with no
+     * features to send, and the whole of it when the AI is disabled.
+     *
      * @param pot    the pot being watered; also the reference the edge's own
      *               assumptions are checked against
      * @param sample the latest reading, or null when the pot has never reported
@@ -81,6 +128,72 @@ public class VolumeResolver {
         warnOnDrift(pot, suggestion);
         return new ResolvedVolume(
                 volumeMl, VolumeSource.EDGE_SUGGESTION, suggestion.modelVersion(), volumeMl);
+    }
+
+    /**
+     * Asks the AI first, and falls back through the edge to the table.
+     *
+     * <p>Nothing here can raise: {@link IrrigationAiClient} converts every failure
+     * into an outcome, and any outcome other than a usable in-range prediction
+     * simply leaves the local answer standing. An AI outage costs precision, never
+     * the watering.
+     *
+     * @param features what to send the model, or null to skip the call entirely
+     */
+    public ResolvedVolume resolve(
+            Pot pot, TelemetrySample sample, IrrigationPredictionRequest features) {
+
+        ResolvedVolume local = resolve(pot, sample);
+        if (aiClient == null || aiProperties == null || !aiProperties.enabled() || features == null) {
+            return local;
+        }
+
+        IrrigationAiClient.Result result = aiClient.predictIrrigation(features);
+        IrrigationPredictionResponse prediction = result.prediction();
+        if (prediction == null) {
+            // Disabled, timed out, transport error, unparseable body. The local
+            // answer already covers this case and there is nothing to attribute.
+            return local;
+        }
+
+        String modelVersion = prediction.modelVersion();
+        if (result.outcome() != AiOutcome.OK) {
+            // Schema mismatch, mainly: the body parsed, but its features are not the
+            // features we sent, so its number means nothing. The model version is
+            // still recorded — it names the artifact that has to be rolled back.
+            return new ResolvedVolume(local.volumeMl(), local.source(), modelVersion, null);
+        }
+
+        int ml = prediction.volumeMl();
+        if (ml < 0 || ml > aiProperties.hardCeilingMl()) {
+            // Fall back, do NOT clamp — the same reasoning as the edge suggestion
+            // above. A broken model must produce a visibly boring number, not a
+            // plausible one, and the rejected value is stored so it can be blamed.
+            log.warn(
+                    "AI volume {} mL outside [0, {}] for pot_id={} — falling back to {} mL "
+                            + "from {} (model {})",
+                    ml, aiProperties.hardCeilingMl(), pot.id(), local.volumeMl(),
+                    local.source(), modelVersion);
+            return new ResolvedVolume(local.volumeMl(), local.source(), modelVersion, ml);
+        }
+
+        if (prediction.confidence() < aiProperties.minConfidence()) {
+            // In range but unsure. Take whichever number gives less water:
+            // under-watering is recoverable on the next cycle, over-watering is not.
+            int conservative = Math.min(ml, local.volumeMl());
+            VolumeSource source = conservative == ml ? VolumeSource.AI_MODEL : local.source();
+            log.info(
+                    "AI confidence {} below {} — using conservative {} mL of ({}, {} from {})",
+                    prediction.confidence(), aiProperties.minConfidence(), conservative,
+                    ml, local.volumeMl(), local.source());
+            return new ResolvedVolume(
+                    conservative,
+                    source,
+                    source == VolumeSource.AI_MODEL ? modelVersion : local.modelVersion(),
+                    ml);
+        }
+
+        return new ResolvedVolume(ml, VolumeSource.AI_MODEL, modelVersion, ml);
     }
 
     /**
