@@ -39,6 +39,8 @@ edge/build/
 *.mobileprovision
 application-local.yml
 application-local.properties
+**/google-services.json
+**/firebase-service-account*.json
 
 # === Logs ===
 logs/

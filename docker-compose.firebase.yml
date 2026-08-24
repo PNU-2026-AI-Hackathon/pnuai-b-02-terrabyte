@@ -1,0 +1,12 @@
+# Firebase FCM 전송을 활성화할 때만 기본 Compose 파일과 함께 사용합니다.
+# FIREBASE_CREDENTIALS_HOST_PATH는 호스트 서비스 계정 JSON의 절대 경로여야 합니다.
+services:
+  backend:
+    environment:
+      FIREBASE_ENABLED: "true"
+      FIREBASE_CREDENTIALS_PATH: /run/secrets/firebase-service-account.json
+    volumes:
+      - type: bind
+        source: ${FIREBASE_CREDENTIALS_HOST_PATH:?Firebase service-account JSON path is required}
+        target: /run/secrets/firebase-service-account.json
+        read_only: true
