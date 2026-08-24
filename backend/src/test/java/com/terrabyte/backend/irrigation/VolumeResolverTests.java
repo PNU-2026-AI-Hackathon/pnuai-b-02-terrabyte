@@ -1,13 +1,24 @@
 package com.terrabyte.backend.irrigation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import com.terrabyte.backend.ai.AiOutcome;
+import com.terrabyte.backend.ai.AiProperties;
+import com.terrabyte.backend.ai.IrrigationAiClient;
+import com.terrabyte.backend.ai.IrrigationPredictionRequest;
+import com.terrabyte.backend.ai.IrrigationPredictionResponse;
 import com.terrabyte.backend.device.DeviceStatus;
 import com.terrabyte.backend.measurement.IrrigationSuggestion;
 import com.terrabyte.backend.measurement.TelemetrySample;
@@ -33,6 +44,11 @@ class VolumeResolverTests {
 
     private static final long POT_ID = 42L;
     private static final String MODEL = "water-balance-v1";
+    private static final String AI_MODEL_VERSION = "irrigation-rf-v1";
+
+    /** One well-formed feature vector; the tests care about the answer, not the input. */
+    private static final IrrigationPredictionRequest FEATURES = new IrrigationPredictionRequest(
+            1, "lettuce", 3000, 22.0, 21.0, 24.0, 55.0, 300.0, 7.0);
 
     private VolumeResolver resolver;
     private ListAppender<ILoggingEvent> logs;
@@ -84,7 +100,7 @@ class VolumeResolverTests {
         assertThat(resolved.source()).isEqualTo(VolumeSource.POT_SIZE_FALLBACK);
         assertThat(resolved.volumeMl()).isEqualTo(80);
         // The rejected value still reaches the audit trail.
-        assertThat(resolved.edgeProposedMl()).isEqualTo(0);
+        assertThat(resolved.proposedMl()).isEqualTo(0);
     }
 
     @Test
@@ -95,7 +111,7 @@ class VolumeResolverTests {
                 pot("lettuce", 3000), sampleWith(suggestion(99_999, "lettuce", 3000)));
 
         assertThat(resolved.source()).isEqualTo(VolumeSource.POT_SIZE_FALLBACK);
-        assertThat(resolved.edgeProposedMl()).isEqualTo(99_999);
+        assertThat(resolved.proposedMl()).isEqualTo(99_999);
         assertThat(resolved.modelVersion()).isEqualTo(MODEL);
     }
 
@@ -157,7 +173,7 @@ class VolumeResolverTests {
         // The rejected formula is named even though its answer was thrown away —
         // "which version misbehaved" is the question this column has to answer.
         assertThat(resolved.modelVersion()).isEqualTo(MODEL);
-        assertThat(resolved.edgeProposedMl()).isEqualTo(99_999);
+        assertThat(resolved.proposedMl()).isEqualTo(99_999);
         assertThat(warnings()).anyMatch(message -> message.contains("outside"));
     }
 
@@ -209,6 +225,119 @@ class VolumeResolverTests {
         assertThat(warnings()).isEmpty();
     }
 
+    // -- the AI layer ------------------------------------------------------
+    //
+    // The AI is asked first and every failure path has to land on the local
+    // answer: an unreachable model may cost precision, never the watering.
+
+    @Test
+    void aConfidentPredictionWinsOverTheEdgeSuggestion() {
+        VolumeResolver withAi = resolverWithAi(prediction(150, 0.9, AI_MODEL_VERSION));
+
+        VolumeResolver.ResolvedVolume resolved = withAi.resolve(
+                pot("lettuce", 3000), sampleWith(suggestion(118, "lettuce", 3000)), FEATURES);
+
+        assertThat(resolved).isEqualTo(new VolumeResolver.ResolvedVolume(
+                150, VolumeSource.AI_MODEL, AI_MODEL_VERSION, 150));
+    }
+
+    @Test
+    void aPredictionAboveTheCeilingFallsBackToTheEdgeAndIsNotClamped() {
+        VolumeResolver withAi = resolverWithAi(prediction(99_999, 0.9, AI_MODEL_VERSION));
+
+        VolumeResolver.ResolvedVolume resolved = withAi.resolve(
+                pot("lettuce", 3000), sampleWith(suggestion(118, "lettuce", 3000)), FEATURES);
+
+        assertThat(resolved.volumeMl()).isEqualTo(118);
+        assertThat(resolved.source()).isEqualTo(VolumeSource.EDGE_SUGGESTION);
+        // The rejected number is stored, not merely logged: this is what lets a
+        // broken model be blamed after the fact.
+        assertThat(resolved.proposedMl()).isEqualTo(99_999);
+        assertThat(resolved.modelVersion()).isEqualTo(AI_MODEL_VERSION);
+    }
+
+    @Test
+    void anUnreachableModelLeavesTheEdgeSuggestionStanding() {
+        IrrigationAiClient client = mock(IrrigationAiClient.class);
+        when(client.predictIrrigation(any()))
+                .thenReturn(new IrrigationAiClient.Result(AiOutcome.TIMEOUT, null));
+        VolumeResolver withAi = new VolumeResolver(client, aiProperties(true));
+
+        VolumeResolver.ResolvedVolume resolved = withAi.resolve(
+                pot("lettuce", 3000), sampleWith(suggestion(118, "lettuce", 3000)), FEATURES);
+
+        assertThat(resolved).isEqualTo(new VolumeResolver.ResolvedVolume(
+                118, VolumeSource.EDGE_SUGGESTION, MODEL, 118));
+    }
+
+    @Test
+    void aSchemaMismatchKeepsTheLocalVolumeButRecordsTheModel() {
+        IrrigationAiClient client = mock(IrrigationAiClient.class);
+        when(client.predictIrrigation(any())).thenReturn(new IrrigationAiClient.Result(
+                AiOutcome.SCHEMA_MISMATCH, prediction(150, 0.9, AI_MODEL_VERSION).prediction()));
+        VolumeResolver withAi = new VolumeResolver(client, aiProperties(true));
+
+        VolumeResolver.ResolvedVolume resolved = withAi.resolve(
+                pot("lettuce", 3000), sampleWith(suggestion(118, "lettuce", 3000)), FEATURES);
+
+        assertThat(resolved.volumeMl()).isEqualTo(118);
+        assertThat(resolved.source()).isEqualTo(VolumeSource.EDGE_SUGGESTION);
+        // The artifact that has to be rolled back is still named.
+        assertThat(resolved.modelVersion()).isEqualTo(AI_MODEL_VERSION);
+    }
+
+    @Test
+    void anUnsureModelTakesWhicheverNumberGivesLessWater() {
+        VolumeResolver drier = resolverWithAi(prediction(60, 0.1, AI_MODEL_VERSION));
+        assertThat(drier.resolve(
+                        pot("lettuce", 3000), sampleWith(suggestion(118, "lettuce", 3000)), FEATURES))
+                .isEqualTo(new VolumeResolver.ResolvedVolume(
+                        60, VolumeSource.AI_MODEL, AI_MODEL_VERSION, 60));
+
+        VolumeResolver wetter = resolverWithAi(prediction(200, 0.1, AI_MODEL_VERSION));
+        VolumeResolver.ResolvedVolume resolved = wetter.resolve(
+                pot("lettuce", 3000), sampleWith(suggestion(118, "lettuce", 3000)), FEATURES);
+
+        assertThat(resolved.volumeMl()).isEqualTo(118);
+        assertThat(resolved.source()).isEqualTo(VolumeSource.EDGE_SUGGESTION);
+        assertThat(resolved.proposedMl()).isEqualTo(200);
+    }
+
+    @Test
+    void aDisabledModelIsNeverCalled() {
+        IrrigationAiClient client = mock(IrrigationAiClient.class);
+        VolumeResolver withAi = new VolumeResolver(client, aiProperties(false));
+
+        VolumeResolver.ResolvedVolume resolved = withAi.resolve(
+                pot("lettuce", 3000), sampleWith(suggestion(118, "lettuce", 3000)), FEATURES);
+
+        assertThat(resolved.source()).isEqualTo(VolumeSource.EDGE_SUGGESTION);
+        verify(client, never()).predictIrrigation(any());
+    }
+
+    @Test
+    void aPredictionCoversAPotWhoseEdgeSentNoSuggestion() {
+        VolumeResolver withAi = resolverWithAi(prediction(150, 0.9, AI_MODEL_VERSION));
+
+        VolumeResolver.ResolvedVolume resolved =
+                withAi.resolve(pot("lettuce", 3000), sampleWith(null), FEATURES);
+
+        // Without the model this pot takes the 3 L table dose of 80 mL.
+        assertThat(resolved).isEqualTo(new VolumeResolver.ResolvedVolume(
+                150, VolumeSource.AI_MODEL, AI_MODEL_VERSION, 150));
+    }
+
+    @Test
+    void noFeaturesMeansNoCall() {
+        IrrigationAiClient client = mock(IrrigationAiClient.class);
+        VolumeResolver withAi = new VolumeResolver(client, aiProperties(true));
+
+        assertThat(withAi.resolve(pot("lettuce", 3000), sampleWith(suggestion(118, "lettuce", 3000)), null)
+                        .source())
+                .isEqualTo(VolumeSource.EDGE_SUGGESTION);
+        verify(client, never()).predictIrrigation(any());
+    }
+
     // -- helpers -----------------------------------------------------------
 
     private int fallbackFor(Integer substrateVolumeMl) {
@@ -220,6 +349,25 @@ class VolumeResolverTests {
                 .filter(event -> event.getLevel() == Level.WARN)
                 .map(ILoggingEvent::getFormattedMessage)
                 .toList();
+    }
+
+    private VolumeResolver resolverWithAi(IrrigationAiClient.Result result) {
+        IrrigationAiClient client = mock(IrrigationAiClient.class);
+        when(client.predictIrrigation(any())).thenReturn(result);
+        return new VolumeResolver(client, aiProperties(true));
+    }
+
+    private static AiProperties aiProperties(boolean enabled) {
+        return new AiProperties(
+                enabled, "http://localhost:8000", null, Duration.ofMillis(800), 1, 500, 0.5);
+    }
+
+    private static IrrigationAiClient.Result prediction(
+            int volumeMl, double confidence, String modelVersion) {
+        return new IrrigationAiClient.Result(
+                AiOutcome.OK,
+                new IrrigationPredictionResponse(
+                        volumeMl, confidence, modelVersion, 1, List.of(), 12.0));
     }
 
     private static IrrigationSuggestion suggestion(

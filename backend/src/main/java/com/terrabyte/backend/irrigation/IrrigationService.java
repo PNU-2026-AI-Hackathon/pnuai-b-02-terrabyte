@@ -1,7 +1,9 @@
 package com.terrabyte.backend.irrigation;
 
 import java.time.Clock;
+import java.util.Optional;
 
+import com.terrabyte.backend.ai.IrrigationPredictionRequest;
 import com.terrabyte.backend.api.ApiException;
 import com.terrabyte.backend.measurement.MeasurementStore;
 import com.terrabyte.backend.measurement.TelemetrySample;
@@ -16,15 +18,21 @@ import org.springframework.stereotype.Service;
 /**
  * Turns "this pot needs water" into an authorised, recorded command.
  *
- * <p>Order matters and is the whole point: the edge only ever proposes a number,
- * and that number then meets {@link IrrigationGovernor} exactly like a manual
- * request would. There is no path from a suggested volume to a pump that skips
+ * <p>Order matters and is the whole point: the AI and the edge only ever propose
+ * a number, and that number then meets {@link IrrigationGovernor} exactly like a
+ * manual request would. There is no path from a model output to a pump that skips
  * the gates.
  */
 @Service
 public class IrrigationService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IrrigationService.class);
+
+    /**
+     * Must match the AI server's {@code input_schema_version}; a mismatch makes it
+     * refuse rather than answer for a contract it does not implement.
+     */
+    private static final int SCHEMA_VERSION = 1;
 
     private final IrrigationGovernor governor;
     private final VolumeResolver volumeResolver;
@@ -55,30 +63,66 @@ public class IrrigationService {
     }
 
     /**
-     * The rule engine decided water is needed; take the edge's dose and proceed.
+     * The rule engine decided water is needed; ask the AI how much, and take the
+     * edge's dose when the AI has nothing usable to say.
      *
-     * <p>The edge's answer is advisory. If it is missing or out of range the
-     * resolver substitutes a volume from the pot-size table and the request
-     * continues — a pot whose node cannot compute a dose still has to be watered,
-     * and never more than the envelope allows.
+     * <p>Both answers are advisory. If the AI is unreachable, slow, disagrees on the
+     * schema version or returns something out of range, the resolver drops to the
+     * edge's water-balance dose and then to the pot-size table, and the request
+     * continues — an AI outage must never stop a plant from being watered, and must
+     * never water it more than the envelope allows either.
      */
     public IrrigationOutcome requestAutomatic(long potId, String correlationId) {
         Pot pot = requirePot(potId);
         TelemetrySample sample = measurementStore.findLatest(potId).orElse(null);
 
-        VolumeResolver.ResolvedVolume resolved = volumeResolver.resolve(pot, sample);
+        VolumeResolver.ResolvedVolume resolved =
+                volumeResolver.resolve(pot, sample, features(pot, sample));
 
-        boolean fromEdge = resolved.source() == VolumeSource.EDGE_SUGGESTION;
-        CommandSource source = fromEdge ? CommandSource.RULE_AI : CommandSource.RULE;
+        boolean sized = resolved.source() != VolumeSource.POT_SIZE_FALLBACK;
+        CommandSource source = sized ? CommandSource.RULE_AI : CommandSource.RULE;
 
         AuthorizationResult result = governor.authorize(IrrigationRequest.fromModel(
                 potId, resolved.volumeMl(), source, correlationId,
                 resolved.modelVersion(),
-                // 폴백이 이겼더라도 엣지가 제안한 값을 남긴다. 거부된 99999 가
+                // 폴백이 이겼더라도 제안된 값을 남긴다. 거부된 99999 가
                 // 로그에만 있으면 사후에 어느 쪽이 고장났는지 지목할 수 없다.
-                resolved.edgeProposedMl()));
+                resolved.proposedMl()));
 
         return complete(result, resolved);
+    }
+
+    /**
+     * The feature vector for one prediction.
+     *
+     * <p>Built even when there is no reading: the Governor refuses on gate 1
+     * regardless, so this only has to be well-formed — the refusal stays decided in
+     * exactly one place.
+     */
+    private IrrigationPredictionRequest features(Pot pot, TelemetrySample sample) {
+        if (sample == null) {
+            return new IrrigationPredictionRequest(
+                    SCHEMA_VERSION, pot.cropCode(), pot.substrateVolumeMl(),
+                    null, null, null, null, null, null);
+        }
+        return new IrrigationPredictionRequest(
+                SCHEMA_VERSION,
+                pot.cropCode(),
+                pot.substrateVolumeMl(),
+                sample.soilMoisturePct(),
+                sample.soilTemperatureC(),
+                sample.airTemperatureC(),
+                sample.airHumidityPct(),
+                sample.plantLightPpfdUmolM2S(),
+                hoursSinceLastIrrigation(pot.id()));
+    }
+
+    private Double hoursSinceLastIrrigation(long potId) {
+        Optional<java.time.Instant> last = commandRepository.lastCompletedAt(potId);
+        return last
+                .map(instant ->
+                        java.time.Duration.between(instant, clock.instant()).toMinutes() / 60.0)
+                .orElse(null);
     }
 
     /** Someone tapped the button in the app. */
