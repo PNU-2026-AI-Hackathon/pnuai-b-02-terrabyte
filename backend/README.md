@@ -401,7 +401,7 @@ SQLite의 `crop_score_model_config`는 프로필별 집계 모델을 불변 버�
 
 ## 휴대폰 푸시 알림
 
-인증 사용자는 `/api/push-tokens`로 Android FCM 토큰을 등록·해제하고 `/api/notifications`에서 저장된 알림을 조회·읽음 처리할 수 있습니다. 센서 quality 장애와 MQTT 기기 오프라인 이벤트는 같은 상태가 지속되는 동안 중복 억제됩니다. Firebase가 비활성화되어도 알림 이력은 저장됩니다.
+인증 사용자는 `/api/push-tokens`로 Android FCM 토큰을 등록·교체·해제하고 `/api/notifications`에서 저장된 알림을 조회·읽음 처리할 수 있습니다. `/api/notifications/unread-count`는 목록 페이지 크기와 무관한 정확한 미확인 개수를 반환합니다. 센서 quality 장애와 MQTT 기기 오프라인 이벤트는 같은 상태가 지속되는 동안 중복 억제됩니다. 알림과 발송 작업은 원본 이벤트와 같은 트랜잭션에 저장되며, 실제 FCM 호출은 영속 delivery outbox 작업자가 제한된 배치로 처리합니다. Firebase가 비활성화되어도 알림 이력은 저장됩니다.
 
 실제 FCM 전송에는 다음 환경 변수가 필요합니다.
 
@@ -412,6 +412,33 @@ FIREBASE_CREDENTIALS_PATH=<service-account-json-path>
 ```
 
 서비스 계정 JSON은 Git에 커밋하지 않습니다. 실제 전송을 켤 때는 런타임 secret/file mount로 서비스 계정 파일을 주입해야 합니다.
+
+Docker Compose에서는 서비스 계정 JSON의 절대 경로를 `.env`에 지정하고 Firebase 전용 override를 함께 사용합니다.
+
+```text
+FIREBASE_PROJECT_ID=<firebase-project-id>
+FIREBASE_CREDENTIALS_HOST_PATH=C:\absolute\path\firebase-service-account.json
+```
+
+개발 스택:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.firebase.yml up --build
+```
+
+프로덕션 유사 스택:
+
+```powershell
+docker compose -f docker-compose.prod.yml -f docker-compose.firebase.yml up -d --build
+```
+
+override는 파일을 컨테이너의 `/run/secrets/firebase-service-account.json`에 읽기 전용으로 마운트하고
+`FIREBASE_ENABLED=true`와 컨테이너 내부 경로를 설정합니다. 백엔드용 서비스 계정 JSON은 Android 앱의
+`google-services.json`과 다른 파일이며, 두 파일 모두 저장소에는 추가하지 않습니다.
+
+발송 실패는 기본 30초부터 지수 간격으로 최대 5회 재시도합니다. `NOTIFICATION_DELIVERY_*` 환경변수로
+배치 크기, 재시도 간격·횟수와 작업 claim 제한 시간을 조정할 수 있습니다. 만료된 FCM 토큰은 자동으로
+비활성화되며, 로그아웃 시 해당 사용자의 활성 토큰을 해제합니다.
 
 ## 테스트
 
