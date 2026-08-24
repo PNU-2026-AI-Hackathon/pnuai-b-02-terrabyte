@@ -1,0 +1,40 @@
+# syntax=docker/dockerfile:1.7
+#
+# 개발용 AI 서버 이미지.
+# 소스는 bind mount 로 들어오고, 이 이미지는 "고정된 파이썬 + 의존성"만 제공한다.
+# Python 3.12 를 쓴다. 3.14 는 numpy·scikit-learn 휠 문제로 부적합하다.
+ARG PYTHON_IMAGE=python:3.12-slim-bookworm
+FROM ${PYTHON_IMAGE}
+
+ARG UID=1000
+ARG GID=1000
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8
+
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends curl tini; \
+    rm -rf /var/lib/apt/lists/*; \
+    if ! getent group "${GID}" >/dev/null; then groupadd -g "${GID}" dev; fi; \
+    if ! getent passwd "${UID}" >/dev/null; then \
+        useradd -M -u "${UID}" -g "${GID}" -d /home/dev -s /bin/bash dev; \
+    fi; \
+    mkdir -p /workspace/ai-server /home/dev; \
+    chown -R "${UID}:${GID}" /workspace /home/dev
+
+# 의존성만 먼저 복사한다. 소스가 바뀌어도 이 레이어는 재사용된다.
+COPY requirements.txt requirements-train.txt /tmp/deps/
+RUN pip install --no-cache-dir -r /tmp/deps/requirements-train.txt
+
+USER ${UID}:${GID}
+WORKDIR /workspace/ai-server
+
+EXPOSE 8000
+
+# --reload 는 bind mount 된 소스를 저장하는 즉시 반영한다.
+ENTRYPOINT ["/usr/bin/tini", "--"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
