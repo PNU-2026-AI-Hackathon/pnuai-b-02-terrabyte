@@ -453,7 +453,7 @@ docker compose -f docker-compose.prod.yml down
 | [<img src="https://github.com/cnvxlns.png?size=160" width="120" alt="김동현 프로필 사진" />](https://github.com/cnvxlns) | [<img src="https://github.com/oesmln.png?size=160" width="120" alt="김민서 프로필 사진" />](https://github.com/oesmln) | [<img src="https://github.com/iris11132-max.png?size=160" width="120" alt="김효빈 프로필 사진" />](https://github.com/iris11132-max) | [<img src="https://github.com/7hyunii.png?size=160" width="120" alt="문성현 프로필 사진" />](https://github.com/7hyunii) | [<img src="https://github.com/Reighnex.png?size=160" width="120" alt="박태훈 프로필 사진" />](https://github.com/Reighnex) |
 | 김동현 | 김민서 | 김효빈 | 문성현 | 박태훈 |
 | okmac03@pusan.ac.kr | kmmlns@gmail.com | irisrla@naver.com | 7sonicx@gmail.com | pth4241@pusan.ac.kr |
-| - | - | - | - | - |
+| 하드웨어 연동,<br/>백엔드 개발 | 풀스택 개발 | - | 풀스택 개발,<br/>개발 협업 프로세스 구축·관리 | - |
 <br/>
 
 ## 7. 해커톤 참여 후기
