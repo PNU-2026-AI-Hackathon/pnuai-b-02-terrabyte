@@ -65,6 +65,19 @@ app:
     expected-schema-version: ${AI_EXPECTED_SCHEMA_VERSION:1}
     hard-ceiling-ml: ${AI_HARD_CEILING_ML:500}
     min-confidence: ${AI_MIN_CONFIDENCE:0.5}
+    # Two unrelated services share this namespace. app.ai.* is the irrigation
+    # volume regressor, which only suggests a number the Governor then
+    # validates. app.ai.gemini.* is the advisory care-plan agent, which
+    # produces text and touches no actuator. Separate @ConfigurationProperties
+    # records (app.ai and app.ai.gemini) bind them, so neither sees the other's
+    # keys - but they must live under ONE `ai:` mapping. Two `ai:` keys in the
+    # same document is a duplicate mapping key and one of them is silently lost.
+    gemini:
+      enabled: ${GEMINI_ENABLED:false}
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+      cache-ttl: ${GEMINI_CACHE_TTL:PT30M}
   payment:
     toss:
       enabled: ${TOSS_PAYMENTS_ENABLED:false}
@@ -73,12 +86,3 @@ app:
       secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
       success-url: ${TOSS_PAYMENTS_SUCCESS_URL:http://localhost:8081/payment/success}
       fail-url: ${TOSS_PAYMENTS_FAIL_URL:http://localhost:8081/payment/fail}
-  ai:
-    # The advisory care-plan agent. Distinct from the irrigation volume path,
-    # which this commit moved to an edge formula.
-    gemini:
-      enabled: ${GEMINI_ENABLED:false}
-      api-key: ${GEMINI_API_KEY:}
-      model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
-      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
-      cache-ttl: ${GEMINI_CACHE_TTL:PT30M}
