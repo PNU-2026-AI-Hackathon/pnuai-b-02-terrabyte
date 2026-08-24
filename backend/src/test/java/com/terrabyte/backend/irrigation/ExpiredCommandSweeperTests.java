@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.terrabyte.backend.config.SchedulingConfig;
 import com.terrabyte.backend.measurement.MeasurementStore;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -61,13 +62,13 @@ class ExpiredCommandSweeperTests {
         // because nothing ever registers under that type. Production must sweep:
         // silence here means pots that stay blocked on a lost acknowledgement.
         new ApplicationContextRunner()
-                .withUserConfiguration(IrrigationSchedulingConfig.class)
+                .withUserConfiguration(SchedulingConfig.class)
                 .run(enabled -> assertThat(enabled)
                         .hasSingleBean(SchedulingConfiguration.class));
 
         new ApplicationContextRunner()
-                .withUserConfiguration(IrrigationSchedulingConfig.class)
-                .withPropertyValues("app.irrigation.sweep.enabled=false")
+                .withUserConfiguration(SchedulingConfig.class)
+                .withPropertyValues("app.scheduling.enabled=false")
                 .run(disabled -> assertThat(disabled)
                         .doesNotHaveBean(SchedulingConfiguration.class));
     }

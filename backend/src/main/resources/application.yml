@@ -60,11 +60,17 @@ app:
       # starts moving water: the backend stops recording authorised commands and
       # starts publishing them to tb/v2/{gatewayId}/dn/command.
       enabled: ${MQTT_COMMAND_DISPATCH_ENABLED:false}
+  scheduling:
+    # The single switch for background timers: the expiry sweep and the liveness
+    # heartbeat. @EnableScheduling activates every @Scheduled method in the
+    # context, so it is a process-wide capability rather than a feature flag.
+    # Only the test profile turns it off.
+    enabled: ${SCHEDULING_ENABLED:true}
   irrigation:
     sweep:
-      # On by default: without it a lost acknowledgement holds a pot's in-flight
-      # gate open forever. Only the test profile turns it off.
-      enabled: ${IRRIGATION_SWEEP_ENABLED:true}
+      # Cadence only. Without the sweep a lost acknowledgement holds a pot's
+      # in-flight gate open forever, so there is no switch to turn it off
+      # independently of app.scheduling.
       interval-ms: ${IRRIGATION_SWEEP_INTERVAL_MS:30000}
       initial-delay-ms: ${IRRIGATION_SWEEP_INITIAL_DELAY_MS:10000}
   telemetry:
