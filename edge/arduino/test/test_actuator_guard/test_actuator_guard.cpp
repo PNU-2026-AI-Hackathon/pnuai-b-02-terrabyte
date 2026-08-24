@@ -48,7 +48,7 @@ bool ranWithoutStopping(tb::ActuatorGuard& guard, const uint32_t fromMs,
 
 void testConfiguredLimitsMatchContract() {
   const tb::GuardLimits limits = tb::configuredGuardLimits();
-  TB_CHECK_EQ(limits.absMaxRuntimeMs, 30000);
+  TB_CHECK_EQ(limits.absMaxRuntimeMs, 210000);
   TB_CHECK_EQ(limits.minIntervalMs, 600000);
   TB_CHECK_EQ(limits.hostTimeoutMs, 3000);
 
@@ -56,6 +56,40 @@ void testConfiguredLimitsMatchContract() {
   // the firmware refuses commands the server approved.
   TB_CHECK(limits.minIntervalMs < 21600000UL);
   TB_CHECK(limits.absMaxRuntimeMs < limits.minIntervalMs);
+}
+
+// The cross-layer invariant this whole constant exists to satisfy.
+//
+// The server's dose ceiling is 200 mL and the measured flow is 500 mL / 510 s,
+// so a maximum dose asks for 204 000 ms. If G1 were below that, every maximum
+// dose would be silently truncated and reported as stop:"max_runtime" - the
+// failure would look like a hardware fault rather than a misconfiguration.
+// Both halves are asserted: the largest legitimate dose must pass unclamped,
+// and something beyond the ceiling must still be clamped.
+void testMaximumServerDoseRunsUnclamped() {
+  tb::ActuatorGuard guard;  // the compiled-in contract, not the test limits
+
+  const tb::PumpVerdict granted = guard.requestPump("MAXDOSE", 204000, 0);
+  TB_CHECK(granted.accepted);
+  TB_CHECK_EQ(granted.grantedMs, 204000);
+  TB_CHECK(!granted.clampedByAbsMax);
+
+  const tb::PumpStop stop = guard.tick(204000);
+  TB_CHECK(stop.stopped);
+  TB_CHECK(stop.cause == tb::StopCause::kVolumeReached);
+}
+
+void testBeyondTheCeilingIsStillClamped() {
+  tb::ActuatorGuard guard;
+
+  const tb::PumpVerdict verdict = guard.requestPump("TOOLONG", 300000, 0);
+  TB_CHECK(verdict.accepted);
+  TB_CHECK_EQ(verdict.grantedMs, 210000);
+  TB_CHECK(verdict.clampedByAbsMax);
+
+  const tb::PumpStop stop = guard.tick(210000);
+  TB_CHECK(stop.stopped);
+  TB_CHECK(stop.cause == tb::StopCause::kMaxRuntime);
 }
 
 void testFreshBootAcceptsImmediately() {
@@ -342,6 +376,8 @@ void testRolloverDuringWatchdogWindow() {
 
 int main() {
   testConfiguredLimitsMatchContract();
+  testMaximumServerDoseRunsUnclamped();
+  testBeyondTheCeilingIsStillClamped();
   testFreshBootAcceptsImmediately();
   testFullRequestedRunCompletes();
   testG1ClampsOversizedRequest();

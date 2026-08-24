@@ -10,6 +10,7 @@
 
 #include "../include/ActuatorGuard.h"
 #include "../include/CommandParser.h"
+#include "../include/LedGuard.h"
 #include "../include/SensorAdapter.h"
 #include "../include/TelemetryConfig.h"
 
@@ -27,7 +28,20 @@ bool nodeIdIsValid = false;
 // the decision back out of the hardware.
 bool pumpIsOn = false;
 
+#if TB_LED_ENABLED
+// Mirror of the light output level, for the same reason as pumpIsOn.
+bool ledIsOn = false;
+
+// The id of the command that last set the latch. Kept because a watchdog abort
+// has to be addressed to something, and by then the command that lit the lamp
+// may be hours old.
+char lastLedCommandId[tb::kCommandIdCapacity] = "";
+#endif
+
 tb::ActuatorGuard actuatorGuard;
+#if TB_LED_ENABLED
+tb::LedGuard ledGuard;
+#endif
 
 // Inbound line assembly. The pattern is the one dataset_logger.cpp uses, but the
 // buffer is sized for JSON rather than for a single-letter verb.
@@ -205,11 +219,16 @@ void emitTelemetry(const uint32_t sequence, const uint32_t uptimeMs,
   Serial.print(F(",\"soil_moisture_pct\":"));
   Serial.print(sample.soilMoisturePct, 2);
 #endif
-  // Only the pump exists as an actuator, so only the pump is reported. The
-  // object form is what the contract specifies, which lets a light or heater be
-  // added later without changing the shape of the record.
+  // Only actuators this board actually drives are reported. The design doc's
+  // example also shows a "heater" key, but no heat pad exists here and claiming
+  // one that is merely off would be a lie about the hardware. The object form is
+  // exactly what makes omission legal.
   Serial.print(F(",\"actuators\":{\"pump\":"));
   Serial.print(pumpIsOn ? 1 : 0);
+#if TB_LED_ENABLED
+  Serial.print(F(",\"light\":"));
+  Serial.print(ledIsOn ? 1 : 0);
+#endif
 
   // Remaining lockout, not the configured interval. Emitting the setting here
   // would tell the server the pump is permanently unavailable, and the two
@@ -290,6 +309,41 @@ void emitAckRunEnded(const char* commandId, const tb::PumpStop& stop) {
   Serial.println(F("\"}"));
 }
 
+#if TB_LED_ENABLED
+// `accepted` is terminal for a latch: nothing ran, so there is no `completed`
+// to follow. The state is echoed so the gateway can reconcile its own latch
+// without waiting for the next telemetry record five seconds later.
+void emitAckLed(const char* commandId, const bool on) {
+  printAckStart(commandId, F("accepted"));
+  Serial.print(F(",\"on\":"));
+  Serial.print(on ? 1 : 0);
+  Serial.println('}');
+}
+
+// Only the dead-man produces this. A commanded off is already known to the host
+// that commanded it, and acking it here would report the same transition twice.
+void emitAckLedAborted(const char* commandId, const tb::LedStopEvent& stop) {
+  printAckStart(commandId, F("aborted"));
+  Serial.print(F(",\"ms\":"));
+  Serial.print(stop.onDurationMs);
+  Serial.println(F(",\"stop\":\"watchdog\"}"));
+}
+
+void writeLedOutput(const bool on) {
+  digitalWrite(TB_LED_PIN, on ? TB_LED_ON_LEVEL : TB_LED_OFF_LEVEL);
+  ledIsOn = on;
+}
+
+void rememberLedCommandId(const char* commandId) {
+  size_t index = 0;
+  while (commandId[index] != '\0' && index + 1 < tb::kCommandIdCapacity) {
+    lastLedCommandId[index] = commandId[index];
+    ++index;
+  }
+  lastLedCommandId[index] = '\0';
+}
+#endif
+
 void writePumpOutput(const bool on) {
   digitalWrite(TB_PUMP_PIN, on ? TB_PUMP_ON_LEVEL : TB_PUMP_OFF_LEVEL);
   pumpIsOn = on;
@@ -319,6 +373,23 @@ void handleInboundLine(const uint32_t nowMs) {
       break;
     }
 
+    case tb::InboundKind::kLedCommand: {
+#if TB_LED_ENABLED
+      // No gate can refuse a latch, so there is no rejection branch here. The
+      // pin moves before the ack for the same reason as the pump: the ack costs
+      // serial time that should not be charged to a stale output state.
+      const tb::LedVerdict verdict = ledGuard.request(message.ledOn, nowMs);
+      writeLedOutput(verdict.on);
+      rememberLedCommandId(message.id);
+      emitAckLed(message.id, verdict.on);
+#else
+      // A build without a light must not silently swallow the command: the
+      // gateway would wait for an ack that never comes.
+      emitAckRejected(message.id, tb::RejectReason::kBadRequest);
+#endif
+      break;
+    }
+
     case tb::InboundKind::kUnusableCommand:
       // With no readable id there is nothing to address an ack to, and the
       // command will expire upstream instead.
@@ -340,6 +411,9 @@ void pollHostSerial(const uint32_t nowMs) {
     // firmware cannot parse is still a host that is alive, and treating a
     // malformed line as silence would abort a run that is going fine.
     actuatorGuard.noteHostActivity(nowMs);
+#if TB_LED_ENABLED
+    ledGuard.noteHostActivity(nowMs);
+#endif
 
     if (character == '\n' || character == '\r') {
       if (inboundLength > 0 && !inboundOverflowed) {
@@ -363,15 +437,26 @@ void pollHostSerial(const uint32_t nowMs) {
 }
 
 void serviceActuators(const uint32_t nowMs) {
+  // The pump is serviced first: it is the actuator whose overrun costs water.
   const tb::PumpStop stop = actuatorGuard.tick(nowMs);
-  if (!stop.stopped) {
-    return;
+  if (stop.stopped) {
+    // Output first, ack second. Writing about 60 bytes at 115200 baud takes
+    // several milliseconds, and none of them should be pumping.
+    writePumpOutput(false);
+    emitAckRunEnded(actuatorGuard.activeCommandId(), stop);
   }
 
-  // Output first, ack second. Writing about 60 bytes at 115200 baud takes
-  // several milliseconds, and none of them should be pumping.
-  writePumpOutput(false);
-  emitAckRunEnded(actuatorGuard.activeCommandId(), stop);
+#if TB_LED_ENABLED
+  // No early return above: a pump that is idle must not stop the light from
+  // being ticked, or the light's dead-man would never fire.
+  const tb::LedStopEvent ledStop = ledGuard.tick(nowMs);
+  if (ledStop.stopped) {
+    writeLedOutput(false);
+    if (lastLedCommandId[0] != '\0') {
+      emitAckLedAborted(lastLedCommandId, ledStop);
+    }
+  }
+#endif
 }
 
 void sampleAndPublish(const uint32_t uptimeMs) {
@@ -410,6 +495,11 @@ void setup() {
   digitalWrite(TB_PUMP_PIN, TB_PUMP_OFF_LEVEL);
   pinMode(TB_PUMP_PIN, OUTPUT);
   pumpIsOn = false;
+#if TB_LED_ENABLED
+  digitalWrite(TB_LED_PIN, TB_LED_OFF_LEVEL);
+  pinMode(TB_LED_PIN, OUTPUT);
+  ledIsOn = false;
+#endif
 
   Serial.begin(TB_SERIAL_BAUD);
   const uint32_t serialStartedAtMs = millis();
@@ -446,6 +536,13 @@ void loop() {
   // A DHT22 read blocks for hundreds of milliseconds, so the actuator state is
   // re-evaluated against a fresh clock here instead of waiting for the next
   // iteration. Without this, one sampling slot could be added to a run.
+  //
+  // The serial drain has to come first. Host ticks that arrived during the
+  // blocking read are sitting in the 64-byte UART buffer, and until they are
+  // read the dead-man still sees the timestamp from before the read. That made
+  // the effective silence up to about 2.2 s against a 3 s window - 800 ms of
+  // margin, which a DS18B20 bus rescan is enough to spend.
+  pollHostSerial(millis());
   serviceActuators(millis());
 
   // Keep an anchored cadence, but skip missed slots instead of taking several

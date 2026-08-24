@@ -13,12 +13,14 @@
 #define TB_NODE_ID "UNCONFIGURED"
 #endif
 
-// 0.4.0 is the first version with an inbound command path, so the `hello`
-// record is how the Orange Pi tells whether it may send commands at all.
-// protocol_version stays 1: adding keys to telemetry is additive, and the MQTT
-// schema_version is a different namespace that the Orange Pi translates into.
+// 0.4.0 was the first version with an inbound command path; 0.5.0 adds the
+// grow-light latch (act:"led"). The `hello` record is how the Orange Pi tells
+// which commands it may send at all, so this has to move whenever the inbound
+// vocabulary does. protocol_version stays 1: adding keys to telemetry is
+// additive, and the MQTT schema_version is a different namespace that the
+// Orange Pi translates into.
 #ifndef TB_FIRMWARE_VERSION
-#define TB_FIRMWARE_VERSION "0.4.0"
+#define TB_FIRMWARE_VERSION "0.5.0"
 #endif
 
 #ifndef TB_SERIAL_BAUD
@@ -189,8 +191,24 @@
 
 // G1 absolute maximum single run. A command asking for more is clamped, not
 // rejected, so a mis-scaled request still delivers water instead of nothing.
+//
+// 210 s comes from the measured flow rate: a 500 mL bottle emptied in 8 min
+// 30 s (510 s), i.e. 0.980392 mL/s, so 210 s is 205.9 mL. That is the smallest
+// value that lets the server's 200 mL dose-max-ml (204 000 ms) run to
+// completion; at the previous 30 s the ceiling was 29.4 mL and EVERY maximum
+// dose would have been truncated and reported as stop:"max_runtime".
+//
+// This weakens the last-resort bound, and the number is worth stating plainly.
+// Against G2 below, the worst sustained duty a stream of unique command ids can
+// hold rises from 30/630 = 4.8% to 210/810 = 25.9%, i.e. from about 4 L to
+// about 22 L per day if the gateway, the broker and the server are all wrong at
+// once. That residue is carried by the server's 600 mL/24h budget and the
+// gateway's own budget, not by this constant.
+// TODO(G5): a rolling per-hour duty cap would bound it in firmware regardless
+// of how the interval is tuned. Deliberately not bundled here - three safety
+// numbers changing in one review is how safety reviews stop working.
 #ifndef TB_PUMP_ABS_MAX_MS
-#define TB_PUMP_ABS_MAX_MS 30000UL
+#define TB_PUMP_ABS_MAX_MS 210000UL
 #endif
 
 // G2 minimum interval between runs, measured from the last stop.
@@ -232,19 +250,22 @@
 #error "TB_PUMP_ABS_MAX_MS must be shorter than TB_PUMP_MIN_INTERVAL_MS"
 #endif
 
-// Pump output wiring. No pump circuit exists yet, so the default output is the
-// on-board LED: G4 and every state change stay observable on a bare board, and
-// no unknown load can be energised by a firmware that was flashed before its
-// wiring was decided. Point TB_PUMP_PIN at the relay input in the ignored local
-// header once the circuit is built.
+// Pump output wiring. D4 drives the gate of the pump MOSFET.
 #ifndef TB_PUMP_PIN
-#define TB_PUMP_PIN LED_BUILTIN
+#define TB_PUMP_PIN 4
 #endif
 
-// Relay polarity. The design doc specifies "OUTPUT + LOW" for G4, which is only
-// safe on an active-HIGH input; many low-cost relay modules are active LOW, and
-// on those, driving LOW at boot turns the pump ON. So the off level is named
-// rather than hard-coded, and it defaults to the documented LOW.
+// Output polarity. A MOSFET gate is active HIGH, so the defaults below are
+// correct for the fitted hardware: gate HIGH conducts, gate LOW does not.
+//
+// The levels stay named rather than hard-coded because the design doc specifies
+// "OUTPUT + LOW" for G4, which is only safe on an active-HIGH input; many
+// low-cost relay modules are active LOW, and on those, driving LOW at boot
+// turns the pump ON. Anyone swapping the MOSFET for such a module must set both.
+//
+// Neither level protects the window between reset and setup(): the pin is a
+// high-impedance input there and the gate floats. Only a hardware pull-down
+// (~10k) on the gate covers that, and it belongs on both D4 and D5.
 #ifndef TB_PUMP_ON_LEVEL
 #define TB_PUMP_ON_LEVEL HIGH
 #endif
@@ -262,6 +283,87 @@
 // that the whole firmware failed to compile for the board.
 #if defined(HIGH) && defined(LOW) && (TB_PUMP_ON_LEVEL == TB_PUMP_OFF_LEVEL)
 #error "TB_PUMP_ON_LEVEL and TB_PUMP_OFF_LEVEL must differ"
+#endif
+
+// ---------------------------------------------------------------------------
+// Grow-light output (D5). A latch, not a dose.
+//
+// The pump interlocks do not transfer. G1 bounds a run because water
+// accumulates in the pot; light does not accumulate, so there is no equivalent
+// ceiling. G2 bounds re-dosing because the substrate needs time to take it up;
+// a lamp has no analogue. What remains is the dead-man, and it needs a window
+// two orders of magnitude longer: the light is meant to stay on for a whole
+// photoperiod, and a lamp stuck on for five minutes costs electricity while a
+// pump stuck on for five minutes floods a room.
+//
+// The daily on-time ceiling is a horticultural policy, not a physical
+// interlock, so it lives on the gateway where it can be weighed against the
+// day's accumulated DLI. Expressing it here would need a wall clock this board
+// does not have.
+// ---------------------------------------------------------------------------
+
+#ifndef TB_LED_ENABLED
+#define TB_LED_ENABLED 1
+#endif
+
+// D5 drives the gate of the grow-light MOSFET, active HIGH.
+#ifndef TB_LED_PIN
+#define TB_LED_PIN 5
+#endif
+
+#ifndef TB_LED_ON_LEVEL
+#define TB_LED_ON_LEVEL HIGH
+#endif
+
+#ifndef TB_LED_OFF_LEVEL
+#define TB_LED_OFF_LEVEL LOW
+#endif
+
+// LED dead-man. While the light is on, any inbound serial byte proves the host
+// is alive; silence for this long turns it off. Five minutes leaves room for
+// four consecutive missed ticks at the gateway's 60 s LED keep-alive cadence.
+#ifndef TB_LED_HOST_TIMEOUT_MS
+#define TB_LED_HOST_TIMEOUT_MS 300000UL
+#endif
+
+// Keyed on HIGH/LOW being defined, not on ARDUINO - see the pump equivalent
+// above for why the difference is what makes the firmware compile at all.
+#if defined(HIGH) && defined(LOW) && TB_LED_ENABLED && (TB_LED_ON_LEVEL == TB_LED_OFF_LEVEL)
+#error "TB_LED_ON_LEVEL and TB_LED_OFF_LEVEL must differ"
+#endif
+
+#if TB_LED_ENABLED && (TB_LED_PIN == TB_PUMP_PIN)
+#error "TB_LED_PIN and TB_PUMP_PIN must not be the same pin"
+#endif
+
+// A shared pin would make a sensor read toggle an actuator, or an actuator
+// write corrupt a sensor bus. Cheap to check, expensive to discover in a pot.
+#if TB_LED_ENABLED && (TB_LED_PIN == TB_DHT22_PIN)
+#error "TB_LED_PIN collides with TB_DHT22_PIN"
+#endif
+#if TB_PUMP_PIN == TB_DHT22_PIN
+#error "TB_PUMP_PIN collides with TB_DHT22_PIN"
+#endif
+#if TB_SOIL_TEMPERATURE_ENABLED && TB_LED_ENABLED && \
+    (TB_LED_PIN == TB_SOIL_TEMPERATURE_PIN)
+#error "TB_LED_PIN collides with TB_SOIL_TEMPERATURE_PIN"
+#endif
+#if TB_SOIL_TEMPERATURE_ENABLED && (TB_PUMP_PIN == TB_SOIL_TEMPERATURE_PIN)
+#error "TB_PUMP_PIN collides with TB_SOIL_TEMPERATURE_PIN"
+#endif
+
+// The two dead-man windows must not be equal, and the LED's must be the longer.
+// The gateway ticks at a cadence chosen to sit between them: fast enough to
+// hold the light on, slow enough that the silence which stops an orphaned pump
+// run still happens. Collapse the two and that silence disappears, because G3
+// counts bytes and does not care which actuator they were meant for.
+#if TB_LED_ENABLED && (TB_LED_HOST_TIMEOUT_MS <= TB_HOST_TIMEOUT_MS)
+#error "TB_LED_HOST_TIMEOUT_MS must exceed TB_HOST_TIMEOUT_MS"
+#endif
+
+// Below a minute the light would chatter on ordinary link jitter.
+#if TB_LED_ENABLED && (TB_LED_HOST_TIMEOUT_MS < 60000UL)
+#error "TB_LED_HOST_TIMEOUT_MS below 60s makes the light chatter on link jitter"
 #endif
 
 // Inbound serial line buffer. The longest line the contract defines is a pump

@@ -12,6 +12,7 @@
 // they are not symmetric:
 //
 //   inbound   {"t":"cmd","id":"01J8F3","act":"pump","ms":18000,"ml":120}
+//   inbound   {"t":"cmd","id":"led-00000012","act":"led","on":1}
 //   inbound   {"t":"ka"}
 //   outbound  {"message_type":"telemetry", ...}
 //   outbound  {"t":"ack","id":"01J8F3","ph":"accepted"}
@@ -32,6 +33,7 @@ enum class InboundKind : uint8_t {
   kIgnored,          // not addressed to the command path at all
   kKeepAlive,        // {"t":"ka"} - the 1s dead-man tick
   kPumpCommand,      // complete and executable
+  kLedCommand,       // grow-light latch, complete and executable
   kUnusableCommand,  // t=="cmd" but not executable; `id` may still be readable
 };
 
@@ -40,6 +42,7 @@ struct InboundMessage {
   char id[kCommandIdCapacity];
   uint32_t runtimeMs;  // `ms`, the authoritative run duration
   uint16_t volumeMl;   // `ml`, carried for reporting only; see the .cpp
+  bool ledOn;          // `on`, meaningful only when kind == kLedCommand
 };
 
 // `line` must be a NUL-terminated single line with no trailing newline.

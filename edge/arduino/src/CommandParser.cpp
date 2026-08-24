@@ -94,6 +94,7 @@ InboundMessage parseInboundLine(const char* line) {
   message.id[0] = '\0';
   message.runtimeMs = 0;
   message.volumeMl = 0;
+  message.ledOn = false;
 
   if (line == nullptr) {
     return message;
@@ -121,6 +122,30 @@ InboundMessage parseInboundLine(const char* line) {
   if (!readQuotedText(findValue(line, "\"act\""), actuator, sizeof(actuator))) {
     return message;
   }
+  if (strcmp(actuator, "led") == 0) {
+    // The light is a latch, so `on:0` is a perfectly good command - it is the
+    // one that turns the lamp OFF. The pump path below treats a zero as
+    // unusable, and copying that rule here is exactly how a light gets left on
+    // after the host asked for darkness. Presence is what matters, not truth.
+    uint32_t on = 0;
+    if (!readUnsigned(findValue(line, "\"on\""), &on, 0xFFFFFFFFUL)) {
+      return message;
+    }
+    // readUnsigned saturates at its ceiling, so the ceiling is left wide and
+    // the range is checked here instead. Reading with a ceiling of 1 would turn
+    // `on:7` into a confident 1, and guessing what an undefined value meant is
+    // the other way a lamp gets left on.
+    if (on > 1) {
+      return message;
+    }
+    if (message.id[0] == '\0') {
+      return message;
+    }
+    message.ledOn = (on == 1);
+    message.kind = InboundKind::kLedCommand;
+    return message;
+  }
+
   if (strcmp(actuator, "pump") != 0) {
     return message;
   }

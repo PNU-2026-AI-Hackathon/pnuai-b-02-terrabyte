@@ -43,10 +43,11 @@ uses 115200 baud after the sketch starts.
   the final light source and geometry.
 - `NaN`, infinity, missing readings, and values outside configured ranges are
   rejected. Invalid samples are never sent as telemetry.
-- Actuator outputs are driven to their off level in the first three statements of
+- Actuator outputs are driven to their off level in the first statements of
   `setup()`, before serial starts. See the interlock section below.
-- The pump output defaults to the on-board LED, not to a relay pin, so firmware
-  flashed before its wiring is decided cannot energise an unknown load.
+- The pump MOSFET gate is D4 and the grow-light MOSFET gate is D5, both active
+  HIGH. Neither pin is protected between reset and `setup()`, when it is still a
+  high-impedance input: only a hardware pull-down on the gate covers that window.
 
 ## Actuator hard interlocks
 
@@ -56,10 +57,45 @@ all dead, and they are specified in `docs/design/edge_ai_hardening.md`.
 
 | # | Defence | Default | Behaviour |
 | --- | --- | --- | --- |
-| G1 | Absolute maximum run | `TB_PUMP_ABS_MAX_MS` 30000 | A larger `ms` is clamped, and the completion reports `stop:"max_runtime"` |
+| G1 | Absolute maximum run | `TB_PUMP_ABS_MAX_MS` 210000 | A larger `ms` is clamped, and the completion reports `stop:"max_runtime"` |
 | G2 | Minimum interval between runs | `TB_PUMP_MIN_INTERVAL_MS` 600000 | Measured from the last stop; an earlier command is `rejected`, `r:"cooldown"` |
 | G3 | Dead-man watchdog | `TB_HOST_TIMEOUT_MS` 3000 | While the pump runs, silence from the host for this long stops it: `aborted`, `stop:"watchdog"` |
-| G4 | Boot safety | — | Outputs are driven off in the first three statements of `setup()`, before `Serial.begin()` |
+| G4 | Boot safety | — | Both outputs are driven off in the first statements of `setup()`, before `Serial.begin()` |
+
+G1 is 210 s because the measured flow is 500 mL / 510 s = 0.980392 mL/s, so the
+server's 200 mL ceiling asks for 204 000 ms. Anything shorter would truncate
+every maximum dose and report it as `stop:"max_runtime"`, which looks like a
+hardware fault rather than a misconfiguration. The cost is stated plainly in
+`TelemetryConfig.h`: against G2 the worst sustained duty rises from 4.8% to
+25.9%, and that residue is carried by the server's daily budget, not by G1.
+
+### The grow light is a latch, not a dose
+
+`act:"led"` carries `on:0|1` and no duration. None of G1-G3 transfer as-is:
+
+| | Pump | Grow light |
+| --- | --- | --- |
+| Absolute maximum run | G1, 210 s | none — light does not accumulate in the pot |
+| Minimum interval | G2, 10 min | none — no substrate to recover |
+| Dead-man | G3, 3 s | `TB_LED_HOST_TIMEOUT_MS`, 300 s |
+| Command-id de-duplication | 8-entry ring | none — a latch is idempotent |
+
+The light id must never enter the pump's ring. Eight light transitions would
+evict the pump ids, and a redelivered dose that should have been `duplicate`
+would run a second time. That is why `LedGuard` is a separate class rather than
+a second latch inside `ActuatorGuard`.
+
+The daily on-time ceiling is a horticultural policy, not a physical interlock,
+so it lives on the gateway where it can be weighed against the day's
+accumulated DLI. Expressing it here would need a wall clock this board does not
+have.
+
+The gateway's light keep-alive must be **slower** than `TB_HOST_TIMEOUT_MS`.
+G3 counts bytes and cannot tell which actuator they were meant for, so a 1 Hz
+light tick would also feed the pump's dead-man and remove the silence that stops
+an orphaned run. A compile-time check enforces
+`TB_LED_HOST_TIMEOUT_MS > TB_HOST_TIMEOUT_MS`; the cadence between them is the
+gateway's responsibility.
 
 A ring of the last eight accepted command ids makes a redelivered command
 `rejected`, `r:"duplicate"` instead of dosing twice. Only accepted ids are
@@ -82,17 +118,31 @@ only safe on an active-HIGH input; many low-cost relay modules are active LOW an
 would turn the pump **on** at boot. Set both levels when wiring such a module:
 
 ```cpp
-#define TB_PUMP_PIN 7
 #define TB_PUMP_ON_LEVEL LOW
 #define TB_PUMP_OFF_LEVEL HIGH
 ```
 
-**Verification status:** G1-G4 and the duplicate ring are proven by the unit
-tests under `test/`, including the 10-minute cooldown, ring eviction, and the
-49.7-day `millis()` rollover. No pump circuit exists yet, so **none of them has
-been verified against real hardware.** The bench scenarios in
-`docs/design/edge_ai_hardening.md` (forced stop at 30 s, USB unplugged mid-run,
-duplicate id, immediate re-command, reset mid-run) remain outstanding.
+The check is keyed on `HIGH`/`LOW` being defined rather than on `ARDUINO`.
+`ARDUINO` is defined for every file in an Arduino build, but `HIGH` and `LOW`
+come from `<Arduino.h>`, which the guard translation units deliberately do not
+include so they stay host-testable. Keying off `ARDUINO` made `HIGH == LOW`
+evaluate as `0 == 0` there and broke the build for the board entirely.
+
+**Verification status:** G1-G4, the duplicate ring and the light latch are
+proven by the unit tests under `test/`, including the 10-minute cooldown, ring
+eviction, the five-minute light dead-man and the 49.7-day `millis()` rollover.
+The firmware also builds for the board (14642 B flash, 805 B SRAM).
+
+**None of it has been verified against real hardware.** The bench scenarios in
+`docs/design/edge_ai_hardening.md` (forced stop at 210 s, USB unplugged mid-run,
+duplicate id, immediate re-command, reset mid-run) remain outstanding, and so do
+the light equivalents: reset with the light on, USB unplugged with the light on,
+and a dose commanded while the light is lit.
+
+Do not connect a 12 V load to D4 or D5 yet. An Orange Pi on this bench emitted
+smoke on 2026-08-24 and the cause has not been identified; until it is, the
+scenarios above run against an indicator LED or a resistive load. Everything but
+the two flow-calibration cases is observable that way.
 
 ## Provisioning
 
@@ -282,7 +332,7 @@ objects.
 On each boot it first emits a hello record:
 
 ```json
-{"message_type":"hello","protocol_version":1,"node_id":"terrabyte-node-001","firmware_version":"0.4.0","serial_baud":115200,"telemetry_interval_ms":5000,"ready":true}
+{"message_type":"hello","protocol_version":1,"node_id":"terrabyte-node-001","firmware_version":"0.5.0","serial_baud":115200,"telemetry_interval_ms":5000,"ready":true}
 ```
 
 A complete, validated sample is emitted as:

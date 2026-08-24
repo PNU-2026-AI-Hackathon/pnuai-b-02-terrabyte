@@ -142,18 +142,83 @@ void testGarbageIsIgnored() {
 }
 
 // The parser hands `ms` straight to the guard, which is where the bound lives.
+// The expectation is derived from the guard's own limit rather than spelled
+// out, so tuning G1 does not break a test that is about responsibility rather
+// than about the value; testConfiguredLimitsMatchContract pins the value.
 void testParserDoesNotEnforceLimits() {
   const tb::InboundMessage message = tb::parseInboundLine(
-      "{\"t\":\"cmd\",\"id\":\"long\",\"act\":\"pump\",\"ms\":60000}");
+      "{\"t\":\"cmd\",\"id\":\"long\",\"act\":\"pump\",\"ms\":900000}");
   TB_CHECK(message.kind == tb::InboundKind::kPumpCommand);
-  TB_CHECK_EQ(message.runtimeMs, 60000);
+  TB_CHECK_EQ(message.runtimeMs, 900000);
 
   tb::ActuatorGuard guard;
+  const uint32_t ceiling = guard.limits().absMaxRuntimeMs;
+  TB_CHECK(message.runtimeMs > ceiling);
+
   const tb::PumpVerdict verdict =
       guard.requestPump(message.id, message.runtimeMs, 0);
   TB_CHECK(verdict.accepted);
   TB_CHECK(verdict.clampedByAbsMax);
-  TB_CHECK_EQ(verdict.grantedMs, 30000);
+  TB_CHECK_EQ(verdict.grantedMs, ceiling);
+}
+
+// The light verb. `on:0` must survive as a command, not be mistaken for the
+// pump path's "a zero duration is unusable" rule.
+void testLedLatchOn() {
+  const tb::InboundMessage message = tb::parseInboundLine(
+      "{\"t\":\"cmd\",\"id\":\"led-00000012\",\"act\":\"led\",\"on\":1}");
+  TB_CHECK(message.kind == tb::InboundKind::kLedCommand);
+  TB_CHECK_TEXT(message.id, "led-00000012");
+  TB_CHECK(message.ledOn);
+}
+
+void testLedLatchOffIsAValidCommand() {
+  const tb::InboundMessage message = tb::parseInboundLine(
+      "{\"t\":\"cmd\",\"id\":\"led-00000013\",\"act\":\"led\",\"on\":0}");
+  TB_CHECK(message.kind == tb::InboundKind::kLedCommand);
+  TB_CHECK(!message.ledOn);
+}
+
+void testLedWithoutOnKeyIsUnusable() {
+  const tb::InboundMessage message =
+      tb::parseInboundLine("{\"t\":\"cmd\",\"id\":\"led-1\",\"act\":\"led\"}");
+  TB_CHECK(message.kind == tb::InboundKind::kUnusableCommand);
+  // The id survives so the rejection can still be acked.
+  TB_CHECK_TEXT(message.id, "led-1");
+}
+
+// readUnsigned saturates, so a narrow ceiling would silently turn any of these
+// into a confident 1. Undefined values are refused instead of guessed.
+void testLedRejectsValuesOutsideTheContract() {
+  const char* const lines[] = {
+      "{\"t\":\"cmd\",\"id\":\"led-1\",\"act\":\"led\",\"on\":2}",
+      "{\"t\":\"cmd\",\"id\":\"led-1\",\"act\":\"led\",\"on\":7}",
+      "{\"t\":\"cmd\",\"id\":\"led-1\",\"act\":\"led\",\"on\":99}",
+      "{\"t\":\"cmd\",\"id\":\"led-1\",\"act\":\"led\",\"on\":-1}",
+      "{\"t\":\"cmd\",\"id\":\"led-1\",\"act\":\"led\",\"on\":true}",
+      "{\"t\":\"cmd\",\"id\":\"led-1\",\"act\":\"led\",\"on\":\"yes\"}",
+  };
+  for (const char* line : lines) {
+    TB_CHECK(tb::parseInboundLine(line).kind ==
+             tb::InboundKind::kUnusableCommand);
+  }
+}
+
+// Without an id there is no way to address an ack, so the command cannot run.
+void testLedWithoutIdIsUnusable() {
+  const tb::InboundMessage message =
+      tb::parseInboundLine("{\"t\":\"cmd\",\"act\":\"led\",\"on\":1}");
+  TB_CHECK(message.kind == tb::InboundKind::kUnusableCommand);
+  TB_CHECK_TEXT(message.id, "");
+}
+
+// A stray `on` must not change how a pump command is read.
+void testPumpCommandIgnoresAStrayOnKey() {
+  const tb::InboundMessage message = tb::parseInboundLine(
+      "{\"t\":\"cmd\",\"id\":\"P1\",\"act\":\"pump\",\"ms\":18000,\"on\":1}");
+  TB_CHECK(message.kind == tb::InboundKind::kPumpCommand);
+  TB_CHECK_EQ(message.runtimeMs, 18000);
+  TB_CHECK(!message.ledOn);
 }
 
 }  // namespace
@@ -170,5 +235,11 @@ int main() {
   testRuntimeSaturatesInsteadOfWrapping();
   testGarbageIsIgnored();
   testParserDoesNotEnforceLimits();
+  testLedLatchOn();
+  testLedLatchOffIsAValidCommand();
+  testLedWithoutOnKeyIsUnusable();
+  testLedRejectsValuesOutsideTheContract();
+  testLedWithoutIdIsUnusable();
+  testPumpCommandIgnoresAStrayOnKey();
   return tbtest::summary("test_command_parser");
 }

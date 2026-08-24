@@ -38,18 +38,30 @@
 // #define TB_SOIL_MOISTURE_DRY_ADC 800
 // #define TB_SOIL_MOISTURE_WET_ADC 350
 
-// Pump output. The default is the on-board LED so that a board flashed before
-// its wiring exists cannot energise an unknown load. Point this at the relay
-// input once the circuit is built, and set both levels if the module is
-// active LOW: driving LOW at boot would otherwise turn the pump ON, which is the
-// opposite of what G4 is for.
-// #define TB_PUMP_PIN 7
+// Actuator wiring. The defaults are D4 for the pump MOSFET gate and D5 for the
+// grow-light MOSFET gate, both active HIGH. Set both levels only if a channel is
+// swapped for an active-LOW relay module: driving LOW at boot would turn that
+// load ON, which is the opposite of what G4 is for.
+// #define TB_PUMP_PIN 4
 // #define TB_PUMP_ON_LEVEL LOW
 // #define TB_PUMP_OFF_LEVEL HIGH
+// #define TB_LED_PIN 5
+
+// Set to 0 on a board with no light channel wired. The command path then
+// rejects act:"led" explicitly rather than leaving the gateway waiting for an
+// ack that never arrives.
+// #define TB_LED_ENABLED 0
 
 // Interlock bounds. Overriding these is a safety decision, not a tuning knob.
 // TB_PUMP_MIN_INTERVAL_MS must stay well under the server's 6-hour cooldown, or
-// the firmware refuses commands the server already approved.
-// #define TB_PUMP_ABS_MAX_MS 30000UL
+// the firmware refuses commands the server already approved. TB_PUMP_ABS_MAX_MS
+// must stay above the server's largest dose in milliseconds, or every maximum
+// dose is truncated and reported as a hardware stop.
+// #define TB_PUMP_ABS_MAX_MS 210000UL
 // #define TB_PUMP_MIN_INTERVAL_MS 600000UL
 // #define TB_HOST_TIMEOUT_MS 3000UL
+
+// The light dead-man must stay longer than the pump's. The gateway ticks between
+// the two windows so that the silence which stops an orphaned pump run still
+// happens while the light stays lit.
+// #define TB_LED_HOST_TIMEOUT_MS 300000UL
