@@ -1,3 +1,7 @@
+// The production firmware. Mutually exclusive with dataset_logger.cpp, which
+// also defines setup() and loop(); see the note at the top of that file.
+#if !defined(TB_DATASET_LOGGER) || !TB_DATASET_LOGGER
+
 #include <Arduino.h>
 #include <ctype.h>
 #include <math.h>
@@ -451,3 +455,5 @@ void loop() {
     nextSampleAtMs = now + TB_TELEMETRY_INTERVAL_MS;
   }
 }
+
+#endif  // !TB_DATASET_LOGGER
