@@ -1,13 +1,14 @@
 {
   "expo": {
-    "name": "app",
+    "name": "TerraByte",
     "slug": "app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.terrabyte.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +30,15 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-status-bar"
+      "expo-status-bar",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#1F6646",
+          "defaultChannel": "terrabyte-alerts"
+        }
+      ]
     ]
   }
 }

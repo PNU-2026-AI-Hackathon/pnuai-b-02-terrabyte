@@ -188,5 +188,5 @@ const styles = StyleSheet.create(scaleTypography({
   authError: { ...typeScale.label, color: palette.red, fontFamily: font },
   field: { gap: 7 },
   fieldLabel: { ...typeScale.label, color: palette.secondary, fontFamily: font },
-  input: { ...typeScale.body, backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, color: palette.text, fontFamily: font, minHeight: 54, outlineStyle: 'none', paddingHorizontal: 16 } as any,
+  input: { ...typeScale.body, backgroundColor: 'rgba(255,255,255,0.48)', borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, color: palette.text, fontFamily: font, minHeight: 54, paddingHorizontal: 16 },
 }));

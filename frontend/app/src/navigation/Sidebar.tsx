@@ -188,7 +188,7 @@ export function Sidebar({ compact, cropName, device, onHide, onLogout, onNavigat
 const styles = StyleSheet.create(scaleTypography({
   pressed: { opacity: 0.78 },
   sidebar: { backgroundColor: 'rgba(255,255,255,0.44)', borderColor: palette.line, borderRightWidth: 1, paddingBottom: 30, paddingHorizontal: 22, paddingTop: 38, width: 240, zIndex: 2 },
-  sidebarScroll: { flex: 1, marginTop: 54, minHeight: 0, scrollbarColor: 'rgba(31, 102, 70, 0.32) transparent', scrollbarWidth: 'thin' } as any,
+  sidebarScroll: { flex: 1, marginTop: 54, minHeight: 0 },
   brandRow: { alignItems: 'center', flexDirection: 'row', flexShrink: 0, justifyContent: 'space-between', paddingHorizontal: 10 },
   brandName: { ...typeScale.cardTitle, color: palette.text, fontFamily: font },
   hideButton: { alignItems: 'center', borderColor: palette.line, borderRadius: 8, borderWidth: 1, height: 30, justifyContent: 'center', marginRight: -8, width: 30 },

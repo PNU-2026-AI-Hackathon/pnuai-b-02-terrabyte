@@ -92,7 +92,7 @@ npm run ios
 | 관리 가이드 | Gemini가 미설정이거나 호출에 실패했을 때만 오늘 작업(`managementTasks`), 재배 단계 기준(`cultivationCriteria`), 추천 상품(`shopProducts`)과 환경 요인→상품 ID 매핑(`factorProductMap`)을 기본값으로 표시 | `app/src/data.ts`, `app/src/care/carePlanApi.ts`, `app/src/shared/factorPresentation.ts` | Gemini 관리 계획 API가 오늘 할 일·재배 기준·실제 판매 상품 기반 추천을 생성. 토양 배합 추천과 환경 점수는 API이며, 작업 완료 체크는 화면 메모리 상태 |
 | 상품 구매 | 장바구니 품목별 수량, 열림 상태, 선택 상품, 페이지·필터 상태 | `app/src/screens/shop/ShopScreen.tsx` | 상품 목록·가격·카테고리·추천 배지는 `GET /api/products` 사용. 일반 앱에서 `shopProducts`를 상품 목록으로 사용하지 않음 |
 | 기기 등록·화분 관리·사이드바 | 작물 코드표(`crops`)를 작물명·이모지·기본 선택값·작물 선택지로 사용. 공간 유형·면적 단위 선택지는 화면 내부 고정 설정 | `app/src/data.ts`, `app/src/onboarding/SetupFlow.tsx`, `app/src/navigation/PotMenu.tsx`, `app/src/navigation/PotManager.tsx` | 공간·기기·화분·개별 센서 상태는 API. 작물 목록은 온보딩 검색에서 API를 호출하지만, 헤더/화분 관리의 선택지는 아직 정적 `crops` 사용 |
-| 공통 헤더 알림 | 알림 2건의 제목·본문·시각·심각도(`initialAlerts`), 화면별 제목·설명(`pageCopy`) | `app/src/navigation/Header.tsx` | 알림 조회·읽음 처리 API가 없어, ‘모두 읽음’ 상태도 화면 메모리에서만 변경 |
+| 공통 헤더 알림 | 화면별 제목·설명(`pageCopy`) | `app/src/navigation/Header.tsx` | 알림 목록·읽지 않은 개수·모두 읽음은 백엔드 API 사용. Android 설치 앱은 FCM 푸시 토큰도 등록 |
 | 진단 이력 | 없음 | - | 이력 점수·요약·이슈는 `GET /api/pots/:potId/diagnostic-history` 사용 |
 
 ### 현재 화면에서 사용되지 않는 잔존 목데이터
@@ -127,6 +127,7 @@ npm run ios
 | `app/src/order/orderApi.ts` | 주문 생성, 주문 내역·상세 조회, 결제 전 주문 취소 | `POST /api/orders`, `GET /api/orders`, `GET /api/orders/:orderId`, `POST /api/orders/:orderId/cancel` |
 | `app/src/payment/paymentApi.ts` | 토스 결제 준비·승인·실패 처리 및 결제 반환 화면 | `POST /api/payments/ready`, `POST /api/payments/confirm`, `POST /api/payments/fail`, `GET /api/orders/:orderId/payment`, `POST /api/payments/:paymentId/cancel` |
 | `app/src/care/carePlanApi.ts` | Gemini 기반 관리 우선순위·지표별 상세 진단·오늘 할 일·재배 기준·개선 방안·7일 일정·예상 변화·상품 추천 | `GET /api/pots/:potId/care-plan` |
+| `app/src/notification/notificationApi.ts` | 공통 헤더 알림함과 Android 푸시 등록 | `POST/DELETE /api/push-tokens`, `GET/PATCH /api/notifications` |
 
 ### 화면별 연동 상태
 
