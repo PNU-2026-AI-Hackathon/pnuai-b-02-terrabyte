@@ -57,6 +57,13 @@ app:
   telemetry:
     http-ingest:
       enabled: ${TELEMETRY_HTTP_INGEST_ENABLED:false}
+  notification:
+    sensor-reminder-interval: ${NOTIFICATION_SENSOR_REMINDER_INTERVAL:PT1H}
+    offline-reminder-interval: ${NOTIFICATION_OFFLINE_REMINDER_INTERVAL:PT6H}
+    firebase:
+      enabled: ${FIREBASE_ENABLED:false}
+      project-id: ${FIREBASE_PROJECT_ID:}
+      credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
   payment:
     toss:
       enabled: ${TOSS_PAYMENTS_ENABLED:false}

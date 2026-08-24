@@ -399,6 +399,20 @@ SQLite의 `crop_score_model_config`는 프로필별 집계 모델을 불변 버�
 `crop_environment_score` 뷰와 Java API는 이 설정을 읽어 같은 가중 기하평균과 `GOOD/NORMAL/BAD` 등급을
 계산합니다. 기존 `crop_score_profile`의 `40/25/35` 열은 legacy 조화평균 데이터이므로 새 지수로 사용하지 않습니다.
 
+## 휴대폰 푸시 알림
+
+인증 사용자는 `/api/push-tokens`로 Android FCM 토큰을 등록·해제하고 `/api/notifications`에서 저장된 알림을 조회·읽음 처리할 수 있습니다. 센서 quality 장애와 MQTT 기기 오프라인 이벤트는 같은 상태가 지속되는 동안 중복 억제됩니다. Firebase가 비활성화되어도 알림 이력은 저장됩니다.
+
+실제 FCM 전송에는 다음 환경 변수가 필요합니다.
+
+```text
+FIREBASE_ENABLED=true
+FIREBASE_PROJECT_ID=<firebase-project-id>
+FIREBASE_CREDENTIALS_PATH=<service-account-json-path>
+```
+
+서비스 계정 JSON은 Git에 커밋하지 않습니다. 실제 전송을 켤 때는 런타임 secret/file mount로 서비스 계정 파일을 주입해야 합니다.
+
 ## 테스트
 
 테스트에서는 외부 PostgreSQL 대신 PostgreSQL 호환 모드의 인메모리 H2를 사용하고, 점수 DB는 인메모리 SQLite를 사용합니다.
