@@ -3,6 +3,7 @@ package com.terrabyte.backend.mqtt;
 import java.time.Clock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.terrabyte.backend.device.DeviceRepository;
 import com.terrabyte.backend.irrigation.CommandDispatcher;
 import com.terrabyte.backend.irrigation.CommandTargetResolver;
 import org.eclipse.paho.client.mqttv3.MqttClient;
@@ -103,6 +104,29 @@ public class MqttConfig {
      * <p>Off by default so this can be merged dark. Turning it on is what starts
      * moving water, and it needs the end-to-end scenarios first.
      */
+    /**
+     * The liveness heartbeat. On by default, unlike the command dispatcher: it
+     * moves no water, and the failure it prevents is a gateway that keeps
+     * publishing into a topic nobody reads because the broker outlived the
+     * application. Needs {@code app.scheduling.enabled}, which is the switch for
+     * every timed task in this process.
+     */
+    @Bean
+    @ConditionalOnProperty(
+            prefix = "app.mqtt.heartbeat",
+            name = "enabled",
+            havingValue = "true",
+            matchIfMissing = true)
+    public BackendHeartbeatPublisher backendHeartbeatPublisher(
+            MqttClient mqttClient,
+            MqttProperties properties,
+            ObjectMapper objectMapper,
+            DeviceRepository deviceRepository,
+            Clock clock) {
+        return new BackendHeartbeatPublisher(
+                mqttClient, properties, objectMapper, deviceRepository, clock);
+    }
+
     @Bean
     @Primary
     @ConditionalOnProperty(

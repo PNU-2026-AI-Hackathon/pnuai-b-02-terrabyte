@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import java.time.Clock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.terrabyte.backend.device.DeviceRepository;
 import com.terrabyte.backend.irrigation.CommandDispatcher;
 import com.terrabyte.backend.irrigation.CommandTargetResolver;
 import com.terrabyte.backend.irrigation.IrrigationConfig;
@@ -85,9 +86,17 @@ class MqttCommandDispatchWiringTests {
                 });
     }
 
-    /** The collaborators the dispatcher bean method needs, and nothing more. */
+    /** The collaborators MqttConfig's bean methods need, and nothing more. */
     @Configuration(proxyBeanMethods = false)
     static class StubsConfig {
+
+        // Not for the dispatcher: the heartbeat publisher in the same
+        // configuration class needs it, and an unsatisfiable dependency there
+        // fails the whole context rather than just its own bean.
+        @Bean
+        DeviceRepository deviceRepository() {
+            return mock(DeviceRepository.class);
+        }
 
         @Bean
         ObjectMapper objectMapper() {

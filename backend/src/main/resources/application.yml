@@ -60,6 +60,12 @@ app:
       # starts moving water: the backend stops recording authorised commands and
       # starts publishing them to tb/v2/{gatewayId}/dn/command.
       enabled: ${MQTT_COMMAND_DISPATCH_ENABLED:false}
+    heartbeat:
+      # Proof that the application is alive, not merely the broker. Off only
+      # for a deployment that has no gateways. Also needs app.scheduling.enabled.
+      enabled: ${MQTT_HEARTBEAT_ENABLED:true}
+      interval-ms: ${MQTT_HEARTBEAT_INTERVAL_MS:30000}
+      initial-delay-ms: ${MQTT_HEARTBEAT_INITIAL_DELAY_MS:10000}
   scheduling:
     # The single switch for background timers: the expiry sweep and the liveness
     # heartbeat. @EnableScheduling activates every @Scheduled method in the
