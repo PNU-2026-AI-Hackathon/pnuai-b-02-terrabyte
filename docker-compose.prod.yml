@@ -109,6 +109,9 @@ services:
       # 시연용 임시 완화 스위치. 게이트 1(오래된 측정값으로는 관수하지 않는다)의
       # 기준을 밖에서 조절한다. 기본값은 코드와 같은 10분이다.
       APP_IRRIGATION_MAX_SAMPLE_AGE: ${IRRIGATION_MAX_SAMPLE_AGE:-PT10M}
+      # 게이트 2(연속 관수 제한). 기본값은 코드와 같은 6시간이다. 시연에서
+      # 반복 촬영이 필요할 때만 잠시 줄인다.
+      APP_IRRIGATION_MIN_INTERVAL: ${IRRIGATION_MIN_INTERVAL:-PT6H}
       JWT_ISSUER: ${JWT_ISSUER:-terrabyte-backend}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 을 32바이트 이상으로 설정하세요}
       JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT1H}
