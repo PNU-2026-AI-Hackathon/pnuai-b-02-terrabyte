@@ -1,8 +1,13 @@
 package com.terrabyte.backend.mqtt;
 
+import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -26,6 +31,18 @@ import org.springframework.stereotype.Component;
  * the acknowledgement policy. Everything that varies per uplink kind lives in a
  * handler instead.
  *
+ * <p><strong>Threading rule: nothing in a Paho callback may wait on the
+ * broker.</strong> Paho serves {@link #connectComplete}, {@link #messageArrived}
+ * and every token completion from a <em>single</em> callback thread
+ * ({@code MQTT Call}), and its receiver thread ({@code MQTT Rec}) stops reading
+ * the socket as soon as ten messages are queued for that thread. A callback that
+ * waits for a broker response therefore deadlocks the client outright: the
+ * callback thread waits for a packet only the receiver thread can read, and the
+ * receiver thread waits for the callback thread to drain the queue it is blocked
+ * in front of. Subscribing is the one thing this class must do on connect, so it
+ * is handed to {@link #subscriber} and the callback thread returns at once.
+ * {@link #connectComplete} records what doing it inline actually cost.
+ *
  * <p>Conditional on {@code app.mqtt.enabled} for the same reason as
  * {@link MqttConfig}: no broker is available in tests or a plain local run. The
  * handlers themselves are <em>not</em> conditional — they have no broker
@@ -41,9 +58,23 @@ public class MqttUplinkRouter implements MqttCallbackExtended {
     /** Every uplink in the contract is QoS 1; only the downlink heartbeat is QoS 0. */
     private static final int UPLINK_QOS = 1;
 
+    /** How much of a rejected payload to log: enough to identify it, not enough to flood. */
+    private static final int PAYLOAD_PREVIEW_CHARS = 512;
+
     private final MqttClient mqttClient;
     private final MqttConnectOptions connectOptions;
     private final MqttProperties mqttProperties;
+
+    /**
+     * Runs the SUBSCRIBE calls that {@link #connectComplete} must not run itself.
+     * Single-threaded so a reconnect storm cannot interleave two subscription
+     * sweeps, and a daemon so it can never hold up a shutdown.
+     */
+    private final ExecutorService subscriber = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "mqtt-subscriber");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     /** Topic filter to handler, in declaration order. Filters are disjoint. */
     private final Map<String, MqttUplinkHandler> routes = new LinkedHashMap<>();
@@ -76,6 +107,13 @@ public class MqttUplinkRouter implements MqttCallbackExtended {
 
     @PreDestroy
     public void stop() throws MqttException {
+        // Stopped before the client so an in-flight subscribe cannot race close().
+        subscriber.shutdownNow();
+        try {
+            subscriber.awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
         if (mqttClient.isConnected()) {
             mqttClient.disconnect();
         }
@@ -88,12 +126,33 @@ public class MqttUplinkRouter implements MqttCallbackExtended {
      * automatic reconnect restores the transport but not the subscription
      * list when {@code cleanSession} is true — without re-subscribing here
      * a reconnected client would silently stop receiving telemetry.
+     *
+     * <p>The subscribing is handed to {@link #subscriber} rather than done here,
+     * and that hand-off is the whole point of this method.
+     * {@link MqttClient#subscribe} blocks until the SUBACK arrives, but the
+     * SUBACK can only be read by Paho's receiver thread — which, on a reconnect
+     * into a backlog of queued uplinks, is already blocked waiting for this very
+     * callback thread to drain its ten-deep message queue. Doing it inline
+     * deadlocked the client: {@link #messageArrived} never ran, so no message
+     * was ever acknowledged, the broker's inflight window filled and stayed
+     * full, and the connection died on the keep-alive timeout about a minute
+     * later — then reconnected and deadlocked again, once a minute, with every
+     * uplink in between stranded on the broker.
      */
     @Override
     public void connectComplete(boolean reconnect, String serverURI) {
         LOGGER.info(
                 "mqtt connected reconnect={} server={} subscriptions={}",
                 reconnect, serverURI, routes.keySet());
+        try {
+            subscriber.execute(() -> subscribeAll(reconnect));
+        } catch (RejectedExecutionException e) {
+            // Shutting down; the connection is going away with us.
+            LOGGER.warn("mqtt subscribe skipped, subscriber stopped reconnect={}", reconnect);
+        }
+    }
+
+    private void subscribeAll(boolean reconnect) {
         for (String filter : routes.keySet()) {
             try {
                 mqttClient.subscribe(filter, UPLINK_QOS);
@@ -139,8 +198,18 @@ public class MqttUplinkRouter implements MqttCallbackExtended {
         try {
             handled = route(topic, message);
         } catch (Exception e) {
-            LOGGER.error("unexpected failure handling mqtt message topic={}", topic, e);
-            handled = false;
+            // An exception reaching here is a defect, not the transient failure
+            // a handler reports by returning false — every handler already
+            // catches those around its own downstream call. A defect fails
+            // identically on every redelivery, so withholding the ack would not
+            // retry the message, it would wedge the inflight window and take
+            // every later sample down with it. Drop it, loudly.
+            LOGGER.error(
+                    "dropping unprocessable mqtt message topic={} payload={}",
+                    topic,
+                    preview(message),
+                    e);
+            handled = true;
         }
 
         if (!handled) {
@@ -182,5 +251,17 @@ public class MqttUplinkRouter implements MqttCallbackExtended {
             return true;
         }
         return handler.handle(gatewayId, message);
+    }
+
+    /** Truncated payload for a rejection log, safe on a null or oversized body. */
+    private static String preview(MqttMessage message) {
+        byte[] payload = message == null ? null : message.getPayload();
+        if (payload == null || payload.length == 0) {
+            return "";
+        }
+        String text = new String(payload, StandardCharsets.UTF_8);
+        return text.length() <= PAYLOAD_PREVIEW_CHARS
+                ? text
+                : text.substring(0, PAYLOAD_PREVIEW_CHARS) + "...";
     }
 }
