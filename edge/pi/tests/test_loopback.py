@@ -54,7 +54,9 @@ class CommandHandlingTests(unittest.TestCase):
     def test_an_over_long_command_is_clamped_and_says_so(self) -> None:
         """G1. The reported ms is what ran, not what was asked for."""
 
-        answered = self.send({"t": "cmd", "id": "long", "act": "pump", "ms": 60000})
+        answered = self.send(
+            {"t": "cmd", "id": "long", "act": "pump", "ms": 240000}
+        )
         self.assertEqual(answered[1]["ms"], ABS_MAX_RUN_MS)
         self.assertEqual(answered[1]["stop"], "max_runtime")
 
