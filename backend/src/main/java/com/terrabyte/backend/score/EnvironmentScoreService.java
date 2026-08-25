@@ -24,6 +24,7 @@ import org.springframework.stereotype.Service;
 public class EnvironmentScoreService {
 
     private static final String EQUAL_FORMULA = "100 × (T/100 × H/100 × L/100)^(1/3)";
+    private static final long SCORE_AVERAGE_WINDOW_SECONDS = 24L * 60 * 60;
     private static final double SOIL_MOISTURE_ZERO_LOW = 0;
     private static final double SOIL_MOISTURE_OPTIMAL_LOW = 30;
     private static final double SOIL_MOISTURE_OPTIMAL_HIGH = 45;
@@ -66,10 +67,24 @@ public class EnvironmentScoreService {
         if (pot.cropCode() == null) {
             throw notFound("CROP_NOT_SELECTED", "환경 적합도를 계산할 작물을 먼저 선택해 주세요.");
         }
+        List<TelemetrySample> recentSamples = measurementStore.findSamples(
+                pot.id(), Instant.now().minusSeconds(SCORE_AVERAGE_WINDOW_SECONDS));
+        if (recentSamples.isEmpty()) {
+            throw notFound("MEASUREMENT_NOT_FOUND", "최근 24시간 동안 수집된 측정 데이터가 없습니다.");
+        }
+        CultivationSpace space = spaceOf(userId, pot);
+        RecentAverages average = average(recentSamples, space);
+        sample = new TelemetrySample(
+                sample.potId(), sample.deviceId(), sample.nodeId(), sample.cropCode(),
+                sample.hardwareDeviceId(), sample.eventId(), average.latestObservedAt(), sample.sequence(),
+                average.soilMoisturePct(), sample.soilMoistureRawAdc(),
+                average.airTemperatureC(), average.airHumidityPct(), null, average.plantLightPpfdUmolM2S(),
+                average.soilTemperatureC(), average.hasSoil(), average.hasAir(), average.hasLight(),
+                sample.irrigationSuggestion());
         if (!sample.airSensorValid() || !sample.lightSensorValid()) {
             throw invalidScoreInput("온도·습도·광량 센서값이 모두 유효해야 점수를 계산할 수 있습니다.");
         }
-        Double ppfd = ppfd(sample, spaceOf(userId, pot));
+        Double ppfd = ppfd(sample, space);
         if (ppfd == null) {
             throw invalidScoreInput("온도·습도·광량 센서값이 모두 유효해야 점수를 계산할 수 있습니다.");
         }
@@ -239,6 +254,65 @@ public class EnvironmentScoreService {
                 caution);
     }
 
+    /**
+     * Averages only readings whose corresponding sensor was valid. A failed
+     * packet therefore cannot distort the 24-hour average, while an axis with
+     * no valid reading remains unavailable for score calculation.
+     */
+    private RecentAverages average(List<TelemetrySample> samples, CultivationSpace space) {
+        double airTemperatureTotal = 0;
+        double airHumidityTotal = 0;
+        int airCount = 0;
+        double plantLightTotal = 0;
+        int plantLightCount = 0;
+        double soilMoistureTotal = 0;
+        int soilMoistureCount = 0;
+        double soilTemperatureTotal = 0;
+        int soilTemperatureCount = 0;
+        Instant latestObservedAt = null;
+
+        for (TelemetrySample sample : samples) {
+            if (latestObservedAt == null || sample.observedAt().isAfter(latestObservedAt)) {
+                latestObservedAt = sample.observedAt();
+            }
+            if (sample.airSensorValid()) {
+                airTemperatureTotal += sample.airTemperatureC();
+                airHumidityTotal += sample.airHumidityPct();
+                airCount++;
+            }
+            if (sample.lightSensorValid()) {
+                Double samplePpfd = ppfd(sample, space);
+                if (samplePpfd != null) {
+                    plantLightTotal += samplePpfd;
+                    plantLightCount++;
+                }
+            }
+            if (sample.soilSensorValid()) {
+                soilMoistureTotal += sample.soilMoisturePct();
+                soilMoistureCount++;
+                if (sample.soilTemperatureC() != null) {
+                    soilTemperatureTotal += sample.soilTemperatureC();
+                    soilTemperatureCount++;
+                }
+            }
+        }
+
+        return new RecentAverages(
+                divide(airTemperatureTotal, airCount),
+                divide(airHumidityTotal, airCount),
+                divide(plantLightTotal, plantLightCount),
+                divide(soilMoistureTotal, soilMoistureCount),
+                soilTemperatureCount == 0 ? null : divide(soilTemperatureTotal, soilTemperatureCount),
+                airCount > 0,
+                plantLightCount > 0,
+                soilMoistureCount > 0,
+                latestObservedAt);
+    }
+
+    private double divide(double total, int count) {
+        return count == 0 ? 0 : total / count;
+    }
+
     private String formula(CropScoreProfile profile) {
         if ("equal_geometric_v1".equals(profile.aggregationFamily())) {
             return EQUAL_FORMULA;
@@ -317,5 +391,17 @@ public class EnvironmentScoreService {
 
     private ApiException notFound(String code, String message) {
         return new ApiException(HttpStatus.NOT_FOUND, code, message);
+    }
+
+    private record RecentAverages(
+            double airTemperatureC,
+            double airHumidityPct,
+            double plantLightPpfdUmolM2S,
+            double soilMoisturePct,
+            Double soilTemperatureC,
+            boolean hasAir,
+            boolean hasLight,
+            boolean hasSoil,
+            Instant latestObservedAt) {
     }
 }

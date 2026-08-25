@@ -57,6 +57,20 @@ app:
   telemetry:
     http-ingest:
       enabled: ${TELEMETRY_HTTP_INGEST_ENABLED:false}
+  ai:
+    enabled: ${AI_ENABLED:false}
+    base-url: ${AI_BASE_URL:http://localhost:8000}
+    api-key: ${AI_API_KEY:}
+    timeout: ${AI_TIMEOUT:PT0.8S}
+    expected-schema-version: ${AI_EXPECTED_SCHEMA_VERSION:1}
+    hard-ceiling-ml: ${AI_HARD_CEILING_ML:500}
+    min-confidence: ${AI_MIN_CONFIDENCE:0.5}
+    gemini:
+      enabled: ${GEMINI_ENABLED:false}
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+      cache-ttl: ${GEMINI_CACHE_TTL:PT30M}
   payment:
     toss:
       enabled: ${TOSS_PAYMENTS_ENABLED:false}

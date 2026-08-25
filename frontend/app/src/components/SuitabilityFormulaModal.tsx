@@ -29,6 +29,10 @@ export function SuitabilityFormulaModal({ onClose, scoreData, visible }: Suitabi
           </View>
 
           <ScrollView contentContainerStyle={styles.formulaContent}>
+            <View style={styles.formulaNotice}>
+              <Text style={styles.formulaNoticeTitle}>점수 기준 기간</Text>
+              <Text style={styles.formulaBody}>종합 적합도와 항목별 점수는 최근 24시간의 유효 측정값 산술 평균으로 계산합니다.</Text>
+            </View>
             <View style={styles.formulaSection}>
               <Text style={styles.formulaSectionTitle}>1. 지표별 점수 계산</Text>
               <Text style={styles.formulaBody}>
@@ -52,8 +56,18 @@ export function SuitabilityFormulaModal({ onClose, scoreData, visible }: Suitabi
             <View style={styles.formulaSection}>
               <Text style={styles.formulaSectionTitle}>2. 종합 적합도 계산</Text>
               <View style={styles.formulaExpressionBox}>
-                <Text style={styles.formulaExpression}>100 × (T/100)¹⁄³ × (H/100)¹⁄³ × (L/100)¹⁄³</Text>
-                <Text style={styles.formulaEquivalentExpression}>= (T × H × L)¹⁄³</Text>
+                <View accessibilityLabel="종합 점수는 온도, 습도, PPFD 점수의 세제곱근 곱입니다." style={styles.formulaEquation}>
+                  <Text style={styles.formulaEquationLabel}>종합 점수 =</Text>
+                  <View style={styles.formulaPower}>
+                    <Text style={styles.formulaBase}>(T × H × L)</Text>
+                    <View style={styles.formulaExponentFraction}>
+                      <Text style={styles.formulaExponent}>1</Text>
+                      <View style={styles.formulaFractionBar} />
+                      <Text style={styles.formulaExponent}>3</Text>
+                    </View>
+                  </View>
+                </View>
+                <Text style={styles.formulaEquivalentExpression}>온도 · 습도 · PPFD 점수의 기하평균</Text>
               </View>
               <Text style={styles.formulaBody}>T = 온도 점수 · H = 습도 점수 · L = PPFD 조도 점수</Text>
             </View>
@@ -122,7 +136,27 @@ const styles = StyleSheet.create(
       paddingHorizontal: 16,
       paddingVertical: 20,
     },
-    formulaExpression: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font, textAlign: 'center' },
+    formulaEquation: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      minHeight: 48,
+    },
+    formulaEquationLabel: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font, marginRight: 10 },
+    formulaPower: { alignItems: 'flex-start', flexDirection: 'row' },
+    formulaBase: { ...typeScale.cardTitle, color: palette.greenDark, fontFamily: font },
+    formulaExponentFraction: { alignItems: 'center', marginLeft: 3, marginTop: -10, width: 14 },
+    formulaExponent: {
+      color: palette.greenDark,
+      fontFamily: font,
+      fontSize: 13,
+      fontWeight: '800',
+      lineHeight: 13,
+      textShadowColor: palette.greenDark,
+      textShadowOffset: { width: 0, height: 0 },
+      textShadowRadius: 0.35,
+    },
+    formulaFractionBar: { backgroundColor: palette.greenDark, height: 1, marginVertical: 1, width: 12 },
     formulaEquivalentExpression: {
       color: palette.secondary,
       fontFamily: font,

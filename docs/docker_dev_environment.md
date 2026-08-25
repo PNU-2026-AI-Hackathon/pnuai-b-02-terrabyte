@@ -170,8 +170,8 @@ make psql                                     # PostgreSQL 콘솔
 docker compose exec postgres pg_dump -U terrabyte terrabyte > backup.sql
 ```
 
-- PostgreSQL 스키마는 백엔드 기동 시 **Flyway** 가 `V1~V10` 마이그레이션을 자동 적용합니다.
-- SQLite 점수 DB(`backend/db/terrabyte-score.db`)는 `SqliteSchemaInitializer` 가 자동 생성/마이그레이션합니다.
+- PostgreSQL 스키마는 백엔드 기동 시 **Flyway** 가 `V1~V19` 마이그레이션을 자동 적용합니다.
+- SQLite 점수 DB는 `SqliteSchemaInitializer` 가 빈 파일에 전체 스키마를 생성하고, 지원되는 기존 스키마에는 마이그레이션을 적용합니다. 과거 bootstrap DB(기본 3개 테이블만 존재)는 데이터 손실 없이 전체 스키마로 보완합니다. 그 밖의 불완전한 파일은 데이터 손실을 막기 위해 기동을 중단하므로, 파일을 백업한 뒤 복구하거나 빈 파일로 교체해야 합니다.
 - InfluxDB 는 최초 기동 시 org/bucket/토큰이 자동 설정됩니다(`DOCKER_INFLUXDB_INIT_*`).
 
 DB를 완전히 초기화하려면 `make down-v` 후 다시 `make up`.

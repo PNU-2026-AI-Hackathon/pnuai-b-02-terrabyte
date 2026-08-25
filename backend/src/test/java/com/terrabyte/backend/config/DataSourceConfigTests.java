@@ -41,4 +41,22 @@ class DataSourceConfigTests {
 
         assertThat(result).isEqualTo(79.4);
     }
+
+    @Test
+    void initializesTheCompleteCurrentScoreSchema() {
+        Integer activeProfiles = scoreJdbcTemplate.queryForObject(
+                "select count(*) from crop_score_profile_activation",
+                Integer.class);
+        Integer models = scoreJdbcTemplate.queryForObject(
+                "select count(*) from crop_score_model_config",
+                Integer.class);
+        Integer scoreViews = scoreJdbcTemplate.queryForObject(
+                "select count(*) from sqlite_master where type = 'view' "
+                        + "and name in ('crop_environment_score', 'latest_crop_environment_score')",
+                Integer.class);
+
+        assertThat(activeProfiles).isEqualTo(8);
+        assertThat(models).isEqualTo(16);
+        assertThat(scoreViews).isEqualTo(2);
+    }
 }

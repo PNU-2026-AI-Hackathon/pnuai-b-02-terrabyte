@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { font } from '../../appTheme/glass';
@@ -8,6 +8,7 @@ import { typeScale } from '../../appTheme/typography';
 import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
+import { getCarePlan, type CarePlan } from '../../care/carePlanApi';
 import { cultivationCriteria, managementTasks, shopProducts, type ShopProduct } from '../../data';
 import type { Page } from '../../navigation/types';
 import { useDeviceEnvironment } from '../../shared/device-environment/DeviceEnvironmentProvider';
@@ -15,14 +16,32 @@ import { getRecommendedProductIds } from '../../shared/factorPresentation';
 
 export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
   const [completedTaskIds, setCompletedTaskIds] = useState<Record<string, boolean>>({});
-  const { score, soilRecommendation } = useDeviceEnvironment();
+  const [carePlan, setCarePlan] = useState<CarePlan | null>(null);
+  const { potId, score, soilRecommendation } = useDeviceEnvironment();
+
+  useEffect(() => {
+    let active = true;
+    setCarePlan(null);
+    if (!potId) return () => { active = false; };
+    void getCarePlan(potId)
+      .then((plan) => { if (active) setCarePlan(plan); })
+      // AI 미설정·응답 실패 때에도 기존 정적 가이드를 계속 표시한다.
+      .catch(() => { if (active) setCarePlan(null); });
+    return () => { active = false; };
+  }, [potId]);
+
   const environmentProducts = getRecommendedProductIds(score?.factors ?? [])
     .map((id) => shopProducts.find((product) => product.id === id))
     .filter((product): product is ShopProduct => Boolean(product));
-  const recommendedProducts = environmentProducts.length
+  const fallbackProducts = environmentProducts.length
     ? environmentProducts
     : shopProducts.filter((product) => product.badge?.includes('추천')).slice(0, 3);
-  const completedTaskCount = managementTasks.filter((task) => completedTaskIds[task.id]).length;
+  const recommendedProducts = carePlan
+    ? carePlan.recommendedProducts.map((product) => ({ ...product, id: product.productId }))
+    : fallbackProducts;
+  const tasks = carePlan?.todayTasks ?? managementTasks;
+  const criteria = carePlan?.cultivationCriteria ?? cultivationCriteria;
+  const completedTaskCount = tasks.filter((task) => completedTaskIds[task.id]).length;
 
   const toggleTask = (taskId: string) => {
     setCompletedTaskIds((current) => ({ ...current, [taskId]: !current[taskId] }));
@@ -33,10 +52,10 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
       <Surface flat style={styles.guideTasksPanel}>
         <View style={[styles.guideTaskHeader, compact && styles.stack]}>
           <View style={styles.guideHeroCopy}><Text style={styles.guideHeroTitle}>오늘의 관리 작업</Text><Text style={styles.guideHeroBody}>환경 이상 알림과 현재 생육 단계를 기준으로 우선순위를 정했습니다.</Text></View>
-          <View style={styles.guideProgress}><Text style={styles.guideProgressValue}>{completedTaskCount} / {managementTasks.length}</Text><Text style={styles.guideProgressLabel}>완료한 작업</Text></View>
+          <View style={styles.guideProgress}><Text style={styles.guideProgressValue}>{completedTaskCount} / {tasks.length}</Text><Text style={styles.guideProgressLabel}>완료한 작업</Text></View>
         </View>
         <View style={styles.guideTaskList}>
-          {managementTasks.map((task, index) => {
+          {tasks.map((task, index) => {
             const completed = Boolean(completedTaskIds[task.id]);
             return (
               <Pressable
@@ -65,7 +84,7 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
       <Surface flat style={styles.guidePanel}>
         <SectionHeader title="재배 단계별 기준" description="현재는 정식 후 활착 단계로, 급격한 환경 변화를 피해야 합니다." />
         <View style={styles.guideTaskList}>
-          {cultivationCriteria.map((item, index) => (
+          {criteria.map((item, index) => (
             <View key={item.label} style={[styles.guideTaskRow, compact && styles.guideTaskRowCompact]}>
               <View style={styles.guideTaskNumber}><Text style={styles.guideTaskNumberText}>{String(index + 1).padStart(2, '0')}</Text></View>
               <View style={styles.guideTaskCopy}>
@@ -119,6 +138,7 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
               <View style={styles.guideTaskCopy}>
                 <Text style={styles.guideTaskTitle}>{product.name}</Text>
                 <Text style={styles.guideTaskBody}>{product.desc}</Text>
+                {'reason' in product ? <Text style={styles.guideTaskBody}>추천 이유 · {product.reason}</Text> : null}
               </View>
               <Text style={styles.guideProductPrice}>{product.price.toLocaleString('ko-KR')}원</Text>
             </View>

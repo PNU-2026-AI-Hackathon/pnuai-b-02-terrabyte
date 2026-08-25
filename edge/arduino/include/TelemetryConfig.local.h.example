@@ -12,28 +12,48 @@
 // Change this only if the DHT22 data wire is connected to another pin.
 #define TB_DHT22_PIN 2
 
-// GY-30/BH1750 I2C illuminance sensor. On Nano boards SDA=A4 and SCL=A5.
-// Connect ADD to GND for 0x23, or to VCC for 0x5C.
-#define TB_GY30_ENABLED 1
-#define TB_GY30_I2C_ADDRESS 0x23
+// TSL2591 I2C illuminance sensor. On Nano boards SDA=A4 and SCL=A5; its address
+// is fixed at 0x29.
+#define TB_TSL2591_ENABLED 1
+#define TB_TSL2591_I2C_ADDRESS 0x29
 
-// Optional lux-to-PPFD conversion. Do not enable this with guessed constants;
-// calibrate against a PAR/PPFD meter using the final light source and geometry.
-// #define TB_GY30_PPFD_CALIBRATION_ENABLED 1
-// #define TB_PPFD_PER_LUX 0.01f
-// #define TB_PPFD_OFFSET 0.0f
-// #define TB_PPFD_CALIBRATED_MIN_LUX 100.0f
-// #define TB_PPFD_CALIBRATED_MAX_LUX 50000.0f
+// UNCALIBRATED lux-to-PPFD conversion, enabled deliberately.
+//
+// This is NOT a PAR-meter calibration. It assumes the light reaching the pot
+// has a daylight spectrum, for which the widely used conversion is roughly
+// 54 lux per umol/m2/s, i.e. 0.0185 umol/m2/s per lux. The TSL2591's separate
+// IR channel gives a better visible-light estimate than the BH1750, but lux to
+// PPFD still assumes a daylight spectrum and remains materially wrong for
+// warm-white and red/blue grow LEDs:
+//
+//   * daylight / full-spectrum white  -> ~0.0185 (what is set below)
+//   * warm white LED                  -> materially wrong
+//   * red/blue "blurple" grow LED     -> wrong by a large factor
+//
+// Accepted knowingly for cost reasons: a TSL2591 is a fraction of the price of
+// a quantum sensor. Any PPFD emitted under this setting is an estimate derived
+// from illuminance, not a measurement, and downstream consumers should treat it
+// as such.
+//
+// MIN_LUX is 0, not 100. The firmware marks PPFD invalid outside the calibrated
+// band, and PPFD is a required telemetry field, so a non-zero floor would block
+// all telemetry in darkness.
+#define TB_PPFD_CALIBRATION_ENABLED 1
+#define TB_PPFD_PER_LUX 0.0185f
+#define TB_PPFD_OFFSET 0.0f
+#define TB_PPFD_CALIBRATED_MIN_LUX 0.0f
+#define TB_PPFD_CALIBRATED_MAX_LUX 88000.0f
 
-// Optional waterproof DS18B20 soil-temperature probe. Connect its DATA wire
-// to D3 and add a 4.7 kohm pull-up from DATA to VCC.
-// #define TB_SOIL_TEMPERATURE_ENABLED 1
-// #define TB_SOIL_TEMPERATURE_PIN 3
+// Waterproof DS18B20 soil-temperature probe. Connect its DATA wire to D3 and
+// add a 4.7 kohm pull-up from DATA to VCC.
+#define TB_SOIL_TEMPERATURE_ENABLED 1
+#define TB_SOIL_TEMPERATURE_PIN 3
 
-// Optional analog capacitive soil-moisture sensor. Measure the raw ADC value in
-// representative dry and wet soil; do not copy guessed calibration values.
-// Either ADC direction is supported as long as the two endpoints differ.
-// #define TB_SOIL_MOISTURE_ENABLED 1
-// #define TB_SOIL_MOISTURE_ADC_PIN A1
-// #define TB_SOIL_MOISTURE_DRY_ADC 800
-// #define TB_SOIL_MOISTURE_WET_ADC 350
+// PROVISIONAL PLACEHOLDERS carried over from the dataset_logger environment.
+// These ADC endpoints were NOT measured. soil_moisture_pct is untrustworthy
+// until they are calibrated in real soil. The raw ADC count is recorded
+// alongside it so the percentage can be recomputed later.
+#define TB_SOIL_MOISTURE_ENABLED 1
+#define TB_SOIL_MOISTURE_ADC_PIN A0
+#define TB_SOIL_MOISTURE_DRY_ADC 620
+#define TB_SOIL_MOISTURE_WET_ADC 280

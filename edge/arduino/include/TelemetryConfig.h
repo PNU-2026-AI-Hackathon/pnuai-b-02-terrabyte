@@ -54,42 +54,67 @@
 #error "TB_TELEMETRY_INTERVAL_MS must be at least 2000 for DHT22"
 #endif
 
-// GY-30 modules normally use a BH1750 digital illuminance sensor over I2C.
-// ADD=GND selects 0x23; ADD=VCC selects 0x5C.
-#ifndef TB_GY30_ENABLED
-#define TB_GY30_ENABLED 1
+// TSL2591 digital illuminance sensor over I2C at its fixed address, 0x29.
+#ifndef TB_TSL2591_ENABLED
+#define TB_TSL2591_ENABLED 1
 #endif
 
-#ifndef TB_GY30_I2C_ADDRESS
-#define TB_GY30_I2C_ADDRESS 0x23
+#ifndef TB_TSL2591_I2C_ADDRESS
+#define TB_TSL2591_I2C_ADDRESS 0x29
 #endif
 
-#if TB_GY30_I2C_ADDRESS != 0x23 && TB_GY30_I2C_ADDRESS != 0x5C
-#error "TB_GY30_I2C_ADDRESS must be 0x23 or 0x5C"
+#if TB_TSL2591_I2C_ADDRESS != 0x29
+#error "TB_TSL2591_I2C_ADDRESS must be 0x29"
 #endif
 
-// BH1750 measures illuminance in lux, not PPFD. Enable this conversion only
-// after calibration against a PAR/PPFD reference using the final light source.
-#ifndef TB_GY30_PPFD_CALIBRATION_ENABLED
-#define TB_GY30_PPFD_CALIBRATION_ENABLED 0
+#ifndef TB_TSL2591_GAIN
+#define TB_TSL2591_GAIN 25
 #endif
 
-#if TB_GY30_PPFD_CALIBRATION_ENABLED && !TB_GY30_ENABLED
-#error "GY-30 must be enabled when GY-30 PPFD conversion is enabled"
+#if TB_TSL2591_GAIN != 1 && TB_TSL2591_GAIN != 25 && \
+    TB_TSL2591_GAIN != 428 && TB_TSL2591_GAIN != 9876
+#error "TB_TSL2591_GAIN must be 1, 25, 428, or 9876"
 #endif
 
-#if !TB_MOCK_SENSOR_ENABLED && TB_GY30_PPFD_CALIBRATION_ENABLED
+#ifndef TB_TSL2591_INTEGRATION_MS
+#define TB_TSL2591_INTEGRATION_MS 300
+#endif
+
+#if TB_TSL2591_INTEGRATION_MS != 100 && \
+    TB_TSL2591_INTEGRATION_MS != 200 && \
+    TB_TSL2591_INTEGRATION_MS != 300 && \
+    TB_TSL2591_INTEGRATION_MS != 400 && \
+    TB_TSL2591_INTEGRATION_MS != 500 && \
+    TB_TSL2591_INTEGRATION_MS != 600
+#error "TB_TSL2591_INTEGRATION_MS must be 100, 200, 300, 400, 500, or 600"
+#endif
+
+#ifndef TB_TSL2591_AUTO_GAIN_ENABLED
+#define TB_TSL2591_AUTO_GAIN_ENABLED 1
+#endif
+
+// Illuminance is not PPFD. Enable this conversion only after calibration
+// against a PAR/PPFD reference using the final light source.
+#ifndef TB_PPFD_CALIBRATION_ENABLED
+#define TB_PPFD_CALIBRATION_ENABLED 0
+#endif
+
+#if TB_PPFD_CALIBRATION_ENABLED && !TB_TSL2591_ENABLED
+#error "The light sensor must be enabled when PPFD conversion is enabled"
+#endif
+
+#if !TB_MOCK_SENSOR_ENABLED && TB_PPFD_CALIBRATION_ENABLED
 #ifndef TB_PPFD_PER_LUX
-#error "Define calibrated TB_PPFD_PER_LUX when GY-30 PPFD conversion is enabled"
+#error "Define calibrated TB_PPFD_PER_LUX when PPFD conversion is enabled"
 #endif
 #ifndef TB_PPFD_OFFSET
-#error "Define calibrated TB_PPFD_OFFSET when GY-30 PPFD conversion is enabled"
+#error "Define calibrated TB_PPFD_OFFSET when PPFD conversion is enabled"
 #endif
 #ifndef TB_PPFD_CALIBRATED_MIN_LUX
-#error "Define TB_PPFD_CALIBRATED_MIN_LUX when GY-30 PPFD conversion is enabled"
+#error "Define TB_PPFD_CALIBRATED_MIN_LUX when PPFD conversion is enabled"
 #endif
 #ifndef TB_PPFD_CALIBRATED_MAX_LUX
-#error "Define TB_PPFD_CALIBRATED_MAX_LUX when GY-30 PPFD conversion is enabled"
+#error "Define TB_PPFD_CALIBRATED_MAX_LUX when PPFD conversion is enabled"
 #endif
 #endif
 
@@ -110,7 +135,7 @@
 #endif
 
 #ifndef TB_SOIL_MOISTURE_ADC_PIN
-#define TB_SOIL_MOISTURE_ADC_PIN A1
+#define TB_SOIL_MOISTURE_ADC_PIN A0
 #endif
 
 #if !TB_MOCK_SENSOR_ENABLED && TB_SOIL_MOISTURE_ENABLED
@@ -154,9 +179,9 @@
 #define TB_MIN_ILLUMINANCE_LUX 0.0f
 #endif
 
-// BH1750 high-resolution output is a 16-bit count divided by 1.2.
+// TSL2591 rated maximum illuminance.
 #ifndef TB_MAX_ILLUMINANCE_LUX
-#define TB_MAX_ILLUMINANCE_LUX 54612.5f
+#define TB_MAX_ILLUMINANCE_LUX 88000.0f
 #endif
 
 #ifndef TB_MIN_SOIL_TEMPERATURE_C

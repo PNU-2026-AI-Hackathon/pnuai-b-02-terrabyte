@@ -18,7 +18,7 @@ PRAGMA foreign_keys = ON;
 -- 1. 축 카탈로그
 -- ============================================================================
 
-CREATE TABLE axis_catalog (
+CREATE TABLE IF NOT EXISTS axis_catalog (
   axis  TEXT PRIMARY KEY CHECK (axis IN (
           'air_temperature','relative_humidity','plant_light',
           'particulate_matter','noise')),
@@ -29,18 +29,18 @@ CREATE TABLE axis_catalog (
   )
 ) STRICT, WITHOUT ROWID;
 
-INSERT INTO axis_catalog VALUES
+INSERT OR IGNORE INTO axis_catalog VALUES
   ('air_temperature','crop'), ('relative_humidity','crop'), ('plant_light','crop'),
   ('particulate_matter','common'), ('noise','common');
 
 -- 평가 상태. 결측/차단은 점수가 아니라 상태다.
-CREATE TABLE evaluation_state_catalog (
+CREATE TABLE IF NOT EXISTS evaluation_state_catalog (
   state       TEXT PRIMARY KEY,
   meaning_ko  TEXT NOT NULL,
   is_terminal INTEGER NOT NULL CHECK (is_terminal IN (0,1))
 ) STRICT, WITHOUT ROWID;
 
-INSERT INTO evaluation_state_catalog VALUES
+INSERT OR IGNORE INTO evaluation_state_catalog VALUES
   ('reference_available',        '앵커와 비교 가능. 등급이 아니라 거리다.', 0),
   ('no_verified_evidence',       '검증된 근거가 없다. 0점이 아니다.', 1),
   ('not_applicable_context',     '품종·생육단계·재배방식이 근거의 맥락과 다르다.', 1),
@@ -56,7 +56,7 @@ INSERT INTO evaluation_state_catalog VALUES
 -- 2. 근거 레이어 — 불변
 -- ============================================================================
 
-CREATE TABLE evidence_document (
+CREATE TABLE IF NOT EXISTS evidence_document (
   document_name  TEXT PRIMARY KEY CHECK (document_name IN (
                    'verified_numeric_evidence','insufficient_evidence','collection_contract')),
   schema_version TEXT NOT NULL,
@@ -65,12 +65,12 @@ CREATE TABLE evidence_document (
   loaded_at_utc  TEXT NOT NULL
 ) STRICT, WITHOUT ROWID;
 
-CREATE TRIGGER evidence_document_immutable_update
+CREATE TRIGGER IF NOT EXISTS evidence_document_immutable_update
 BEFORE UPDATE ON evidence_document BEGIN
   SELECT RAISE(ABORT,'evidence documents are immutable: edit the JSON and reload');
 END;
 
-CREATE TRIGGER evidence_document_immutable_delete
+CREATE TRIGGER IF NOT EXISTS evidence_document_immutable_delete
 BEFORE DELETE ON evidence_document BEGIN
   SELECT RAISE(ABORT,'evidence documents are immutable: edit the JSON and reload');
 END;
@@ -285,7 +285,7 @@ INSERT INTO crop_score_profile VALUES
    40,25,35,'C','C','C','category_fallback',
    '냉량성 엽채·허브 대분류 기본값과 DLI 12-20 환산값',
    '1.0.0','2026-07-16T00:00:00Z'),
-  ('arugula-general-v1','arugula','아루굴라','cool_leafy_herb','general_vegetative',
+  ('arugula-general-v1','arugula','루꼴라','cool_leafy_herb','general_vegetative',
    10,20,24,30, 30,50,70,90, 0,208,347,600,16,
    40,25,35,'C','C','C','category_fallback',
    '냉량성 엽채·허브 대분류 기본값과 DLI 12-20 환산값',
@@ -332,10 +332,10 @@ INSERT INTO crop_score_profile VALUES
    40,25,35,'B','C','C','category_fallback',
    'FAO 대파 절대 6-30°C·최적 12-25°C; RH와 PPFD는 직접 구배시험 부재로 CEA·엽채류 휴리스틱 유지',
    '2.0.0','2026-07-25T00:00:00Z'),
-  ('arugula-general-v2','arugula','아루굴라','cool_leafy_herb','general_vegetative',
+  ('arugula-general-v2','arugula','루꼴라','cool_leafy_herb','general_vegetative',
    8,15,25,29, 30,50,80,95, 0,200,250,600,16,
    40,25,35,'B','C','A','hybrid',
-   'FAO 아루굴라 절대 8-29°C·최적 15-25°C; 성숙 로켓 250 PPFD·DLI 14.4 비교시험; RH는 CEA 일반범위',
+   'FAO 루꼴라 절대 8-29°C·최적 15-25°C; 성숙 로켓 250 PPFD·DLI 14.4 비교시험; RH는 CEA 일반범위',
    '2.0.0','2026-07-25T00:00:00Z'),
   ('wasabi-general-v2','wasabi','와사비','cool_shade','general_vegetative',
    5,12,18,26, 40,60,80,95, 0,90,140,250,12,

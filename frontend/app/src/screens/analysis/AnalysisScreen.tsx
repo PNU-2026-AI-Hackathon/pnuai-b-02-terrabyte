@@ -8,6 +8,7 @@ import { typeScale } from '../../appTheme/typography';
 import { SectionHeader } from '../../components/SectionHeader';
 import { SuitabilityFormulaModal } from '../../components/SuitabilityFormulaModal';
 import { Surface } from '../../components/Surface';
+import { getCarePlan, type CarePlan } from '../../care/carePlanApi';
 import { crops } from '../../data';
 import { getCropRecommendations, type CropRecommendation } from '../../analysis/analysisApi';
 import type { DeviceResponse } from '../../device/deviceApi';
@@ -30,6 +31,7 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
   const [selectingCropCode, setSelectingCropCode] = useState<string | null>(null);
   const [cropReports, setCropReports] = useState<CropRecommendation[]>([]);
   const [cropRecommendationError, setCropRecommendationError] = useState<string | null>(null);
+  const [carePlan, setCarePlan] = useState<CarePlan | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -51,6 +53,17 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
     return () => { active = false; };
   }, [potId, selectedCrop]);
 
+  useEffect(() => {
+    let active = true;
+    setCarePlan(null);
+    if (!potId) return () => { active = false; };
+    void getCarePlan(potId)
+      .then((plan) => { if (active) setCarePlan(plan); })
+      // AI 미설정·응답 실패 때에는 기존 안내 문구를 계속 사용한다.
+      .catch(() => { if (active) setCarePlan(null); });
+    return () => { active = false; };
+  }, [potId, selectedCrop]);
+
   const selectRecommendedCrop = async (cropCode: string) => {
     if (cropCode === currentCrop.code) return;
     setCropSelectionError(null);
@@ -65,27 +78,53 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
     }
   };
 
+  const aiFactorDiagnostics = new Map(
+    carePlan?.factorDiagnostics.map((diagnostic) => [diagnostic.factorKey, diagnostic]) ?? [],
+  );
   const factorReports = analysisScore?.factors.map((factor) => {
     const contributesToOverallScore = ['temperature', 'humidity', 'plantLight'].includes(factor.key);
     const scoreLabel = contributesToOverallScore ? '종합 적합도 계산 점수' : '토양 상태 점수';
+    const fallbackFinding = factor.status === 'OK'
+      ? `현재 ${factor.current.toLocaleString('ko-KR')}${factor.unit}로 적정 범위 안에 있으며 ${scoreLabel}는 ${factor.score}점입니다.`
+      : `현재값이 적정 범위에서 ${factor.gap.toLocaleString('ko-KR')}${factor.unit} ${factor.status === 'LOW' ? '부족' : '초과'}하며 ${scoreLabel}는 ${factor.score}점입니다.`;
+    const aiDiagnostic = aiFactorDiagnostics.get(factor.key);
     return {
       label: factor.label,
       unit: factor.unit,
       avg24h: factor.current,
       axisMax: Math.max(factor.current, factor.optimalMax * 1.25, 1),
       status: factor.status,
-      finding: factor.status === 'OK'
-        ? `현재 ${factor.current.toLocaleString('ko-KR')}${factor.unit}로 적정 범위 안에 있으며 ${scoreLabel}는 ${factor.score}점입니다.`
-        : `현재값이 적정 범위에서 ${factor.gap.toLocaleString('ko-KR')}${factor.unit} ${factor.status === 'LOW' ? '부족' : '초과'}하며 ${scoreLabel}는 ${factor.score}점입니다.`,
-      recommendation: getFactorRecommendation(factor.key),
+      finding: aiDiagnostic?.finding ?? fallbackFinding,
+      recommendation: aiDiagnostic?.recommendation ?? getFactorRecommendation(factor.key),
     };
   }) ?? [];
   const issueFactors = getIssueFactors(analysisScore?.factors ?? []);
+  const fallbackPriorities = issueFactors.length
+    ? [
+      ...issueFactors.map((factor) => ({ factorKey: factor.key, title: `${factor.label} ${factor.status === 'LOW' ? '보완' : '완화'}` })),
+      { factorKey: 'soilMoisture', title: '토양 수분 모니터링' },
+    ]
+    : [
+      { factorKey: 'environment', title: '현재 환경 설정 유지' },
+      { factorKey: 'soilMoisture', title: '토양 수분 모니터링' },
+    ];
+  const managementPriorities = carePlan?.managementPriorities ?? fallbackPriorities;
   const soilMoisture = analysisLatest?.measurements.soilMoisturePct;
   const soilTemperature = analysisLatest?.measurements.soilTemperatureC;
   const soilMoistureFactor = analysisScore?.factors.find((factor) => factor.key === 'soilMoisture');
   const soilTemperatureFactor = analysisScore?.factors.find((factor) => factor.key === 'soilTemperature');
   const spaceName = device?.space?.name ?? '등록된 공간 없음';
+  const improvementActions = carePlan?.improvementActions ?? [
+    { number: '01', tag: '오늘 실행', title: '생장등 보조 운전 설정', body: '오후 16:00부터 20:00까지 4시간 운전하세요. 잎 끝과 조명 사이 거리는 약 30cm를 유지합니다.', effect: '조도 안정화 · 예상 +11점' },
+    { number: '02', tag: '3일 관찰', title: '오후 습도 하락 구간 완화', body: '관수 직후 환기 시작 시간을 10분 늦추고 물받이 트레이를 배치해 50~60% 범위를 유지하세요.', effect: '습도 안정화 · 예상 +4점' },
+    { number: '03', tag: '현재 유지', title: '토양 수분 기준 관수 유지', body: '고정 시간 관수 대신 센서값 31% 이하를 기준으로 물을 주세요. 과습 위험을 줄일 수 있습니다.', effect: '뿌리 스트레스 예방' },
+  ];
+  const expectedOutcome = carePlan?.expectedOutcome ?? {
+    title: '권장 조치 적용 시 예상 변화',
+    body: '생장등과 습도 관리안을 함께 적용한 뒤 7일간 현재 관수 기준을 유지하는 조건입니다.',
+    expectedScore: 83,
+    scoreChange: 15,
+  };
 
   return (
     <View style={styles.pageBody}>
@@ -131,24 +170,15 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
           <View style={[styles.reportSummaryCard, compact && styles.reportSummaryCardCompact]}>
             <View style={styles.reportSummaryCardHeader}>
               <Text style={styles.reportSummaryLabel}>관리 우선순위</Text>
-              <Text style={styles.reportSummaryKicker}>{issueFactors.length ? `${issueFactors.length + 1}개 항목` : '2개 항목'}</Text>
+              <Text style={styles.reportSummaryKicker}>{managementPriorities.length}개 항목</Text>
             </View>
             <View style={styles.reportPriorityList}>
-              {issueFactors.length ? issueFactors.map((factor, index) => (
-                <View key={factor.key} style={styles.reportPriorityItem}>
+              {managementPriorities.map((priority, index) => (
+                <View key={priority.factorKey} style={styles.reportPriorityItem}>
                   <Text style={styles.reportPriorityNumber}>{String(index + 1).padStart(2, '0')}</Text>
-                  <Text style={styles.reportPriority}>{factor.label} {factor.status === 'LOW' ? '보완' : '완화'}</Text>
+                  <Text style={styles.reportPriority}>{priority.title}</Text>
                 </View>
-              )) : (
-                <View style={styles.reportPriorityItem}>
-                  <Text style={styles.reportPriorityNumber}>01</Text>
-                  <Text style={styles.reportPriority}>현재 환경 설정 유지</Text>
-                </View>
-              )}
-              <View style={styles.reportPriorityItem}>
-                <Text style={styles.reportPriorityNumber}>{issueFactors.length ? String(issueFactors.length + 1).padStart(2, '0') : '02'}</Text>
-                <Text style={styles.reportPriority}>토양 수분 모니터링</Text>
-              </View>
+              ))}
             </View>
           </View>
         </View>
@@ -194,11 +224,7 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
           <SectionHeader title="추천 개선 방안" description="현재 환경에서 바로 적용할 수 있는 개선 방법을 우선순위별로 정리했습니다." />
         </View>
         <View style={styles.reportPlanList}>
-          {[
-            { number: '01', tag: '오늘 실행', title: '생장등 보조 운전 설정', body: '오후 16:00부터 20:00까지 4시간 운전하세요. 잎 끝과 조명 사이 거리는 약 30cm를 유지합니다.', effect: '조도 안정화 · 예상 +11점' },
-            { number: '02', tag: '3일 관찰', title: '오후 습도 하락 구간 완화', body: '관수 직후 환기 시작 시간을 10분 늦추고 물받이 트레이를 배치해 50~60% 범위를 유지하세요.', effect: '습도 안정화 · 예상 +4점' },
-            { number: '03', tag: '현재 유지', title: '토양 수분 기준 관수 유지', body: '고정 시간 관수 대신 센서값 31% 이하를 기준으로 물을 주세요. 과습 위험을 줄일 수 있습니다.', effect: '뿌리 스트레스 예방' },
-          ].map((plan) => (
+          {improvementActions.map((plan) => (
             <View key={plan.number} style={[styles.reportPlanRow, compact && styles.stack]}>
               <Text style={styles.reportPlanNumber}>{plan.number}</Text>
               <View style={styles.reportPlanCopy}>
@@ -215,26 +241,6 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
       <Surface flat style={styles.reportSection}>
         <View style={styles.reportSectionHeading}>
           <Text style={styles.reportSectionNumber}>03</Text>
-          <SectionHeader title="7일 관리 일정" description="권장 조치를 적용한 뒤 확인해야 할 항목입니다." />
-        </View>
-        <View style={styles.reportSchedule}>
-          {[
-            ['오늘', '조명 설정', '생장등 위치와 4시간 운전 예약을 설정합니다.'],
-            ['1일 후', '센서 확인', '오후 평균 조도와 최저 습도가 개선됐는지 비교합니다.'],
-            ['3일 후', '잎 상태 관찰', '잎 말림, 변색, 줄기 웃자람 여부를 기록합니다.'],
-            ['7일 후', '재분석', '환경 적합도를 다시 계산하고 관수 및 조명 시간을 조정합니다.'],
-          ].map(([day, title, body]) => (
-            <View key={day} style={styles.reportScheduleRow}>
-              <Text style={styles.reportScheduleDay}>{day}</Text>
-              <View style={styles.reportScheduleCopy}><Text style={styles.reportScheduleTitle}>{title}</Text><Text style={styles.reportScheduleBody}>{body}</Text></View>
-            </View>
-          ))}
-        </View>
-      </Surface>
-
-      <Surface flat style={styles.reportSection}>
-        <View style={styles.reportSectionHeading}>
-          <Text style={styles.reportSectionNumber}>04</Text>
           <SectionHeader title="재배 작물 비교" description="현재 환경을 기준으로 작물별 적합도와 관리 유의사항을 비교했습니다." />
         </View>
         <View style={styles.reportCropList}>
@@ -264,7 +270,7 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
 
       <Surface flat style={styles.reportSection}>
         <View style={styles.reportSectionHeading}>
-          <Text style={styles.reportSectionNumber}>05</Text>
+          <Text style={styles.reportSectionNumber}>04</Text>
           <SectionHeader title="토양 및 배지 추천" description="토양분석 세트의 수분·온도 측정값과 선택한 작물의 뿌리 특성을 반영했습니다." />
         </View>
         <View style={[styles.soilSummaryGrid, compact && styles.stack]}>
@@ -290,13 +296,13 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
 
       <Surface flat style={[styles.reportOutcome, compact && styles.stack]}>
         <View style={styles.reportOutcomeCopy}>
-          <Text style={styles.reportOutcomeTitle}>권장 조치 적용 시 예상 변화</Text>
-          <Text style={styles.reportOutcomeBody}>생장등과 습도 관리안을 함께 적용한 뒤 7일간 현재 관수 기준을 유지하는 조건입니다.</Text>
+          <Text style={styles.reportOutcomeTitle}>{expectedOutcome.title}</Text>
+          <Text style={styles.reportOutcomeBody}>{expectedOutcome.body}</Text>
         </View>
         <View style={[styles.reportOutcomeNumbers, compact && styles.stack]}>
-          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>현재 환경점수</Text><Text style={styles.reportOutcomeValue}>68점</Text></View>
-          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>7일 후 예상</Text><Text style={styles.reportOutcomeValueStrong}>83점</Text></View>
-          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>개선 폭</Text><Text style={styles.reportOutcomeValueStrong}>+15점</Text></View>
+          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>현재 환경점수</Text><Text style={styles.reportOutcomeValue}>{analysisScore ? `${Math.round(analysisScore.total)}점` : '--'}</Text></View>
+          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>7일 후 예상</Text><Text style={styles.reportOutcomeValueStrong}>{Math.round(expectedOutcome.expectedScore)}점</Text></View>
+          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>개선 폭</Text><Text style={styles.reportOutcomeValueStrong}>{expectedOutcome.scoreChange >= 0 ? '+' : ''}{Math.round(expectedOutcome.scoreChange)}점</Text></View>
         </View>
       </Surface>
     </View>
@@ -370,12 +376,6 @@ const styles = StyleSheet.create(scaleTypography({
   reportPlanTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '600' },
   reportPlanBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
   reportPlanEffect: { ...typeScale.label, color: palette.greenDark, fontFamily: font, maxWidth: 210, textAlign: 'right' },
-  reportSchedule: { borderLeftColor: '#b8d7c3', borderLeftWidth: 2, gap: 4, marginLeft: 10 },
-  reportScheduleRow: { flexDirection: 'row', gap: 24, minHeight: 84, paddingBottom: 16, paddingLeft: 24, paddingTop: 4 },
-  reportScheduleDay: { ...typeScale.label, color: palette.greenDark, fontFamily: font, width: 86 },
-  reportScheduleCopy: { flex: 1, gap: 5 },
-  reportScheduleTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '600' },
-  reportScheduleBody: { ...typeScale.body, color: palette.secondary, fontFamily: font, maxWidth: 850 },
   reportCropList: { gap: 0 },
   reportCropRow: { alignItems: 'center', borderBottomColor: palette.lineStrong, borderBottomWidth: 1, flexDirection: 'row', gap: 22, padding: 24 },
   reportCropRowSelected: { backgroundColor: palette.greenSoft },

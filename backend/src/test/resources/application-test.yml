@@ -11,7 +11,7 @@ app:
       password:
       driver-class-name: org.h2.Driver
     sqlite:
-      url: "jdbc:sqlite::memory:"
+      url: "jdbc:sqlite:file:terrabyte-test?mode=memory&cache=shared"
       driver-class-name: org.sqlite.JDBC
   payment:
     toss:

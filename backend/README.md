@@ -45,11 +45,14 @@ export INFLUX_TOKEN='InfluxDB API 토큰'
 export INFLUX_ORG='terrabyte'
 export INFLUX_BUCKET='telemetry'
 export TELEMETRY_DEVICE_KEY='하드웨어가 X-Device-Key로 보낼 공유 키'
+export GEMINI_ENABLED='true'
+export GEMINI_API_KEY='Google AI Studio에서 발급한 Gemini API 키'
+# 선택: 기본값은 gemini-3.5-flash-lite, 동일 측정값의 계획 캐시는 30분
+export GEMINI_MODEL='gemini-3.5-flash-lite'
 ```
 
 SQLite 점수 스키마와 마이그레이션은 애플리케이션이 시작될 때 자동으로 적용됩니다.
-DB 파일이 비어 있으면 전체 스키마를 생성하고, 이미 존재하면 마이그레이션만 실행합니다.
-수동으로 `sqlite3` 명령을 실행할 필요가 없습니다.
+DB 파일이 비어 있으면 전체 스키마를 생성하고, 과거 bootstrap DB(기본 3개 테이블만 존재)는 데이터를 유지한 채 전체 스키마로 보완합니다. 지원되는 기존 스키마에는 마이그레이션을 실행하며, 그 밖의 불완전한 파일은 데이터 손실을 막기 위해 기동을 중단합니다.
 
 애플리케이션을 실행합니다.
 

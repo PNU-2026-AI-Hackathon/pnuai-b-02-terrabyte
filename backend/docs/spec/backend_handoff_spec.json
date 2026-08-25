@@ -149,7 +149,7 @@
       {
         "profile_id": "arugula-general-v2",
         "crop_code": "arugula",
-        "crop_name_ko": "아루굴라",
+        "crop_name_ko": "루꼴라",
         "group": "cool_leafy_herb",
         "temperature_c": [8, 15, 25, 29],
         "relative_humidity_pct": [30, 50, 80, 95],

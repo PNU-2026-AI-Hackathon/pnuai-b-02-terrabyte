@@ -192,6 +192,7 @@ class DeviceHierarchyIntegrationTests {
                 "SELECT MIN(id) FROM pot WHERE device_id = ?", Long.class, deviceId);
         TelemetrySample sample = sample(potId, deviceId);
         when(measurementStore.findLatest(potId)).thenReturn(Optional.of(sample));
+        when(measurementStore.findSamples(eq(potId), any(Instant.class))).thenReturn(List.of(sample));
         when(measurementStore.findPoints(eq(potId), eq(MeasurementMetric.AIR_TEMPERATURE_C), any(Instant.class)))
                 .thenReturn(List.of(new MeasurementPoint(sample.observedAt(), 27.1)));
         when(profileRepository.findActiveByCropCode("basil"))
@@ -256,7 +257,8 @@ class DeviceHierarchyIntegrationTests {
                         nodeId,
                         sequence,
                         new TelemetryEnvelope.Measurements(27.0, 58.0, null, 230.0, null, null, null),
-                        new TelemetryEnvelope.Quality(true, true, null))));
+                        new TelemetryEnvelope.Quality(true, true, null),
+                        null)));
         mockMvc.perform(post("/api/telemetry")
                         .contentType(APPLICATION_JSON).content(objectMapper.writeValueAsString(envelope)))
                 .andExpect(status().isAccepted());
@@ -266,7 +268,7 @@ class DeviceHierarchyIntegrationTests {
         return new TelemetrySample(
                 potId, deviceId, "node-a", "basil", "orangepi-pro-01", UUID.randomUUID().toString(),
                 Instant.now(), 1, 30, 1000, 27.1, 58, null, 230.5, null,
-                true, true, true);
+                true, true, true, null);
     }
 
     private String bearer(String token) {

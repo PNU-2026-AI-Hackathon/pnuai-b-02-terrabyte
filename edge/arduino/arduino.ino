@@ -14,15 +14,15 @@
  * Arduino pin | Connected device        | Device pin / purpose
  * ------------|-------------------------|------------------------------
  * D2          | DHT22                   | DATA (TB_DHT22_PIN)
- * D3          | DS18B20 soil probe      | DATA (optional, 4.7 kohm pull-up)
- * A1          | Capacitive soil sensor  | Analog OUT (optional, calibrated)
- * A4 / SDA    | GY-30 (BH1750)          | SDA (I2C data)
- * A5 / SCL    | GY-30 (BH1750)          | SCL (I2C clock)
+ * D3          | DS18B20 soil probe      | DATA (enabled, 4.7 kohm pull-up)
+ * A0          | Capacitive soil sensor  | Analog OUT (enabled; calibrate ADC)
+ * A4 / SDA    | TSL2591                 | SDA (I2C, fixed address 0x29)
+ * A5 / SCL    | TSL2591                 | SCL (I2C, fixed address 0x29)
  * 5V or 3.3V  | Sensor                  | VCC, per the sensor datasheet
  * GND         | All sensors             | Common GND
  *
  * A bare DHT22 needs the datasheet-recommended pull-up resistor between
- * DATA and VCC. Connect GY-30 ADD to GND for address 0x23 (default), or VCC
- * for address 0x5C and set TB_GY30_I2C_ADDRESS accordingly. Soil sensors are
- * disabled until their TB_*_ENABLED options are set to 1.
+ * DATA and VCC. The TSL2591 die is a 3.3 V device, but most breakout boards
+ * include a regulator and I2C level shifting; connect VIN according to the
+ * specific breakout board rather than assuming its supply voltage.
  */

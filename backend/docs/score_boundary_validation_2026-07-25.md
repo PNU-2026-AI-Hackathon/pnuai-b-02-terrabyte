@@ -23,7 +23,7 @@
 | 페퍼민트 | 10/18/24/30 | **4/15/25/35** | FAO EcoCrop의 절대·최적 범위 |
 | 방울토마토 | 12/18.5/26.5/32 | **7/18.5/26.5/35** | FAO 절대 범위와 온실 토마토 최적 범위 결합 |
 | 대파 | 10/20/24/30 | **6/12/25/30** | FAO EcoCrop의 절대·최적 범위 |
-| 아루굴라 | 10/20/24/30 | **8/15/25/29** | FAO EcoCrop의 절대·최적 범위 |
+| 루꼴라 | 10/20/24/30 | **8/15/25/29** | FAO EcoCrop의 절대·최적 범위 |
 | 와사비 | 10/16/18/26 | **5/12/18/26** | 5°C 야간 생육 정체, 12–18°C 적온 및 고온 민감성 자료 결합 |
 | 상추 | 10/20/24/30 | **5/12/24/30** | FAO 절대·최적 범위에 CEA의 24°C 고효율 처리 포함 |
 | 고수 | 10/20/24/30 | **4/15/26/32** | FAO 범위와 표준 고수 생체중 최적 약 26°C 결과 결합 |
@@ -38,7 +38,7 @@
 | 페퍼민트 | 30/50/70/90 | **30/50/80/95** | 직접 구배시험 없음; CEA 일반 범위 |
 | 방울토마토 | 30/50/70/90 | **30/65/75/90** | 토마토 65–75% 권장, 장시간 85% 초과 시 착과 위험 |
 | 대파 | 30/50/70/90 | **30/50/80/95** | 직접 구배시험 없음; CEA 일반 범위 |
-| 아루굴라 | 30/50/70/90 | **30/50/80/95** | 시험 재배조건 60–80%와 CEA 일반 범위 |
+| 루꼴라 | 30/50/70/90 | **30/50/80/95** | 시험 재배조건 60–80%와 CEA 일반 범위 |
 | 와사비 | 40/60/75/95 | **40/60/80/95** | 직접 구배시험 없음; 68% 시험조건과 고습성 작물 특성 |
 | 상추 | 30/50/70/90 | **30/60/75/90** | 70–75% VPD·CEA 연구와 90% 고습 tipburn 위험 |
 | 고수 | 30/50/70/90 | **30/50/70/90** | 60% 시험조건은 있으나 직접 구배시험 없음 |
@@ -53,17 +53,17 @@ RH의 `zero_low`와 `zero_high`는 생존 한계가 아니다. 낮은 RH의 수�
 | 페퍼민트 | 14 h | 0/150/200/300 | **0/150/200/250** | 150–200 적합, 250에서 광스트레스·황화 관찰 |
 | 방울토마토 | 16 h | 0/347/521/800 | **0/300/521/800** | DLI 20–30 환산과 dwarf tomato 300 PPFD 최고 광이용효율 결합 |
 | 대파 | 16 h | 0/208/347/600 | **0/208/347/600** | 직접 PPFD 구배시험 부족; 엽채류 DLI 휴리스틱 유지 |
-| 아루굴라 | 16 h | 0/208/347/600 | **0/200/250/600** | 동일 DLI 비교에서 250 PPFD cap의 생체량·효율 우수 |
+| 루꼴라 | 16 h | 0/208/347/600 | **0/200/250/600** | 동일 DLI 비교에서 250 PPFD cap의 생체량·효율 우수 |
 | 와사비 | 12 h | 0/120/140/250 | **0/90/140/250** | 90·140에서 높은 광합성, 140이 시험 최고 생체중; 140 초과는 미시험 |
 | 상추 | 16 h | 0/208/295/500 | **0/200/295/500** | DLI 12–17 환산과 200 PPFD 고효율 CEA 시험 |
 | 고수 | 16 h | 0/200/347/550 | **0/200/200/400** | 133·200·400 비교에서 200 PPFD·16 h 직접 권고 |
 
-PPFD는 순간값만으로 하루 광환경을 완전히 평가할 수 없다. 위 값은 표의 기준 광주기와 광원이 유지된다는 조건에서만 사용한다. 특히 바질·토마토·대파·아루굴라·와사비·상추의 `zero_high`는 고사 임계값이 아니라 감점 경사의 끝점이다.
+PPFD는 순간값만으로 하루 광환경을 완전히 평가할 수 없다. 위 값은 표의 기준 광주기와 광원이 유지된다는 조건에서만 사용한다. 특히 바질·토마토·대파·루꼴라·와사비·상추의 `zero_high`는 고사 임계값이 아니라 감점 경사의 끝점이다.
 
 ## 사용한 웹 근거
 
 - [FAO EcoCrop 개요](https://www.fao.org/geospatial/data-and-tools/data-portals/ecocrop/)
-- FAO EcoCrop: [바질](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1547), [페퍼민트](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=2099), [토마토](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1379), [대파](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=365), [아루굴라](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=5794), [상추](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1313), [고수](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=784)
+- FAO EcoCrop: [바질](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1547), [페퍼민트](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=2099), [토마토](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1379), [대파](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=365), [루꼴라](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=5794), [상추](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=1313), [고수](https://ecocrop.apps.fao.org/ecocrop/srv/en/dataSheet?id=784)
 - [Walters & Currey — 바질 온도 비교시험](https://journals.ashs.org/downloadpdf/view/journals/hortsci/54/11/article-p1915.pdf)
 - [Beaman et al. — 바질 300–600 PPFD 비교시험](https://journals.ashs.org/view/journals/hortsci/44/1/article-p64.xml)
 - [Nagase et al. — Mentha 20–250 PPFD 비교시험](https://doi.org/10.21273/HORTSCI18634-25)

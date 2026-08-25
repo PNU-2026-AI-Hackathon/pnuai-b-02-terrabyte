@@ -67,3 +67,11 @@ docs/superpowers/
 
 # 합성 벤치 캡처는 tools/make_bench_capture.py로 재생성한다.
 edge/pi/data/raw/
+
+# AI 서버는 소스만 추적한다. 로컬 개발 부산물(.venv·캐시)은 수백 MB라
+# 실수로 커밋되면 저장소가 되돌리기 어려워진다. 모델 아티팩트는
+# models/ 안의 것만 의도적으로 추적한다.
+ai-server/.venv/
+ai-server/**/__pycache__/
+ai-server/.pytest_cache/
+ai-server/.ruff_cache/
