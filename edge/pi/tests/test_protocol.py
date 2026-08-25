@@ -161,7 +161,11 @@ class SoilMetricTests(unittest.TestCase):
     def soil_message(self, **overrides):
         message = dict(VALID)
         message.update(
-            {"soil_temperature_c": 18.5, "soil_moisture_pct": 50.5}
+            {
+                "soil_temperature_c": 18.5,
+                "soil_moisture_pct": 50.5,
+                "soil_moisture_raw_adc": 527,
+            }
         )
         message.update(overrides)
         return message
@@ -172,7 +176,31 @@ class SoilMetricTests(unittest.TestCase):
 
         self.assertEqual(node["measurements"]["soil_temperature_c"], 18.5)
         self.assertEqual(node["measurements"]["soil_moisture_pct"], 50.5)
+        self.assertEqual(node["measurements"]["soil_moisture_raw_adc"], 527)
         self.assertTrue(node["quality"]["soil_sensor_valid"])
+
+    def test_each_calibrated_soil_reading_is_independently_optional(self) -> None:
+        for present, absent in (
+            ("soil_temperature_c", "soil_moisture_pct"),
+            ("soil_moisture_pct", "soil_temperature_c"),
+        ):
+            with self.subTest(present=present):
+                event = parse(
+                    line(dict(VALID, **{present: self.soil_message()[present]}))
+                )
+                measurements = event.envelope_v2(gateway_id="gw")["nodes"][0][
+                    "measurements"
+                ]
+                self.assertIn(present, measurements)
+                self.assertNotIn(absent, measurements)
+
+    def test_raw_adc_is_forwarded_without_a_calibrated_percentage(self) -> None:
+        event = parse(line(dict(VALID, soil_moisture_raw_adc=527)))
+        node = event.envelope_v2(gateway_id="gw")["nodes"][0]
+
+        self.assertEqual(node["measurements"]["soil_moisture_raw_adc"], 527)
+        self.assertNotIn("soil_moisture_pct", node["measurements"])
+        self.assertFalse(node["quality"]["soil_sensor_valid"])
 
     def test_absent_soil_readings_are_omitted_not_zeroed(self) -> None:
         """A fabricated 0.0 would reach irrigation as a confident 'bone dry'."""

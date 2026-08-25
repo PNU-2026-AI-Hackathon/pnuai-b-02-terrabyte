@@ -119,12 +119,6 @@ uint8_t requiredFields() {
 #if TB_TSL2591_ENABLED
   required |= kIlluminanceValid;
 #endif
-#if TB_SOIL_TEMPERATURE_ENABLED
-  required |= kSoilTemperatureValid;
-#endif
-#if TB_SOIL_MOISTURE_ENABLED
-  required |= kSoilMoistureValid;
-#endif
   return required;
 }
 
@@ -184,11 +178,25 @@ void emitSensorStatus(const uint32_t sequence, const uint32_t uptimeMs,
 #endif
   Serial.print('}');
 #if TB_TSL2591_ENABLED
-  Serial.print(F(",\"illuminance_lux\":"));
   if (validity & kIlluminanceValid) {
+    Serial.print(F(",\"illuminance_lux\":"));
     Serial.print(sample.illuminanceLux, 2);
-  } else {
-    Serial.print(F("null"));
+  }
+#endif
+#if TB_SOIL_TEMPERATURE_ENABLED
+  if (validity & kSoilTemperatureValid) {
+    Serial.print(F(",\"soil_temperature_c\":"));
+    Serial.print(sample.soilTemperatureC, 2);
+  }
+#endif
+#if TB_SOIL_MOISTURE_ENABLED
+  if (validity & kSoilMoistureValid) {
+    Serial.print(F(",\"soil_moisture_pct\":"));
+    Serial.print(sample.soilMoisturePct, 2);
+  }
+  if (sample.soilMoistureRawAdc != kSoilMoistureRawAdcAbsent) {
+    Serial.print(F(",\"soil_moisture_raw_adc\":"));
+    Serial.print(sample.soilMoistureRawAdc);
   }
 #endif
 #if TB_SOIL_MOISTURE_ENABLED
@@ -205,7 +213,7 @@ void emitSensorStatus(const uint32_t sequence, const uint32_t uptimeMs,
 }
 
 void emitTelemetry(const uint32_t sequence, const uint32_t uptimeMs,
-                   const SensorSample& sample) {
+                   const uint8_t validity, const SensorSample& sample) {
   printEnvelopeStart(F("telemetry"));
   Serial.print(F(",\"sequence\":"));
   Serial.print(sequence);
@@ -222,12 +230,20 @@ void emitTelemetry(const uint32_t sequence, const uint32_t uptimeMs,
   Serial.print(sample.illuminanceLux, 2);
 #endif
 #if TB_SOIL_TEMPERATURE_ENABLED
-  Serial.print(F(",\"soil_temperature_c\":"));
-  Serial.print(sample.soilTemperatureC, 2);
+  if (validity & kSoilTemperatureValid) {
+    Serial.print(F(",\"soil_temperature_c\":"));
+    Serial.print(sample.soilTemperatureC, 2);
+  }
 #endif
 #if TB_SOIL_MOISTURE_ENABLED
-  Serial.print(F(",\"soil_moisture_pct\":"));
-  Serial.print(sample.soilMoisturePct, 2);
+  if (validity & kSoilMoistureValid) {
+    Serial.print(F(",\"soil_moisture_pct\":"));
+    Serial.print(sample.soilMoisturePct, 2);
+  }
+  if (sample.soilMoistureRawAdc != kSoilMoistureRawAdcAbsent) {
+    Serial.print(F(",\"soil_moisture_raw_adc\":"));
+    Serial.print(sample.soilMoistureRawAdc);
+  }
 #endif
   // Only actuators this board actually drives are reported. The design doc's
   // example also shows a "heater" key, but no heat pad exists here and claiming
@@ -485,7 +501,7 @@ void sampleAndPublish(const uint32_t uptimeMs) {
     return;
   }
 
-  emitTelemetry(sequence, uptimeMs, sample);
+  emitTelemetry(sequence, uptimeMs, validity, sample);
 }
 
 }  // namespace

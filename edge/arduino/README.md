@@ -296,6 +296,16 @@ Temperature libraries and their dependencies. Arduino CLI users can compile
 and upload to the probed classic Nano using the old-bootloader FQBN after
 installing the AVR core and those libraries:
 
+To isolate the D3 OneWire bus from the production firmware, upload the
+DS18B20-only diagnostic target. It enumerates ROM addresses and reports CRC,
+family, device count, temperature, and explicit read-failure states every two
+seconds:
+
+```powershell
+pio run -e ds18b20_diagnostic -t upload --upload-port COM5
+pio device monitor --port COM5 --baud 115200
+```
+
 ```powershell
 arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328old .
 arduino-cli upload --fqbn arduino:avr:nano:cpu=atmega328old --port COM5 .
@@ -348,7 +358,7 @@ On each boot it first emits a hello record:
 A complete, validated sample is emitted as:
 
 ```json
-{"message_type":"telemetry","protocol_version":1,"node_id":"terrabyte-node-001","sequence":42,"uptime_ms":215000,"air_temperature_c":24.30,"relative_humidity_pct":58.10,"ppfd_umol_m2_s":421.75,"illuminance_lux":18420.83,"soil_temperature_c":19.40,"soil_moisture_pct":63.25,"actuators":{"pump":0},"pump_lockout_ms":420000}
+{"message_type":"telemetry","protocol_version":1,"node_id":"terrabyte-node-001","sequence":42,"uptime_ms":215000,"air_temperature_c":24.30,"relative_humidity_pct":58.10,"ppfd_umol_m2_s":421.75,"illuminance_lux":18420.83,"soil_temperature_c":19.40,"soil_moisture_pct":63.25,"soil_moisture_raw_adc":527,"actuators":{"pump":0},"pump_lockout_ms":420000}
 ```
 
 `pump_lockout_ms` is the remaining time until a new pump command could be
@@ -356,19 +366,22 @@ accepted, not the configured interval. It counts down to zero, and while a run i
 in progress it includes the remaining runtime, because the cooldown has not
 started yet. `protocol_version` stays `1`: both keys are additive.
 
-If any required field is unavailable or invalid, no telemetry is fabricated:
+If any core required field is unavailable or invalid, no telemetry is
+fabricated. Valid optional soil readings and a sampled raw moisture ADC are
+still included for diagnosis:
 
 ```json
-{"message_type":"sensor_status","protocol_version":1,"node_id":"terrabyte-node-001","sequence":43,"uptime_ms":220000,"validity":{"air_temperature_c":true,"relative_humidity_pct":true,"ppfd_umol_m2_s":false,"illuminance_lux":true,"soil_temperature_c":true,"soil_moisture_pct":true},"illuminance_lux":18420.83,"reason":"sensor_unavailable_or_out_of_range"}
+{"message_type":"sensor_status","protocol_version":1,"node_id":"terrabyte-node-001","sequence":43,"uptime_ms":220000,"validity":{"air_temperature_c":true,"relative_humidity_pct":true,"ppfd_umol_m2_s":false,"illuminance_lux":true,"soil_temperature_c":true,"soil_moisture_pct":false},"illuminance_lux":18420.83,"soil_temperature_c":19.40,"soil_moisture_raw_adc":812,"reason":"sensor_unavailable_or_out_of_range"}
 ```
 
-The two soil keys are emitted only when their adapters are enabled. The TSL2591
-lux key is emitted when its adapter is enabled, including in `sensor_status`
-when PPFD calibration is unavailable. The current Orange Pi/backend v1 contract
-accepts the serial record but forwards only air temperature, relative humidity,
-and calibrated PPFD. Persisting lux or soil measurements requires a separately
-versioned edge/backend contract instead of silently relabelling an existing
-field.
+Soil probes are optional and never block an otherwise valid telemetry sample.
+Each calibrated soil key is emitted only when its adapter is enabled and that
+individual reading is valid. `soil_moisture_raw_adc` is emitted whenever the
+moisture adapter sampled the ADC, even when the value is outside the calibrated
+range and `soil_moisture_pct` is consequently omitted. Invalid optional values
+are omitted rather than emitted as `null` or fabricated as zero. The TSL2591 lux
+key remains required when its adapter is enabled. The Orange Pi forwards the
+optional soil measurements without changing `protocol_version` 1.
 
 `sequence` advances for every scheduled acquisition attempt, so a gap in
 telemetry sequence numbers indicates a locally rejected sample. It starts at
