@@ -119,6 +119,9 @@ services:
       MQTT_USERNAME: ${MQTT_USERNAME:-terrabyte-backend}
       MQTT_PASSWORD: ${MQTT_PASSWORD:-terrabyte-backend-local}
       MQTT_TOPIC_PREFIX: ${MQTT_TOPIC_PREFIX:-tb/v2}
+      # 이 스위치가 켜져야 백엔드가 승인한 관수를 실제로 발행한다. 꺼져 있으면
+      # LoggingCommandDispatcher 가 경고만 남기고 명령은 TTL 로 만료된다.
+      MQTT_COMMAND_DISPATCH_ENABLED: ${MQTT_COMMAND_DISPATCH_ENABLED:-false}
       # 스택에 AI 서버가 함께 뜨므로 개발 환경에서는 켠다. 애플리케이션 기본값은
       # 여전히 false 이므로, 컨테이너 없이 백엔드만 띄우면 호출 자체가 없다.
       AI_ENABLED: ${AI_ENABLED:-true}
