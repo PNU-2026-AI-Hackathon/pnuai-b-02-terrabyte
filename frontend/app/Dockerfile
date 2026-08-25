@@ -33,5 +33,8 @@ COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 
+# localhost 가 아니라 127.0.0.1 인 이유: 컨테이너 안에서 localhost 는 ::1 로
+# 먼저 해석되는데 nginx 는 `listen 80;` 으로 IPv4 에만 바인딩한다. localhost 를
+# 쓰면 서비스가 멀쩡한데도 헬스체크만 connection refused 로 실패한다.
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=5 \
-    CMD wget -qO- http://localhost/healthz || exit 1
+    CMD wget -qO- http://127.0.0.1/healthz || exit 1
