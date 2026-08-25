@@ -98,6 +98,11 @@ class MqttPublisher:
         self._publish_lock = threading.Lock()
         self._command_handler: CommandHandler | None = None
         self._command_lock = threading.Lock()
+        # This lock protects the active-client pointer and generation checks.
+        # Never hold it across a paho operation that may wait for its network
+        # thread or invoke a callback: paho can call us while holding one of
+        # its own mutexes, and taking the two locks in opposite orders wedges
+        # both threads. Snapshot the client here, then call paho after release.
         self._client_lock = threading.Lock()
         self._health_lock = threading.Lock()
         self._client: Any | None = None
@@ -125,7 +130,7 @@ class MqttPublisher:
         client = self._build_client()
         with self._client_lock:
             self._client = client
-            self._start_client(client)
+        self._start_client(client)
 
     def _build_client(self) -> Any:
         client = self._client_factory()
@@ -171,11 +176,15 @@ class MqttPublisher:
                 self._connected.clear()
 
     def _on_publish(self, client, userdata, mid, reason_code=None, properties=None) -> None:
-        with self._client_lock:
+        # paho invokes this callback while holding its outgoing-message mutex.
+        # It must therefore never acquire _client_lock: a publisher can have
+        # snapshotted this client and be waiting for that paho mutex. The plain
+        # identity read is atomic in CPython, and doing it under _publish_lock
+        # orders an old generation's callback with _rebuild_client's clear.
+        with self._publish_lock:
             if client is not self._client:
                 return
-            with self._publish_lock:
-                self._publish_reasons[mid] = reason_code
+            self._publish_reasons[mid] = reason_code
 
     def _publish_failure(self, mid: int) -> str | None:
         """Return the broker's rejection reason for ``mid``, or None if it accepted.
@@ -230,9 +239,16 @@ class MqttPublisher:
         with self._client_lock:
             client = self._client
             is_connected = getattr(client, "is_connected", None)
-            if client is not None and callable(is_connected) and is_connected():
-                client.subscribe(self._command_topic, qos=1)
-                LOGGER.info("subscribed to commands topic=%s", self._command_topic)
+            connected = (
+                client is not None and callable(is_connected) and is_connected()
+            )
+        # subscribe() enters paho and may contend with its network thread, so
+        # it follows the same snapshot-then-call rule as publish(). If this
+        # generation is replaced meanwhile, _on_connect renews the subscription
+        # on the replacement because the handler above remains registered.
+        if connected:
+            client.subscribe(self._command_topic, qos=1)
+            LOGGER.info("subscribed to commands topic=%s", self._command_topic)
 
     def _on_message(self, client, userdata, message) -> None:
         with self._client_lock:
@@ -278,19 +294,23 @@ class MqttPublisher:
         with self._client_lock:
             client = self._client
             is_connected = getattr(client, "is_connected", None)
-            if client is None or (callable(is_connected) and not is_connected()):
-                info = None
-            else:
-                try:
-                    info = client.publish(topic, payload, qos=1, retain=False)
-                except Exception as exc:
-                    # Broker/socket errors arrive as whichever exception the
-                    # installed paho version chooses to expose.
-                    return DeliveryResult(Delivery.RETRY, type(exc).__name__)
+            connected = client is not None and not (
+                callable(is_connected) and not is_connected()
+            )
 
-        if info is None:
+        if not connected:
             self._record_link_failure("not_connected")
             return DeliveryResult(Delivery.RETRY, "not_connected")
+
+        # publish() can wait for paho's outgoing-message mutex. Its network
+        # thread holds that mutex while invoking _on_publish, so _client_lock
+        # must be released before entering paho or the two threads deadlock.
+        try:
+            info = client.publish(topic, payload, qos=1, retain=False)
+        except Exception as exc:
+            # Broker/socket errors arrive as whichever exception the
+            # installed paho version chooses to expose.
+            return DeliveryResult(Delivery.RETRY, type(exc).__name__)
 
         rc = getattr(info, "rc", 0)
         if rc != 0:
@@ -395,11 +415,24 @@ class MqttPublisher:
                 if self._closed:
                     return
                 self._client = new_client
-                try:
-                    self._start_client(new_client)
-                except Exception:
-                    self._client = None
-                    raise
+            # loop_start() launches the paho thread, which may immediately run
+            # a callback. Starting it while holding _client_lock would make
+            # that thread wait on us from inside paho, violating the same lock
+            # boundary as publish() and subscribe().
+            try:
+                self._start_client(new_client)
+            except Exception:
+                with self._client_lock:
+                    if self._client is new_client:
+                        self._client = None
+                raise
+            with self._client_lock:
+                orphaned = self._client is not new_client
+            if orphaned:
+                # close() may detach the generation while startup is in paho.
+                # Stop it again after startup returns so that race cannot leave
+                # a network loop running after the publisher has been closed.
+                self._stop_client(new_client)
         except Exception:
             # A failed repair still observes the rebuild interval. Otherwise a
             # broken local TLS file or exhausted resource can turn every outbox
