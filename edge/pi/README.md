@@ -124,6 +124,39 @@ mkdir -p ~/.config/autostart
 cp deploy/terrabyte-dashboard.desktop ~/.config/autostart/
 ```
 
+### 브라우저 상태판 (`status`)
+
+같은 내용을 HTTP로도 서빙합니다. GUI 툴킷은 게이트웨이가 의존할 수 있는 것 중
+가장 이식성이 낮습니다 — Apple이 제공하는 Tk는 8.5이고 최신 macOS에서 흰 창만
+그리며, 리눅스는 이미지마다 tk 패키지 설치 여부가 다릅니다. 브라우저는 운영자가
+쓰는 모든 기기에 있고, 화분 옆에 서 있을 때 손에 든 휴대폰에도 있습니다.
+
+```bash
+# 기본 127.0.0.1:8090
+.venv/bin/python -m terrabyte_edge status
+
+# 다른 기기에서 보려면 호스트를 명시한다. 읽기 전용이지만 인증이 없고 화분
+# 이름과 마지막 수신 시각이 드러나므로, 노출은 기본값이 아니라 선택이다.
+.venv/bin/python -m terrabyte_edge status --host 0.0.0.0
+
+# 브라우저조차 없는 SSH 세션에서는 같은 뷰를 텍스트로
+.venv/bin/python -m terrabyte_edge status --text
+.venv/bin/python -m terrabyte_edge status --text --watch 2
+```
+
+경로는 셋뿐입니다. `/`는 2초마다 스스로 새로고침하는 보드,
+`/status.json`은 같은 뷰의 JSON(프로브나 두 번째 화면용 — 원시 스냅샷이 아니라
+렌더된 뷰라서 소비자가 화면과 어긋나지 않습니다), `/healthz`는 감시용입니다.
+
+부팅 시 자동 실행은 브릿지와 **별도 유닛**으로 겁니다. 상태판 재시작이
+텔레메트리를 끊어서는 안 되고, SSH로만 보는 헤드리스 게이트웨이에서는 상태판
+자체가 선택 사항이기 때문입니다.
+
+```bash
+sudo cp deploy/terrabyte-status.service /etc/systemd/system/
+sudo systemctl enable --now terrabyte-status
+```
+
 전체화면에서는 `Escape` 또는 `q`로 종료할 수 있습니다. 상태 파일이 없거나 8초
 이상 갱신되지 않으면 기존 값을 정상처럼 표시하지 않고 오류 배너를 표시하며,
 연결되지 않은 선택 센서 값은 `—`로 표시합니다. 기본 명령

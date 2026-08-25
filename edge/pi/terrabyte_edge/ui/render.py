@@ -1,4 +1,8 @@
-"""Pure snapshot-to-view formatting for the Tk dashboard."""
+"""Pure snapshot-to-view formatting for the status board.
+
+Renderer-agnostic on purpose: ui/web.py and ui/text.py both consume the
+DashboardView this produces, so the formatting rules exist once.
+"""
 
 from __future__ import annotations
 from dataclasses import dataclass
