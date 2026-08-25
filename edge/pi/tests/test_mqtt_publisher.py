@@ -5,6 +5,7 @@ not installed in the environment.
 """
 
 import json
+import threading
 import unittest
 
 from terrabyte_edge.mqtt_publisher import MqttPublisher
@@ -181,6 +182,57 @@ class LifecycleTests(unittest.TestCase):
 
 
 class SendTests(unittest.TestCase):
+    def test_puback_callback_does_not_deadlock_with_publish(self) -> None:
+        """A PUBACK callback may run while paho's publish() is still blocked.
+
+        Real paho invokes on_publish while holding its outgoing-message mutex.
+        This fake makes publish wait for that callback to return, reproducing
+        the opposite half of the lock ordering without relying on paho's
+        private implementation or a live broker.
+        """
+
+        class InterleavingClient(FakeMqttClient):
+            def __init__(self) -> None:
+                super().__init__()
+                self.publish_entered = threading.Event()
+                self.puback_returned = threading.Event()
+                self.publish_timed_out = False
+
+            def publish(self, topic, payload, qos=0, retain=False):
+                self.published.append((topic, payload, qos, retain))
+                self.publish_entered.set()
+                if not self.puback_returned.wait(timeout=1.0):
+                    self.publish_timed_out = True
+                    raise TimeoutError("on_publish did not return")
+                return self.next_publish_result
+
+        client = InterleavingClient()
+        publisher = make_publisher(client)
+        result = []
+
+        def deliver_puback() -> None:
+            if not client.publish_entered.wait(timeout=1.0):
+                return
+            try:
+                client.simulate_puback(client.next_publish_result.mid)
+            finally:
+                client.puback_returned.set()
+
+        callback_thread = threading.Thread(target=deliver_puback, daemon=True)
+        publish_thread = threading.Thread(
+            target=lambda: result.append(publisher.send(event())), daemon=True
+        )
+        callback_thread.start()
+        publish_thread.start()
+        publish_thread.join(timeout=2.0)
+        callback_thread.join(timeout=2.0)
+
+        self.assertFalse(publish_thread.is_alive(), "publish thread deadlocked")
+        self.assertFalse(callback_thread.is_alive(), "PUBACK callback deadlocked")
+        self.assertFalse(client.publish_timed_out, "PUBACK callback was blocked")
+        self.assertEqual(len(result), 1)
+        self.assertIs(result[0].outcome, Delivery.DELIVERED)
+
     def test_telemetry_is_published_not_retained_and_puback_maps_to_delivered(
         self,
     ) -> None:
