@@ -5,10 +5,12 @@ import java.time.Instant;
 /**
  * What happened to one irrigation request, in the shape the API returns.
  *
- * <p>{@code dispatched} is separate from {@code granted} on purpose. Until #50
- * gives the backend a downlink, a command can be authorised and recorded while
- * nothing delivers it, and a caller that cannot tell those apart would report a
- * watering that never happened.
+ * <p>{@code dispatched} is separate from {@code granted} on purpose, and stays
+ * that way now the downlink exists. A command is authorised and recorded before
+ * anything tries to send it, and the send can still fail — the transport is
+ * disabled, the broker is unreachable, the TTL ran out, the pot has no bound node.
+ * A caller that cannot tell the two apart would report a watering that never
+ * happened.
  */
 public record IrrigationOutcome(
         boolean granted,

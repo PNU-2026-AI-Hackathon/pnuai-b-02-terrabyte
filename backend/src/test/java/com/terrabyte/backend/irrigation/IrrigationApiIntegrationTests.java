@@ -3,6 +3,8 @@ package com.terrabyte.backend.irrigation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 
 import java.time.Instant;
 import java.util.List;
@@ -29,15 +31,18 @@ import org.springframework.web.context.WebApplicationContext;
 /**
  * The manual irrigation endpoint, end to end through the Governor.
  *
- * <p>Security is bypassed with a standalone MockMvc setup because what is under
- * test here is the safety envelope, not authentication — the other integration
- * tests already cover that.
+ * <p>Runs through the real filter chain rather than a standalone controller.
+ * Ownership is part of this endpoint's contract, not a separate concern: it
+ * moves water in someone's home, so "which pot may this caller water" belongs in
+ * the same suite as "how much water may leave the pump".
  */
 @SpringBootTest
 @ActiveProfiles("test")
 class IrrigationApiIntegrationTests {
 
     private static final long POT_ID = 1L;
+    private static final long OWNER_ID = 9001L;
+    private static final long STRANGER_ID = 9002L;
 
     @Autowired private WebApplicationContext context;
     @Autowired private ObjectMapper objectMapper;
@@ -52,7 +57,26 @@ class IrrigationApiIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+        mockMvc = MockMvcBuilders.webAppContextSetup(context)
+                .apply(springSecurity())
+                .build();
+
+        // The seeded devices carry no owner (V2/V4 insert a serial code only), so
+        // the pot has to be claimed before an ownership-scoped endpoint can reach
+        // it at all.
+        jdbcTemplate.update(
+                "INSERT INTO app_user (id, email, password_hash, nickname, created_at)"
+                    + " VALUES (?, ?, 'x', 'owner', CURRENT_TIMESTAMP)"
+                    + " ON CONFLICT DO NOTHING",
+                OWNER_ID, "owner-" + OWNER_ID + "@terrabyte.test");
+        jdbcTemplate.update(
+                "INSERT INTO app_user (id, email, password_hash, nickname, created_at)"
+                    + " VALUES (?, ?, 'x', 'stranger', CURRENT_TIMESTAMP)"
+                    + " ON CONFLICT DO NOTHING",
+                STRANGER_ID, "stranger-" + STRANGER_ID + "@terrabyte.test");
+        jdbcTemplate.update(
+                "UPDATE device SET user_id = ? WHERE id = (SELECT device_id FROM pot WHERE id = ?)",
+                OWNER_ID, POT_ID);
 
         jdbcTemplate.update("DELETE FROM device_command");
         jdbcTemplate.update("DELETE FROM irrigation_decision");
@@ -87,6 +111,7 @@ class IrrigationApiIntegrationTests {
         String body = objectMapper.writeValueAsString(
                 new IrrigationController.ManualIrrigationRequest(volumeMl, false, null));
         return mockMvc.perform(post("/api/pots/{potId}/irrigation", POT_ID)
+                        .with(asUser(OWNER_ID))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andReturn();
@@ -102,6 +127,12 @@ class IrrigationApiIntegrationTests {
         assertThat(outcome.granted()).isTrue();
         assertThat(outcome.grantedMl()).isEqualTo(100);
         assertThat(outcome.commandId()).isNotBlank();
+        // Asserted, not ignored. The test profile leaves app.mqtt.enabled false,
+        // so the fallback LoggingCommandDispatcher is what runs and nothing is
+        // delivered. Every integration test used to pass quietly on this value
+        // without stating it, which meant switching on a real transport would
+        // have changed observable behaviour with no test moving.
+        assertThat(outcome.dispatched()).isFalse();
 
         assertThat(decisions.findRecentByPotId(POT_ID, 10)).hasSize(1);
         assertThat(jdbcTemplate.queryForObject(
@@ -149,6 +180,7 @@ class IrrigationApiIntegrationTests {
 
         assertThat(outcome.granted()).isTrue();
         assertThat(outcome.grantedMl()).isEqualTo(118);
+        assertThat(outcome.dispatched()).isFalse();
         assertThat(outcome.volumeSource()).isEqualTo(VolumeSource.EDGE_SUGGESTION);
         assertThat(outcome.aiModelVersion()).isEqualTo("water-balance-v1");
 
@@ -183,12 +215,73 @@ class IrrigationApiIntegrationTests {
         water(100); // refused, IN_FLIGHT
 
         MvcResult result = mockMvc.perform(
-                        get("/api/pots/{potId}/irrigation/timeline", POT_ID))
+                        get("/api/pots/{potId}/irrigation/timeline", POT_ID)
+                                .with(asUser(OWNER_ID)))
                 .andReturn();
 
         assertThat(result.getResponse().getStatus()).isEqualTo(200);
         // Both outcomes are visible: a pot that is never watered has to be
         // diagnosable from this list alone.
         assertThat(result.getResponse().getContentAsString()).contains("IN_FLIGHT");
+    }
+
+    private static org.springframework.test.web.servlet.request.RequestPostProcessor asUser(
+            long userId) {
+        return jwt().jwt(builder -> builder.subject(String.valueOf(userId)));
+    }
+
+    /**
+     * The endpoint moves water in someone's home. Being authenticated is not
+     * enough; the pot has to be the caller's.
+     *
+     * <p>404 rather than 403 so a probe cannot use the status code to discover
+     * which pot ids exist.
+     */
+    @Test
+    void aStrangerCannotWaterSomeoneElsesPot() throws Exception {
+        String body = objectMapper.writeValueAsString(
+                new IrrigationController.ManualIrrigationRequest(100, false, null));
+
+        MvcResult result = mockMvc.perform(post("/api/pots/{potId}/irrigation", POT_ID)
+                        .with(asUser(STRANGER_ID))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+        assertThat(result.getResponse().getContentAsString()).contains("POT_NOT_FOUND");
+
+        // Nothing was authorised, so nothing was recorded either.
+        assertThat(decisions.findRecentByPotId(POT_ID, 10)).isEmpty();
+        assertThat(jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM device_command WHERE pot_id = ?",
+                        Integer.class, POT_ID))
+                .isZero();
+    }
+
+    /** A watering history says when a plant was dry and when nobody was home. */
+    @Test
+    void aStrangerCannotReadSomeoneElsesTimeline() throws Exception {
+        water(100);
+
+        MvcResult result = mockMvc.perform(
+                        get("/api/pots/{potId}/irrigation/timeline", POT_ID)
+                                .with(asUser(STRANGER_ID)))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(404);
+    }
+
+    @Test
+    void anUnauthenticatedRequestIsRefused() throws Exception {
+        String body = objectMapper.writeValueAsString(
+                new IrrigationController.ManualIrrigationRequest(100, false, null));
+
+        MvcResult result = mockMvc.perform(post("/api/pots/{potId}/irrigation", POT_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(401);
     }
 }

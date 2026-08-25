@@ -1,10 +1,8 @@
 import type { ScoreFactor } from '../measurement/measurementApi';
-import { factorProductMap } from '../data';
 
 export function getIssueFactors(factors: ScoreFactor[]): ScoreFactor[] {
   return factors.filter((factor) => factor.status !== 'OK');
 }
-
 const gradeLabels: Record<'GOOD' | 'NORMAL' | 'BAD', string> = {
   GOOD: '스마트팜 전환 적합',
   NORMAL: '일부 환경 보완 필요',
@@ -26,8 +24,4 @@ const factorRecommendations: Record<ScoreFactor['key'], string> = {
 
 export function getFactorRecommendation(key: ScoreFactor['key']): string {
   return factorRecommendations[key];
-}
-
-export function getRecommendedProductIds(factors: ScoreFactor[]): string[] {
-  return Array.from(new Set(getIssueFactors(factors).flatMap((factor) => factorProductMap[factor.key] ?? [])));
 }

@@ -1,6 +1,21 @@
 app:
   admin:
     api-key: terrabyte-test-admin-key
+  mqtt:
+    # Pinned, not inherited. application.yml reads ${MQTT_ENABLED:false}, and
+    # docker-compose.yml sets MQTT_ENABLED=true for the backend service - so
+    # under `make test` every @SpringBootTest was building an MqttClient,
+    # connecting MqttUplinkRouter to the real broker and subscribing to live
+    # telemetry, status and ack traffic. Tests must not depend on ambient
+    # environment variables, least of all to decide whether they talk to a broker.
+    enabled: false
+    command-dispatch:
+      enabled: false
+  scheduling:
+    # No background thread may mutate device_command, or publish to a broker,
+    # while a test is asserting. Both timed tasks are covered by calling
+    # sweepOnce() and publishOnce() directly.
+    enabled: false
   security:
     jwt:
       secret: terrabyte-test-secret-must-be-at-least-32-bytes

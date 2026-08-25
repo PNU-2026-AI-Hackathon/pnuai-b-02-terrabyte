@@ -1,6 +1,7 @@
 package com.terrabyte.backend.irrigation;
 
 import java.time.Clock;
+import java.util.List;
 import java.util.Optional;
 
 import com.terrabyte.backend.ai.IrrigationPredictionRequest;
@@ -37,6 +38,7 @@ public class IrrigationService {
     private final IrrigationGovernor governor;
     private final VolumeResolver volumeResolver;
     private final DeviceCommandRepository commandRepository;
+    private final IrrigationDecisionRepository decisionRepository;
     private final MeasurementStore measurementStore;
     private final PotRepository potRepository;
     private final IrrigationProperties properties;
@@ -47,6 +49,7 @@ public class IrrigationService {
             IrrigationGovernor governor,
             VolumeResolver volumeResolver,
             DeviceCommandRepository commandRepository,
+            IrrigationDecisionRepository decisionRepository,
             MeasurementStore measurementStore,
             PotRepository potRepository,
             IrrigationProperties properties,
@@ -55,6 +58,7 @@ public class IrrigationService {
         this.governor = governor;
         this.volumeResolver = volumeResolver;
         this.commandRepository = commandRepository;
+        this.decisionRepository = decisionRepository;
         this.measurementStore = measurementStore;
         this.potRepository = potRepository;
         this.properties = properties;
@@ -125,11 +129,18 @@ public class IrrigationService {
                 .orElse(null);
     }
 
-    /** Someone tapped the button in the app. */
+    /**
+     * Someone tapped the button in the app.
+     *
+     * <p>Takes the caller's user id, unlike {@link #requestAutomatic}: this is
+     * the one entry point reachable from an HTTP request, so it is the one that
+     * has to prove the pot belongs to whoever asked.
+     */
     public IrrigationOutcome requestManual(
-            long potId, int requestedMl, boolean cooldownOverride, String overrideReason) {
+            long potId, long userId, int requestedMl,
+            boolean cooldownOverride, String overrideReason) {
 
-        requirePot(potId);
+        requireOwnedPot(potId, userId);
         AuthorizationResult result = governor.authorize(new IrrigationRequest(
                 potId, requestedMl, CommandSource.MANUAL,
                 "manual-" + clock.instant().toEpochMilli(), cooldownOverride, overrideReason,
@@ -181,6 +192,39 @@ public class IrrigationService {
                 resolved == null ? null : resolved.modelVersion());
     }
 
+    /**
+     * Every decision recorded for a pot the caller owns, refusals included.
+     *
+     * <p>Routed through the service rather than read straight out of the
+     * repository by the controller, so the ownership check has exactly one home.
+     * A watering history says when a plant was dry and when someone was home.
+     */
+    public List<IrrigationDecision> timeline(long potId, long userId, int limit) {
+        requireOwnedPot(potId, userId);
+        return decisionRepository.findRecentByPotId(potId, Math.clamp(limit, 1, 100));
+    }
+
+    /**
+     * The pot, if it belongs to this user.
+     *
+     * <p>404 rather than 403, matching {@code PotService}: a 403 would confirm
+     * that a pot id exists, which turns the id space into something worth
+     * enumerating.
+     */
+    private Pot requireOwnedPot(long potId, long userId) {
+        return potRepository
+                .findOwned(potId, userId)
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "POT_NOT_FOUND", "화분을 찾을 수 없습니다."));
+    }
+
+    /**
+     * The pot, without an ownership check.
+     *
+     * <p>Only for {@link #requestAutomatic}, which no user invokes: the rule
+     * engine acts on its own schedule and has no session to check against. Do
+     * not reach for this from anything an HTTP request can call.
+     */
     private Pot requirePot(long potId) {
         return potRepository
                 .findById(potId)

@@ -12,7 +12,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { SensorSummary } from '../../components/SensorSummary';
 import { SuitabilityFormulaModal } from '../../components/SuitabilityFormulaModal';
 import { Surface } from '../../components/Surface';
-import { crops, dashboardChartMetrics } from '../../data';
+import { dashboardChartMetrics } from '../../data';
 import type { DeviceResponse } from '../../device/deviceApi';
 import type { Page } from '../../navigation/types';
 import { getDeviceSensors, type DeviceSensorStatus } from '../../sensor/sensorApi';
@@ -42,14 +42,11 @@ export function DashboardScreen({
   compact,
   device,
   onNavigate,
-  selectedCrop,
 }: {
   compact: boolean;
   device?: DeviceResponse;
   onNavigate: (page: Page) => void;
-  selectedCrop: number;
 }) {
-  const currentCrop = crops[selectedCrop] ?? crops[0];
   const [chartRange, setChartRange] = useState<'1h' | '24h' | '7d' | '30d'>('24h');
   const [selectedChartMetric, setSelectedChartMetric] = useState('all');
   const [kitSensors, setKitSensors] = useState<DeviceSensorStatus[]>([]);
@@ -189,7 +186,7 @@ export function DashboardScreen({
               <Text style={styles.scoreHeroValue}>{scoreData?.total ?? '--'}</Text>
               <Text style={styles.scoreHeroUnit}>/ 100</Text>
             </View>
-            <Text style={styles.scoreHeroGrade}>{gradeText} · {scoreData?.cropName ?? currentCrop.name} 재배 기준</Text>
+            <Text style={styles.scoreHeroGrade}>{gradeText} · {scoreData?.cropName ?? '작물'} 재배 기준</Text>
           </View>
           <Pressable
             accessibilityRole="button"

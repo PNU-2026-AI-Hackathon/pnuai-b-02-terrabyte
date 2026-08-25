@@ -9,7 +9,6 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { SuitabilityFormulaModal } from '../../components/SuitabilityFormulaModal';
 import { Surface } from '../../components/Surface';
 import { getCarePlan, type CarePlan } from '../../care/carePlanApi';
-import { crops } from '../../data';
 import { getCropRecommendations, type CropRecommendation } from '../../analysis/analysisApi';
 import type { DeviceResponse } from '../../device/deviceApi';
 import type { Page } from '../../navigation/types';
@@ -22,10 +21,10 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
   device?: DeviceResponse;
   onNavigate: (page: Page) => void;
   onSelectCrop: (cropCode: string) => Promise<void>;
-  selectedCrop: number;
+  selectedCrop: string;
 }) {
-  const currentCrop = crops[selectedCrop] ?? crops[0];
   const { potId, score: analysisScore, measurements: analysisLatest, soilRecommendation, refetch } = useDeviceEnvironment();
+  const currentCrop = { code: selectedCrop, name: analysisScore?.cropName ?? '작물' };
   const formulaDisclosure = useDisclosure();
   const [cropSelectionError, setCropSelectionError] = useState<string | null>(null);
   const [selectingCropCode, setSelectingCropCode] = useState<string | null>(null);
@@ -99,32 +98,14 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
     };
   }) ?? [];
   const issueFactors = getIssueFactors(analysisScore?.factors ?? []);
-  const fallbackPriorities = issueFactors.length
-    ? [
-      ...issueFactors.map((factor) => ({ factorKey: factor.key, title: `${factor.label} ${factor.status === 'LOW' ? '보완' : '완화'}` })),
-      { factorKey: 'soilMoisture', title: '토양 수분 모니터링' },
-    ]
-    : [
-      { factorKey: 'environment', title: '현재 환경 설정 유지' },
-      { factorKey: 'soilMoisture', title: '토양 수분 모니터링' },
-    ];
-  const managementPriorities = carePlan?.managementPriorities ?? fallbackPriorities;
+  const managementPriorities = carePlan?.managementPriorities ?? [];
   const soilMoisture = analysisLatest?.measurements.soilMoisturePct;
   const soilTemperature = analysisLatest?.measurements.soilTemperatureC;
   const soilMoistureFactor = analysisScore?.factors.find((factor) => factor.key === 'soilMoisture');
   const soilTemperatureFactor = analysisScore?.factors.find((factor) => factor.key === 'soilTemperature');
   const spaceName = device?.space?.name ?? '등록된 공간 없음';
-  const improvementActions = carePlan?.improvementActions ?? [
-    { number: '01', tag: '오늘 실행', title: '생장등 보조 운전 설정', body: '오후 16:00부터 20:00까지 4시간 운전하세요. 잎 끝과 조명 사이 거리는 약 30cm를 유지합니다.', effect: '조도 안정화 · 예상 +11점' },
-    { number: '02', tag: '3일 관찰', title: '오후 습도 하락 구간 완화', body: '관수 직후 환기 시작 시간을 10분 늦추고 물받이 트레이를 배치해 50~60% 범위를 유지하세요.', effect: '습도 안정화 · 예상 +4점' },
-    { number: '03', tag: '현재 유지', title: '토양 수분 기준 관수 유지', body: '고정 시간 관수 대신 센서값 31% 이하를 기준으로 물을 주세요. 과습 위험을 줄일 수 있습니다.', effect: '뿌리 스트레스 예방' },
-  ];
-  const expectedOutcome = carePlan?.expectedOutcome ?? {
-    title: '권장 조치 적용 시 예상 변화',
-    body: '생장등과 습도 관리안을 함께 적용한 뒤 7일간 현재 관수 기준을 유지하는 조건입니다.',
-    expectedScore: 83,
-    scoreChange: 15,
-  };
+  const improvementActions = carePlan?.improvementActions ?? [];
+  const expectedOutcome = carePlan?.expectedOutcome;
 
   return (
     <View style={styles.pageBody}>
@@ -296,13 +277,13 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
 
       <Surface flat style={[styles.reportOutcome, compact && styles.stack]}>
         <View style={styles.reportOutcomeCopy}>
-          <Text style={styles.reportOutcomeTitle}>{expectedOutcome.title}</Text>
-          <Text style={styles.reportOutcomeBody}>{expectedOutcome.body}</Text>
+          <Text style={styles.reportOutcomeTitle}>{expectedOutcome?.title ?? '예상 결과를 불러오는 중입니다.'}</Text>
+          <Text style={styles.reportOutcomeBody}>{expectedOutcome?.body ?? '관리 계획 생성 후 예상 결과가 표시됩니다.'}</Text>
         </View>
         <View style={[styles.reportOutcomeNumbers, compact && styles.stack]}>
           <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>현재 환경점수</Text><Text style={styles.reportOutcomeValue}>{analysisScore ? `${Math.round(analysisScore.total)}점` : '--'}</Text></View>
-          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>7일 후 예상</Text><Text style={styles.reportOutcomeValueStrong}>{Math.round(expectedOutcome.expectedScore)}점</Text></View>
-          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>개선 폭</Text><Text style={styles.reportOutcomeValueStrong}>{expectedOutcome.scoreChange >= 0 ? '+' : ''}{Math.round(expectedOutcome.scoreChange)}점</Text></View>
+          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>7일 후 예상</Text><Text style={styles.reportOutcomeValueStrong}>{expectedOutcome ? `${Math.round(expectedOutcome.expectedScore)}점` : '--'}</Text></View>
+          <View style={styles.reportOutcomeNumber}><Text style={styles.reportOutcomeLabel}>개선 폭</Text><Text style={styles.reportOutcomeValueStrong}>{expectedOutcome ? `${expectedOutcome.scoreChange >= 0 ? '+' : ''}${Math.round(expectedOutcome.scoreChange)}점` : '--'}</Text></View>
         </View>
       </Surface>
     </View>

@@ -54,6 +54,31 @@ app:
     connection-timeout: ${MQTT_CONNECTION_TIMEOUT:PT10S}
     keep-alive: ${MQTT_KEEP_ALIVE:PT30S}
     clean-session: ${MQTT_CLEAN_SESSION:false}
+    publish-timeout: ${MQTT_PUBLISH_TIMEOUT:PT5S}
+    command-dispatch:
+      # Off until the end-to-end scenarios have run. Turning this on is what
+      # starts moving water: the backend stops recording authorised commands and
+      # starts publishing them to tb/v2/{gatewayId}/dn/command.
+      enabled: ${MQTT_COMMAND_DISPATCH_ENABLED:false}
+    heartbeat:
+      # Proof that the application is alive, not merely the broker. Off only
+      # for a deployment that has no gateways. Also needs app.scheduling.enabled.
+      enabled: ${MQTT_HEARTBEAT_ENABLED:true}
+      interval-ms: ${MQTT_HEARTBEAT_INTERVAL_MS:30000}
+      initial-delay-ms: ${MQTT_HEARTBEAT_INITIAL_DELAY_MS:10000}
+  scheduling:
+    # The single switch for background timers: the expiry sweep and the liveness
+    # heartbeat. @EnableScheduling activates every @Scheduled method in the
+    # context, so it is a process-wide capability rather than a feature flag.
+    # Only the test profile turns it off.
+    enabled: ${SCHEDULING_ENABLED:true}
+  irrigation:
+    sweep:
+      # Cadence only. Without the sweep a lost acknowledgement holds a pot's
+      # in-flight gate open forever, so there is no switch to turn it off
+      # independently of app.scheduling.
+      interval-ms: ${IRRIGATION_SWEEP_INTERVAL_MS:30000}
+      initial-delay-ms: ${IRRIGATION_SWEEP_INITIAL_DELAY_MS:10000}
   telemetry:
     http-ingest:
       enabled: ${TELEMETRY_HTTP_INGEST_ENABLED:false}
@@ -78,6 +103,15 @@ app:
     expected-schema-version: ${AI_EXPECTED_SCHEMA_VERSION:1}
     hard-ceiling-ml: ${AI_HARD_CEILING_ML:500}
     min-confidence: ${AI_MIN_CONFIDENCE:0.5}
+    # Two unrelated services share this namespace. app.ai.* is the irrigation
+    # volume regressor, which only suggests a number the Governor then
+    # validates. app.ai.gemini.* is the advisory care-plan agent, which
+    # produces text and touches no actuator. Separate @ConfigurationProperties
+    # records (app.ai and app.ai.gemini) bind them, so neither sees the other's
+    # keys - but they must live under ONE `ai:` mapping. SnakeYAML rejects a
+    # duplicate mapping key outright, so a second `ai:` here does not merely
+    # shadow the first: the whole application refuses to start. That failure is
+    # what PR #120 was opened to fix.
     gemini:
       enabled: ${GEMINI_ENABLED:false}
       api-key: ${GEMINI_API_KEY:}

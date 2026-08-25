@@ -6,8 +6,10 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -155,28 +157,140 @@ public class DeviceCommandRepository {
         return total == null ? 0 : total;
     }
 
-    /** Records the device's execution report, making {@code actual_ml} authoritative. */
-    public int markCompleted(
-            String commandId,
-            int actualMl,
-            int actualRuntimeMs,
-            String stopCause,
-            Instant completedAt) {
-        // Guarded on the current state so a late duplicate report cannot
-        // resurrect a command that already ended, or double-count its volume.
+    // -- state transitions -------------------------------------------------
+    //
+    // Every one of these is a single UPDATE whose WHERE clause names the states
+    // it is allowed to leave, taken from CommandAckPhase. Never a read followed
+    // by a write, and never a blind SET: the guard is what makes a redelivered
+    // ack — which QoS 1 promises, on both hops — a zero-row no-op instead of a
+    // second helping of the same volume. The returned row count is therefore the
+    // caller's answer to "did this ack change anything".
+
+    /** The device has the command and is running, or is about to. */
+    public int markAccepted(String commandId, Instant ackedAt) {
         return jdbcTemplate.update("""
                 UPDATE device_command
-                SET state = 'COMPLETED', actual_ml = ?, actual_runtime_ms = ?,
-                    stop_cause = ?, completed_at = ?
-                WHERE command_id = ? AND state IN ('ISSUED', 'ACCEPTED')
-                """,
-                actualMl,
-                actualRuntimeMs,
-                stopCause,
-                Timestamp.from(completedAt),
+                SET state = 'ACCEPTED', acked_at = ?
+                WHERE command_id = ? AND state IN (%s)
+                """.formatted(allowedFrom(CommandAckPhase.ACCEPTED)),
+                Timestamp.from(ackedAt),
                 commandId);
     }
 
+    /**
+     * The device refused before touching the pump — the one report that provably
+     * moved no water, and so the only one that takes volume back off the budget.
+     */
+    public int markRejected(String commandId, String stopCause, Instant ackedAt) {
+        // completed_at stays null on purpose. Gate 4 reads MAX(completed_at) for
+        // COMPLETED rows only, but a rejection has no completion time and
+        // inventing one would be a lie stored in a column other code may read.
+        return jdbcTemplate.update("""
+                UPDATE device_command
+                SET state = 'REJECTED', acked_at = COALESCE(acked_at, ?), stop_cause = ?
+                WHERE command_id = ? AND state IN (%s)
+                """.formatted(allowedFrom(CommandAckPhase.REJECTED)),
+                Timestamp.from(ackedAt),
+                stopCause,
+                commandId);
+    }
+
+    /** Records the device's execution report, making {@code actual_ml} authoritative. */
+    public int markCompleted(
+            String commandId,
+            Integer actualMl,
+            Integer actualRuntimeMs,
+            String stopCause,
+            Instant completedAt) {
+        return applyExecutionReport(
+                CommandAckPhase.COMPLETED, commandId, actualMl, actualRuntimeMs, stopCause,
+                completedAt);
+    }
+
+    /** Stopped part-way, by a watchdog or an operator. Water may have moved. */
+    public int markAborted(
+            String commandId,
+            Integer actualMl,
+            Integer actualRuntimeMs,
+            String stopCause,
+            Instant completedAt) {
+        return applyExecutionReport(
+                CommandAckPhase.ABORTED, commandId, actualMl, actualRuntimeMs, stopCause,
+                completedAt);
+    }
+
+    private int applyExecutionReport(
+            CommandAckPhase phase,
+            String commandId,
+            Integer actualMl,
+            Integer actualRuntimeMs,
+            String stopCause,
+            Instant completedAt) {
+        Instant storedAt = completedAt.truncatedTo(ChronoUnit.MICROS);
+        // acked_at is COALESCEd rather than set: it means "when the device first
+        // answered", and a command that went ISSUED → ACCEPTED → COMPLETED
+        // already has the earlier, truer value.
+        return jdbcTemplate.update("""
+                UPDATE device_command
+                SET state = ?, acked_at = COALESCE(acked_at, ?), completed_at = ?,
+                    actual_ml = ?, actual_runtime_ms = ?, stop_cause = ?
+                WHERE command_id = ? AND state IN (%s)
+                """.formatted(allowedFrom(phase)),
+                phase.target().name(),
+                Timestamp.from(storedAt),
+                Timestamp.from(storedAt),
+                actualMl,
+                actualRuntimeMs,
+                stopCause,
+                commandId);
+    }
+
+    /**
+     * Commands whose TTL has passed with no terminal report, oldest first.
+     *
+     * <p>Read separately from the update so the sweep can log each transition by
+     * id. A command that receives its ack between this read and that update just
+     * loses the race and the update reports zero rows, which is the correct
+     * outcome — the real report beats the assumption.
+     */
+    public List<String> expirableCommandIds(Instant now) {
+        return jdbcTemplate.queryForList("""
+                SELECT command_id FROM device_command
+                WHERE state IN ('ISSUED', 'ACCEPTED') AND expires_at <= ?
+                ORDER BY issued_at ASC
+                """, String.class, Timestamp.from(now));
+    }
+
+    /**
+     * Gives up waiting for a report.
+     *
+     * <p>Not a statement that nothing happened: EXPIRED keeps counting against
+     * the budget at {@code granted_ml}, because the device may well have watered
+     * and then lost connectivity. {@code expires_at} is re-checked in the WHERE
+     * clause so this cannot expire a command that was still live when the update
+     * ran.
+     */
+    public int markExpired(String commandId, Instant now) {
+        return jdbcTemplate.update("""
+                UPDATE device_command
+                SET state = 'EXPIRED'
+                WHERE command_id = ? AND state IN ('ISSUED', 'ACCEPTED') AND expires_at <= ?
+                """, commandId, Timestamp.from(now));
+    }
+
+    /**
+     * The {@code IN (...)} list for a phase, as SQL literals.
+     *
+     * <p>Inlined rather than bound to placeholders because the number of them
+     * varies per phase, and inlining is safe here for a reason worth stating: the
+     * values are {@link CommandState} enum constant names, so they are decided at
+     * compile time and no caller can influence them.
+     */
+    private static String allowedFrom(CommandAckPhase phase) {
+        return phase.allowedFrom().stream()
+                .map(state -> "'" + state.name() + "'")
+                .collect(Collectors.joining(", "));
+    }
     private static void setNullableInt(PreparedStatement statement, int index, Integer value)
             throws SQLException {
         if (value == null) {

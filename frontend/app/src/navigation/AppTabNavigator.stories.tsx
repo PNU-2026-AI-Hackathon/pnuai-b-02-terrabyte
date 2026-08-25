@@ -12,7 +12,7 @@ const meta = {
   args: {
     compact: false,
     cropName: '방울토마토',
-    selectedCrop: 0,
+    selectedCrop: 'cherry_tomato',
     onCreatePot: fn(),
     onLogout: fn(),
     onSelectCrop: fn(),

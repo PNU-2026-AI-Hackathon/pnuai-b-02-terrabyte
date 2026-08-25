@@ -9,15 +9,13 @@ import { ActionButton } from '../../components/ActionButton';
 import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
 import { getCarePlan, type CarePlan } from '../../care/carePlanApi';
-import { cultivationCriteria, managementTasks, shopProducts, type ShopProduct } from '../../data';
 import type { Page } from '../../navigation/types';
 import { useDeviceEnvironment } from '../../shared/device-environment/DeviceEnvironmentProvider';
-import { getRecommendedProductIds } from '../../shared/factorPresentation';
 
 export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavigate: (page: Page) => void }) {
   const [completedTaskIds, setCompletedTaskIds] = useState<Record<string, boolean>>({});
   const [carePlan, setCarePlan] = useState<CarePlan | null>(null);
-  const { potId, score, soilRecommendation } = useDeviceEnvironment();
+  const { potId, soilRecommendation } = useDeviceEnvironment();
 
   useEffect(() => {
     let active = true;
@@ -25,22 +23,14 @@ export function GuideScreen({ compact, onNavigate }: { compact: boolean; onNavig
     if (!potId) return () => { active = false; };
     void getCarePlan(potId)
       .then((plan) => { if (active) setCarePlan(plan); })
-      // AI 미설정·응답 실패 때에도 기존 정적 가이드를 계속 표시한다.
+      // API 응답이 없으면 빈 상태로 두고 정적 데이터를 대체하지 않는다.
       .catch(() => { if (active) setCarePlan(null); });
     return () => { active = false; };
   }, [potId]);
 
-  const environmentProducts = getRecommendedProductIds(score?.factors ?? [])
-    .map((id) => shopProducts.find((product) => product.id === id))
-    .filter((product): product is ShopProduct => Boolean(product));
-  const fallbackProducts = environmentProducts.length
-    ? environmentProducts
-    : shopProducts.filter((product) => product.badge?.includes('추천')).slice(0, 3);
-  const recommendedProducts = carePlan
-    ? carePlan.recommendedProducts.map((product) => ({ ...product, id: product.productId }))
-    : fallbackProducts;
-  const tasks = carePlan?.todayTasks ?? managementTasks;
-  const criteria = carePlan?.cultivationCriteria ?? cultivationCriteria;
+  const recommendedProducts = carePlan?.recommendedProducts.map((product) => ({ ...product, id: product.productId })) ?? [];
+  const tasks = carePlan?.todayTasks ?? [];
+  const criteria = carePlan?.cultivationCriteria ?? [];
   const completedTaskCount = tasks.filter((task) => completedTaskIds[task.id]).length;
 
   const toggleTask = (taskId: string) => {

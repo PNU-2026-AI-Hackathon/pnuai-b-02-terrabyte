@@ -6,7 +6,8 @@ import { font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
 import { typeScale } from '../appTheme/typography';
-import { crops } from '../data';
+import type { CropResponse } from '../crop/cropApi';
+import { useCrops } from '../crop/useCrops';
 import type { PotResponse } from '../device/deviceApi';
 import { Surface } from '../components/Surface';
 
@@ -21,16 +22,17 @@ type PotMenuProps = {
 
 type FormMode = 'create' | 'edit' | null;
 
-function cropName(cropCode?: string) {
+function cropName(crops: CropResponse[], cropCode?: string) {
   return crops.find((crop) => crop.code === cropCode)?.name ?? '작물 미등록';
 }
 
 export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, selectedPotId }: PotMenuProps) {
+  const { crops } = useCrops();
   const [open, setOpen] = useState(false);
   const [formMode, setFormMode] = useState<FormMode>(null);
   const [editingPotId, setEditingPotId] = useState<number>();
   const [label, setLabel] = useState('');
-  const [cropCode, setCropCode] = useState(crops[0].code);
+  const [cropCode, setCropCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,7 +55,7 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
   const openCreateForm = () => {
     setEditingPotId(undefined);
     setLabel(`화분 ${pots.length + 1}`);
-    setCropCode(crops[0].code);
+    setCropCode(crops[0]?.code ?? '');
     setError('');
     setFormMode('create');
   };
@@ -61,7 +63,7 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
   const openEditForm = (pot: PotResponse) => {
     setEditingPotId(pot.id);
     setLabel(pot.label);
-    setCropCode(pot.cropCode ?? crops[0].code);
+    setCropCode(pot.cropCode ?? crops[0]?.code ?? '');
     setError('');
     setFormMode('edit');
   };
@@ -70,6 +72,10 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
     const normalizedLabel = label.trim();
     if (!normalizedLabel) {
       setError('화분 이름을 입력해 주세요.');
+      return;
+    }
+    if (!cropCode) {
+      setError('작물 목록을 불러온 뒤 선택해 주세요.');
       return;
     }
 
@@ -134,7 +140,7 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
                       <Pressable
                         accessibilityRole="button"
                         accessibilityState={{ selected }}
-                        accessibilityLabel={`${pot.label}, ${cropName(pot.cropCode)}${selected ? ', 선택됨' : ''}`}
+                        accessibilityLabel={`${pot.label}, ${cropName(crops, pot.cropCode)}${selected ? ', 선택됨' : ''}`}
                         disabled={submitting}
                         onPress={() => {
                           onSelectPot(pot.id);
@@ -144,7 +150,7 @@ export function PotMenu({ compact, onCreatePot, onSelectPot, onUpdatePot, pots, 
                       >
                         <View style={styles.potRowCopy}>
                           <Text numberOfLines={1} style={[styles.potLabel, selected && styles.potLabelSelected]}>{pot.label}</Text>
-                          <Text style={styles.potCrop}>{cropName(pot.cropCode)}</Text>
+                          <Text style={styles.potCrop}>{cropName(crops, pot.cropCode)}</Text>
                         </View>
                         {selected ? <Text style={styles.selectedMark}>현재</Text> : null}
                       </Pressable>

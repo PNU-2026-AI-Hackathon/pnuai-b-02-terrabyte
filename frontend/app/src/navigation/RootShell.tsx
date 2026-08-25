@@ -10,7 +10,7 @@ import { ensureBrandFontLoaded } from '../appTheme/webFont';
 import { clearAccessToken, getMe, loadAccessToken, type MeResponse } from '../auth/authApi';
 import { BrandMark } from '../components/BrandMark';
 import { selectPotCrop } from '../crop/cropApi';
-import { crops } from '../data';
+import { useCrops } from '../crop/useCrops';
 import { createPot, getDevice, type DeviceResponse, updatePot as updatePotRequest } from '../device/deviceApi';
 import { Login } from '../onboarding/Login';
 import { SetupFlow } from '../onboarding/SetupFlow';
@@ -32,7 +32,7 @@ ensureBrandFontLoaded();
 export default function RootShell() {
   const [flow, setFlow] = useState<FlowStage>('auth');
   const [restoringSession, setRestoringSession] = useState(true);
-  const [selectedCropCode, setSelectedCropCode] = useState(crops[0].code);
+  const [selectedCropCode, setSelectedCropCode] = useState('');
   const [deviceId, setDeviceId] = useState<number | undefined>();
   const [device, setDevice] = useState<DeviceResponse | null>(null);
   const [selectedPotId, setSelectedPotId] = useState<number | undefined>();
@@ -41,7 +41,8 @@ export default function RootShell() {
   const { width } = useWindowDimensions();
   const compact = width < 900;
   const authenticated = flow !== 'auth';
-  const selectedCrop = Math.max(0, crops.findIndex((crop) => crop.code === selectedCropCode));
+  const { crops } = useCrops(authenticated);
+  const selectedCropName = crops.find((crop) => crop.code === selectedCropCode)?.name ?? '작물 미선택';
 
   useEffect(() => {
     if (typeof document === 'undefined') return undefined;
@@ -113,7 +114,7 @@ export default function RootShell() {
       pots: [...(current.pots ?? []), nextPot],
     } : current);
     setSelectedPotId(nextPot.id);
-    setSelectedCropCode(nextPot.cropCode ?? crops[0].code);
+    setSelectedCropCode(nextPot.cropCode ?? '');
   };
 
   const updatePot = async (potId: number, label: string, cropCode: string) => {
@@ -123,7 +124,7 @@ export default function RootShell() {
       ...current,
       pots: (current.pots ?? []).map((pot) => pot.id === potId ? nextPot : pot),
     } : current);
-    if (potId === selectedPotId) setSelectedCropCode(nextPot.cropCode ?? crops[0].code);
+    if (potId === selectedPotId) setSelectedCropCode(nextPot.cropCode ?? '');
   };
 
   const applyRegisteredDevice = (registered: DeviceResponse) => {
@@ -245,7 +246,7 @@ export default function RootShell() {
 
   useEffect(() => {
     const selectedPot = (device?.pots ?? []).find((pot) => pot.id === selectedPotId);
-    setSelectedCropCode(selectedPot?.cropCode ?? crops[0].code);
+    setSelectedCropCode(selectedPot?.cropCode ?? '');
   }, [device, selectedPotId]);
 
   const logout = async () => {
@@ -258,7 +259,7 @@ export default function RootShell() {
       setDeviceId(undefined);
       setDevice(null);
       setSelectedPotId(undefined);
-      setSelectedCropCode(crops[0].code);
+      setSelectedCropCode('');
       setFlow('auth');
     }
   };
@@ -334,7 +335,7 @@ export default function RootShell() {
       <GlassBackdrop />
       <AppTabNavigator
         compact={compact}
-        cropName={(crops[selectedCrop] ?? crops[0]).name}
+        cropName={selectedCropName}
         device={device ?? undefined}
         initialPage={paymentReturn ? 'shop' : 'dashboard'}
         onCreatePot={addPot}
@@ -343,7 +344,7 @@ export default function RootShell() {
         onLogout={() => void logout()}
         onSelectCrop={changeSelectedCrop}
         pots={device?.pots ?? []}
-        selectedCrop={selectedCrop}
+        selectedCrop={selectedCropCode}
         selectedPotId={selectedPotId}
       />
       <StatusBar style="dark" />

@@ -11,7 +11,7 @@ import { SectionHeader } from '../../components/SectionHeader';
 import { Surface } from '../../components/Surface';
 import { addCartItem, getCart, removeCartItem, updateCartItem, type CartResponse } from '../../cart/cartApi';
 import { cancelOrder, createOrder, getOrder, getOrders, type OrderDetail, type OrderStatus, type OrderSummary } from '../../order/orderApi';
-import { readyPayment } from '../../payment/paymentApi';
+import { cancelPayment, getOrderPayment, readyPayment } from '../../payment/paymentApi';
 import { requestTossPayment } from '../../payment/tossPayment';
 import { getShopProducts, type ShopCategory, type ShopProduct, type ShopSubCategory } from '../../shop/shopApi';
 
@@ -115,6 +115,9 @@ export function ShopScreen({
   const [selectedOrder, setSelectedOrder] = useState<OrderDetail | null>(null);
   const [orderDetailLoading, setOrderDetailLoading] = useState(false);
   const [orderActionLoading, setOrderActionLoading] = useState(false);
+  const [paymentCancelOpen, setPaymentCancelOpen] = useState(false);
+  const [paymentCancelReason, setPaymentCancelReason] = useState('');
+  const [paymentCancelError, setPaymentCancelError] = useState<string | null>(null);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -245,6 +248,37 @@ export function ShopScreen({
       setOrders((current) => current.map((order) => order.id === cancelled.id ? cancelled : order));
     } catch (caught) {
       setOrdersError(errorMessage(caught, '주문을 취소하지 못했습니다.'));
+    } finally {
+      setOrderActionLoading(false);
+    }
+  };
+
+  const openPaymentCancellation = () => {
+    if (!selectedOrder || selectedOrder.status !== 'PAID') return;
+    setPaymentCancelReason('단순 변심');
+    setPaymentCancelError(null);
+    setPaymentCancelOpen(true);
+  };
+
+  const cancelPaidOrder = async () => {
+    if (!selectedOrder || selectedOrder.status !== 'PAID') return;
+    const cancelReason = paymentCancelReason.trim();
+    if (!cancelReason) {
+      setPaymentCancelError('취소 사유를 입력해 주세요.');
+      return;
+    }
+
+    setOrderActionLoading(true);
+    setPaymentCancelError(null);
+    try {
+      const payment = await getOrderPayment(selectedOrder.id);
+      await cancelPayment(payment.id, cancelReason);
+      const cancelledOrder = await getOrder(selectedOrder.id);
+      setSelectedOrder(cancelledOrder);
+      setOrders((current) => current.map((order) => order.id === cancelledOrder.id ? cancelledOrder : order));
+      setPaymentCancelOpen(false);
+    } catch (caught) {
+      setPaymentCancelError(errorMessage(caught, '결제를 취소하지 못했습니다.'));
     } finally {
       setOrderActionLoading(false);
     }
@@ -606,6 +640,13 @@ export function ShopScreen({
                     </Pressable>
                   </View>
                 ) : null}
+                {selectedOrder.status === 'PAID' ? (
+                  <View style={styles.orderActions}>
+                    <Pressable disabled={orderActionLoading} onPress={openPaymentCancellation} style={[styles.orderCancelButton, orderActionLoading && styles.pageDisabled]}>
+                      <Text style={styles.orderCancelButtonText}>결제 취소</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </ScrollView>
             ) : (
               <ScrollView contentContainerStyle={styles.ordersList}>
@@ -626,6 +667,40 @@ export function ShopScreen({
                 )) : null}
               </ScrollView>
             )}
+          </Surface>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => { if (!orderActionLoading) setPaymentCancelOpen(false); }}
+        transparent
+        visible={paymentCancelOpen}
+      >
+        <View style={styles.modalBackdrop}>
+          <Surface style={styles.cancelPaymentModal}>
+            <Text style={styles.modalEyebrow}>결제 취소</Text>
+            <Text style={styles.modalTitle}>결제를 취소할까요?</Text>
+            <Text style={styles.cancelPaymentDescription}>취소하면 주문 상태가 취소로 변경되고 결제 금액이 환불됩니다.</Text>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>취소 사유</Text>
+              <TextInput
+                editable={!orderActionLoading}
+                maxLength={200}
+                onChangeText={setPaymentCancelReason}
+                placeholder="예: 단순 변심"
+                placeholderTextColor={palette.muted}
+                style={styles.fieldInput}
+                value={paymentCancelReason}
+              />
+            </View>
+            {paymentCancelError ? <Text accessibilityRole="alert" style={styles.orderError}>{paymentCancelError}</Text> : null}
+            <View style={styles.cancelPaymentActions}>
+              <Pressable disabled={orderActionLoading} onPress={() => setPaymentCancelOpen(false)} style={[styles.orderCancelButton, orderActionLoading && styles.pageDisabled]}>
+                <Text style={styles.orderCancelButtonText}>돌아가기</Text>
+              </Pressable>
+              <ActionButton disabled={orderActionLoading} label={orderActionLoading ? '취소 처리 중…' : '결제 취소 확정'} onPress={() => { void cancelPaidOrder(); }} />
+            </View>
           </Surface>
         </View>
       </Modal>
@@ -888,6 +963,7 @@ const styles = StyleSheet.create(scaleTypography({
   detailPriceLabel: { ...typeScale.caption, color: palette.muted, fontFamily: font },
   cartModal: { gap: 20, maxHeight: '82%', maxWidth: 620, padding: 28, width: '100%' },
   ordersModal: { gap: 20, maxHeight: '82%', maxWidth: 680, padding: 28, width: '100%' },
+  cancelPaymentModal: { gap: 18, maxWidth: 500, padding: 28, width: '100%' },
   checkoutModal: { gap: 22, maxHeight: '92%', maxWidth: 680, padding: 30, width: '100%' },
   modalHeader: { alignItems: 'flex-start', flexDirection: 'row', gap: 18, justifyContent: 'space-between' },
   modalHeaderCopy: { flex: 1, gap: 5 },
@@ -942,6 +1018,8 @@ const styles = StyleSheet.create(scaleTypography({
   orderCancelButton: { alignItems: 'center', backgroundColor: '#ffffff', borderColor: palette.lineStrong, borderRadius: 10, borderWidth: 1, justifyContent: 'center', minHeight: 48, minWidth: 154, paddingHorizontal: 24, paddingVertical: 12 },
   orderCancelButtonText: { ...typeScale.button, color: palette.red, fontFamily: font },
   orderActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
+  cancelPaymentDescription: { ...typeScale.body, color: palette.secondary, fontFamily: font },
+  cancelPaymentActions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end' },
   orderError: { ...typeScale.body, color: palette.red, fontFamily: font, paddingVertical: 12 },
   checkoutForm: { gap: 16 },
   fieldRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },

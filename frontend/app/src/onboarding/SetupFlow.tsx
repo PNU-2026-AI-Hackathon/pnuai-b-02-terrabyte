@@ -9,7 +9,6 @@ import { ActionButton } from '../components/ActionButton';
 import { BrandMark } from '../components/BrandMark';
 import { Surface } from '../components/Surface';
 import { getCrops, selectPotCrop, type CropResponse } from '../crop/cropApi';
-import { crops } from '../data';
 import { registerDevice, type DeviceResponse } from '../device/deviceApi';
 import type { FlowStage } from '../navigation/types';
 import { createCultivationSpace, getCultivationSpaces, type CultivationSpaceResponse } from '../space/spaceApi';
@@ -490,7 +489,7 @@ export function SetupFlow({
               {cropError ? <Text accessibilityRole="alert" style={styles.authError}>{cropError}</Text> : null}
               <ActionButton
                 disabled={selectingCrop || cropLoading || !selectedCropCode}
-                label={selectingCrop ? '선택 저장 중…' : `${crops.find((crop) => crop.code === selectedCropCode)?.name ?? '작물'} 선택`}
+                label={selectingCrop ? '선택 저장 중…' : `${availableCrops.find((crop) => crop.code === selectedCropCode)?.name ?? '작물'} 선택`}
                 onPress={() => void submitCrop()}
               />
             </View>

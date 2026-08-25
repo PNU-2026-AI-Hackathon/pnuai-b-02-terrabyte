@@ -4,7 +4,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 
 import { font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
-import { crops } from '../data';
+import type { CropResponse } from '../crop/cropApi';
+import { useCrops } from '../crop/useCrops';
 import type { PotResponse } from '../device/deviceApi';
 import { Surface } from '../components/Surface';
 
@@ -16,24 +17,25 @@ type PotManagerProps = {
   onCreatePot: (label: string, cropCode: string) => Promise<void>;
 };
 
-function cropName(cropCode?: string) {
+function cropName(crops: CropResponse[], cropCode?: string) {
   return crops.find((crop) => crop.code === cropCode)?.name ?? '작물 미등록';
 }
 
-function cropEmoji(cropCode?: string) {
+function cropEmoji(crops: CropResponse[], cropCode?: string) {
   return crops.find((crop) => crop.code === cropCode)?.emoji ?? '🪴';
 }
 
 export function PotManager({ compact, onCreatePot, onSelectPot, pots, selectedPotId }: PotManagerProps) {
+  const { crops } = useCrops();
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState('');
-  const [cropCode, setCropCode] = useState(crops[0].code);
+  const [cropCode, setCropCode] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const openCreateModal = () => {
     setLabel(`화분 ${pots.length + 1}`);
-    setCropCode(crops[0].code);
+    setCropCode(crops[0]?.code ?? '');
     setError('');
     setOpen(true);
   };
@@ -46,6 +48,10 @@ export function PotManager({ compact, onCreatePot, onSelectPot, pots, selectedPo
     const normalizedLabel = label.trim();
     if (!normalizedLabel) {
       setError('화분 이름을 입력해 주세요.');
+      return;
+    }
+    if (!cropCode) {
+      setError('작물 목록을 불러온 뒤 선택해 주세요.');
       return;
     }
 
@@ -86,17 +92,17 @@ export function PotManager({ compact, onCreatePot, onSelectPot, pots, selectedPo
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                accessibilityLabel={`${pot.label}, ${cropName(pot.cropCode)}`}
+                accessibilityLabel={`${pot.label}, ${cropName(crops, pot.cropCode)}`}
                 key={pot.id}
                 onPress={() => onSelectPot(pot.id)}
                 style={({ pressed }) => [styles.potCard, selected && styles.potCardSelected, pressed && styles.pressed]}
               >
                 <View style={styles.potCardTopline}>
-                  <Text style={styles.potEmoji}>{cropEmoji(pot.cropCode)}</Text>
+                  <Text style={styles.potEmoji}>{cropEmoji(crops, pot.cropCode)}</Text>
                   {selected ? <Text style={styles.selectedMark}>선택됨</Text> : null}
                 </View>
                 <Text numberOfLines={1} style={[styles.potLabel, selected && styles.potLabelSelected]}>{pot.label}</Text>
-                <Text style={styles.potCrop}>{cropName(pot.cropCode)}</Text>
+                <Text style={styles.potCrop}>{cropName(crops, pot.cropCode)}</Text>
                 <Text style={styles.potStatus}>{pot.status === 'ONLINE' ? '센서 연결됨' : '센서 연결 대기'}</Text>
               </Pressable>
             );

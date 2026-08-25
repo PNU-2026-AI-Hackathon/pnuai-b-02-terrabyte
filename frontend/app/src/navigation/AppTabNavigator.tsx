@@ -79,7 +79,7 @@ type AppTabNavigatorProps = {
   onSelectPot: (potId: number) => void;
   onUpdatePot: (potId: number, label: string, cropCode: string) => Promise<void>;
   pots: PotResponse[];
-  selectedCrop: number;
+  selectedCrop: string;
   selectedPotId?: number;
 };
 
@@ -121,7 +121,7 @@ export function AppTabNavigator({ compact, cropName, device, initialPage = 'dash
             <Tab.Screen name="Dashboard">
               {() => (
                 <ScreenLayout compact={compact} onCreatePot={onCreatePot} onSelectPot={onSelectPot} onUpdatePot={onUpdatePot} page="dashboard" pots={pots} selectedPotId={selectedPotId}>
-                  <DashboardScreen compact={compact} device={device} onNavigate={goToPage} selectedCrop={selectedCrop} />
+                  <DashboardScreen compact={compact} device={device} onNavigate={goToPage} />
                 </ScreenLayout>
               )}
             </Tab.Screen>

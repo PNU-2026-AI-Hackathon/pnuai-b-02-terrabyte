@@ -213,7 +213,10 @@ public class IrrigationGovernor {
                 now.plus(properties.commandTtl()),
                 request.correlationId(),
                 request.source(),
-                CommandOrigin.CLOUD);
+                CommandOrigin.CLOUD,
+                request.requestedMl(),
+                clampReason,
+                request.aiModelVersion());
 
         decisionRepository.save(IrrigationDecision.granted(
                 request.potId(),

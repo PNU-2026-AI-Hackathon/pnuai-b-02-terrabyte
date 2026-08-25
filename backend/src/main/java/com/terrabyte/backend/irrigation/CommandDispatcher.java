@@ -3,16 +3,17 @@ package com.terrabyte.backend.irrigation;
 /**
  * Delivers an authorised command to the gateway that will execute it.
  *
- * <p><strong>Nothing delivers commands yet.</strong> {@code MqttConfig} states
- * plainly that the backend never publishes, so the downlink topic
- * {@code tb/v2/{gatewayId}/dn/command} has no producer. That work — publishing,
- * acknowledgement, TTL expiry and completion reports — is issue #50, and the
- * actuator wiring it drives is #49.
+ * <p>Two implementations, and which one is in play is a deployment decision.
+ * {@code MqttCommandDispatcher} publishes to
+ * {@code tb/v2/{gatewayId}/dn/command} and is enabled by
+ * {@code app.mqtt.command-dispatch.enabled}; {@link LoggingCommandDispatcher} is
+ * the fallback for every environment without that flag, and it says so at WARN
+ * rather than doing nothing quietly.
  *
- * <p>This interface exists so the gap is a named seam rather than a silence.
- * The Governor is complete and its decisions are recorded; what is missing is
- * the last hop, and {@link LoggingCommandDispatcher} makes that visible in the
- * log instead of letting a caller assume a pump ran.
+ * <p>The interface stays because the seam is worth keeping named. The Governor's
+ * decision and the {@code device_command} row are written either way, so this is
+ * the only place the two configurations differ — and {@link #dispatch}'s return
+ * value is what stops a caller from assuming a pump ran.
  */
 public interface CommandDispatcher {
 

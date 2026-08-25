@@ -48,8 +48,35 @@ public class DeviceRepository {
         return queryOne(" WHERE id = ? AND user_id = ?", deviceId, userId);
     }
 
+    /**
+     * Ownership-free lookup, for callers that are not serving a user request.
+     *
+     * <p>The irrigation downlink needs {@code hardware_id} for a pot it already
+     * resolved, and there is no user in that path at all — the command may have
+     * come from the rule engine. {@link #findByIdAndUserId} is still the right
+     * method everywhere a request has an authenticated caller.
+     */
+    public Optional<Device> findById(long deviceId) {
+        return queryOne(" WHERE id = ?", deviceId);
+    }
+
     public Optional<Device> findByHardwareId(String hardwareId) {
         return queryOne(" WHERE hardware_id = ?", hardwareId);
+    }
+
+    /**
+     * Every gateway that has a hardware identity, for addressing downlink
+     * traffic that is not about one particular pot.
+     *
+     * <p>Deliberately not filtered by {@code status}: the whole point of the
+     * liveness heartbeat is to reach a gateway that has decided the cloud is
+     * gone. A gateway we believe is offline is exactly the one that most needs
+     * to hear otherwise, and the broker drops what it cannot deliver.
+     */
+    public List<String> findAllGatewayHardwareIds() {
+        return jdbcTemplate.queryForList(
+                "SELECT hardware_id FROM device WHERE hardware_id IS NOT NULL ORDER BY id",
+                String.class);
     }
 
     // 개발 테스트 코드(123456)로 등록하는 계정마다, 실제 하드웨어와 연결되지 않은
