@@ -10,12 +10,25 @@ import sqlite3
 import time
 from typing import Callable, Iterator
 
-from .protocol import Event
+from .protocol import CommandAck, Event, QueuedMessage
+
+
+# Telemetry and command outcomes share a durability boundary, but not a retry
+# queue. A backed-off telemetry row must not hold an ack until the backend has
+# expired the command and charged water that may not have moved.
+KIND_TELEMETRY = "telemetry"
+KIND_ACK = "ack"
+KINDS = (KIND_TELEMETRY, KIND_ACK)
+
+_RECORD_CODECS: dict[str, Callable[[dict], QueuedMessage]] = {
+    KIND_TELEMETRY: Event.from_record,
+    KIND_ACK: CommandAck.from_record,
+}
 
 
 @dataclass(frozen=True)
 class OutboxItem:
-    event: Event
+    event: QueuedMessage
     attempts: int
 
 
@@ -50,13 +63,24 @@ class Outbox:
         finally:
             connection.close()
 
+    # Defined once for both fresh and migrated databases. Existing rows predate
+    # command acks and are telemetry by definition, so the default is also the
+    # in-place backfill.
+    _KIND_COLUMN = (
+        "kind TEXT NOT NULL DEFAULT '"
+        + KIND_TELEMETRY
+        + "' CHECK (kind IN ("
+        + ", ".join(f"'{kind}'" for kind in KINDS)
+        + "))"
+    )
+
     def initialize(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as connection:
             connection.execute("PRAGMA journal_mode = WAL")
             connection.execute("PRAGMA synchronous = FULL")
-            connection.executescript(
-                """
+            connection.execute(
+                f"""
                 CREATE TABLE IF NOT EXISTS telemetry_outbox (
                     event_id TEXT PRIMARY KEY,
                     payload_json TEXT NOT NULL,
@@ -65,16 +89,42 @@ class Outbox:
                     next_attempt_epoch REAL NOT NULL,
                     status TEXT NOT NULL DEFAULT 'pending'
                         CHECK (status IN ('pending', 'dead')),
-                    last_error TEXT
-                );
+                    last_error TEXT,
+                    {self._KIND_COLUMN}
+                )
+                """
+            )
+            self._migrate(connection)
+            connection.executescript(
+                """
                 CREATE INDEX IF NOT EXISTS telemetry_outbox_pending
                     ON telemetry_outbox(status, next_attempt_epoch, created_at_epoch);
                 CREATE INDEX IF NOT EXISTS telemetry_outbox_order
                     ON telemetry_outbox(status, created_at_epoch, event_id);
+                CREATE INDEX IF NOT EXISTS telemetry_outbox_kind_order
+                    ON telemetry_outbox(status, kind, created_at_epoch, event_id);
                 """
             )
 
-    def enqueue(self, event: Event) -> bool:
+    def _migrate(self, connection: sqlite3.Connection) -> None:
+        """Add the message kind without rebuilding a populated field queue."""
+
+        columns = {
+            row["name"]
+            for row in connection.execute("PRAGMA table_info(telemetry_outbox)")
+        }
+        if "kind" not in columns:
+            connection.execute(
+                f"ALTER TABLE telemetry_outbox ADD COLUMN {self._KIND_COLUMN}"
+            )
+
+    def enqueue(
+        self, event: QueuedMessage, *, kind: str = KIND_TELEMETRY
+    ) -> bool:
+        # INSERT OR IGNORE also swallows CHECK failures. Validate first so a bad
+        # kind cannot masquerade as a harmless duplicate event id.
+        if kind not in KINDS:
+            raise ValueError(f"unknown outbox kind {kind!r}; expected one of {KINDS}")
         payload = json.dumps(
             event.to_record(), separators=(",", ":"), ensure_ascii=True
         )
@@ -90,35 +140,41 @@ class Outbox:
             cursor = connection.execute(
                 """
                 INSERT OR IGNORE INTO telemetry_outbox(
-                    event_id, payload_json, created_at_epoch, next_attempt_epoch
-                ) VALUES (?, ?, ?, ?)
+                    event_id, payload_json, created_at_epoch, next_attempt_epoch,
+                    kind
+                ) VALUES (?, ?, ?, ?, ?)
                 """,
-                (event.event_id, payload, now, now),
+                (event.event_id, payload, now, now, kind),
             )
         return cursor.rowcount == 1
 
-    def due(self, limit: int) -> list[OutboxItem]:
+    def due(
+        self, limit: int, *, kind: str = KIND_TELEMETRY
+    ) -> list[OutboxItem]:
+        decode = _RECORD_CODECS.get(kind)
+        if decode is None:
+            raise ValueError(f"unknown outbox kind {kind!r}; expected one of {KINDS}")
         now = self.clock()
         with self._connect() as connection:
             rows = connection.execute(
                 """
                 SELECT payload_json, attempts, next_attempt_epoch
                 FROM telemetry_outbox
-                WHERE status = 'pending'
+                WHERE status = 'pending' AND kind = ?
                 ORDER BY created_at_epoch, event_id
                 LIMIT ?
                 """,
-                (limit,),
+                (kind, limit),
             ).fetchall()
-        # A delayed oldest item blocks newer items. Otherwise a network retry
-        # would silently reorder observations on the backend.
+        # A delayed oldest item blocks newer items of the same kind. Keeping the
+        # kinds separate preserves telemetry order without delaying outcomes.
         due_rows = []
         for row in rows:
             if row["next_attempt_epoch"] > now:
                 break
             due_rows.append(row)
         return [
-            OutboxItem(Event.from_record(json.loads(row["payload_json"])), row["attempts"])
+            OutboxItem(decode(json.loads(row["payload_json"])), row["attempts"])
             for row in due_rows
         ]
 
@@ -161,11 +217,23 @@ class Outbox:
                 (error[:256], event_id),
             )
 
-    def counts(self) -> tuple[int, int]:
+    def counts(self, *, kind: str | None = None) -> tuple[int, int]:
         with self._connect() as connection:
-            rows = dict(
-                connection.execute(
+            if kind is None:
+                rows = connection.execute(
                     "SELECT status, COUNT(*) FROM telemetry_outbox GROUP BY status"
                 ).fetchall()
-            )
-        return rows.get("pending", 0), rows.get("dead", 0)
+            else:
+                if kind not in KINDS:
+                    raise ValueError(
+                        f"unknown outbox kind {kind!r}; expected one of {KINDS}"
+                    )
+                rows = connection.execute(
+                    """
+                    SELECT status, COUNT(*) FROM telemetry_outbox
+                    WHERE kind = ? GROUP BY status
+                    """,
+                    (kind,),
+                ).fetchall()
+        counted = dict(rows)
+        return counted.get("pending", 0), counted.get("dead", 0)

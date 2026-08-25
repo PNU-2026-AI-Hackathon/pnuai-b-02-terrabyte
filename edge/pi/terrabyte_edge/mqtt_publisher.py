@@ -13,8 +13,8 @@ import logging
 import threading
 from typing import Any, Callable
 
-from .protocol import Event
-from .publisher import Delivery, DeliveryResult
+from .protocol import CommandAck, Event
+from .publisher import CommandHandler, Delivery, DeliveryResult
 
 LOGGER = logging.getLogger(__name__)
 
@@ -68,10 +68,14 @@ class MqttPublisher:
         self._gateway_id = gateway_id
         self._telemetry_topic = f"{topic_prefix}/{gateway_id}/up/telemetry"
         self._status_topic = f"{topic_prefix}/{gateway_id}/up/status"
+        self._ack_topic = f"{topic_prefix}/{gateway_id}/up/ack"
+        self._command_topic = f"{topic_prefix}/{gateway_id}/dn/command"
         self._publish_timeout_seconds = publish_timeout_seconds
         self._connected = threading.Event()
         self._publish_reasons: dict[int, Any] = {}
         self._publish_lock = threading.Lock()
+        self._command_handler: CommandHandler | None = None
+        self._command_lock = threading.Lock()
 
         # MQTT v5, not 3.1.1, for one specific reason: a broker that refuses a
         # publish on ACL grounds still returns a PUBACK under 3.1.1, so a
@@ -95,6 +99,7 @@ class MqttPublisher:
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
         self._client.on_publish = self._on_publish
+        self._client.on_message = self._on_message
         if username:
             self._client.username_pw_set(username, password)
         if tls:
@@ -151,13 +156,57 @@ class MqttPublisher:
         # would re-execute stale irrigation on every reconnect. Only this
         # up/status publish is retained.
         client.publish(self._status_topic, ONLINE_PAYLOAD, qos=1, retain=True)
+        # Subscriptions have to be renewed after reconnect. Store the handler
+        # independently so a broker blip cannot leave telemetry flowing while
+        # silently disabling commands.
+        with self._command_lock:
+            handler = self._command_handler
+        if handler is not None:
+            client.subscribe(self._command_topic, qos=1)
+            LOGGER.info("subscribed to commands topic=%s", self._command_topic)
         self._connected.set()
+
+    def subscribe_commands(self, handler: CommandHandler) -> None:
+        """Register the relay without doing command work on paho's thread."""
+
+        with self._command_lock:
+            self._command_handler = handler
+        is_connected = getattr(self._client, "is_connected", None)
+        if callable(is_connected) and is_connected():
+            self._client.subscribe(self._command_topic, qos=1)
+            LOGGER.info("subscribed to commands topic=%s", self._command_topic)
+
+    def _on_message(self, client, userdata, message) -> None:
+        with self._command_lock:
+            handler = self._command_handler
+        if handler is None:
+            return
+        try:
+            handler(
+                bytes(message.payload or b""),
+                bool(getattr(message, "retain", False)),
+            )
+        except Exception:
+            # A relay bug must not kill paho's network loop and telemetry path.
+            LOGGER.exception("command handler raised; dropping message")
 
     def send(self, event: Event) -> DeliveryResult:
         try:
             body = event.envelope_v2(gateway_id=self._gateway_id)
         except Exception as exc:  # local schema-validation failure only
             return DeliveryResult(Delivery.DEAD, f"invalid_envelope:{exc}")
+
+        return self._publish(self._telemetry_topic, body)
+
+    def send_ack(self, ack: CommandAck) -> DeliveryResult:
+        try:
+            body = ack.ack_payload(gateway_id=self._gateway_id)
+        except Exception as exc:  # local schema-validation failure only
+            return DeliveryResult(Delivery.DEAD, f"invalid_envelope:{exc}")
+        return self._publish(self._ack_topic, body)
+
+    def _publish(self, topic: str, body: dict[str, object]) -> DeliveryResult:
+        """Publish one QoS 1 message, never retained, and judge its PUBACK."""
 
         payload = json.dumps(body, separators=(",", ":")).encode("utf-8")
 
@@ -170,9 +219,7 @@ class MqttPublisher:
             return DeliveryResult(Delivery.RETRY, "not_connected")
 
         try:
-            info = self._client.publish(
-                self._telemetry_topic, payload, qos=1, retain=False
-            )
+            info = self._client.publish(topic, payload, qos=1, retain=False)
         except Exception as exc:  # broker/socket errors, however paho raises them
             return DeliveryResult(Delivery.RETRY, type(exc).__name__)
 
@@ -197,7 +244,7 @@ class MqttPublisher:
             # that were never actually invalid. If it stays broken the outbox
             # fills and logs CRITICAL — loud, but not silent data loss.
             LOGGER.error(
-                "broker rejected publish topic=%s reason=%s", self._telemetry_topic, rejection
+                "broker rejected publish topic=%s reason=%s", topic, rejection
             )
             return DeliveryResult(Delivery.RETRY, f"rejected:{rejection}")
         return DeliveryResult(Delivery.DELIVERED, "puback")

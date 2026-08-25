@@ -1,5 +1,6 @@
 package com.terrabyte.backend.irrigation;
 
+import java.time.Duration;
 import java.time.Instant;
 
 /**
@@ -35,6 +36,11 @@ public record DeviceCommand(
 
     public static final String ACTION_DOSE = "dose";
 
+    // The 15-second grace covers the edge's 1-second serial read timeout,
+    // 2-second serial reconnect interval, and one 10-second MQTT publish/PUBACK
+    // timeout, with 2 seconds left for worker scheduling and queueing.
+    static final Duration TERMINAL_ACK_MARGIN = Duration.ofSeconds(15);
+
     /** A freshly authorised pump dose, before the device has said anything. */
     public static DeviceCommand issuedDose(IrrigationGrant grant) {
         return new DeviceCommand(
@@ -56,8 +62,27 @@ public record DeviceCommand(
                 grant.origin());
     }
 
-    /** Whether this command still blocks a new one for the same pot at {@code now}. */
+    /**
+     * Whether this command still blocks a new one for the same pot at {@code now}.
+     *
+     * <p>There are two deliberately separate clocks. {@link #expiresAt()} is
+     * the delivery-freshness deadline: after it, an edge must not start this
+     * command. Pot occupancy instead ends after the run authorised by
+     * {@link #maxRuntimeMs()}, plus a short grace for its terminal ack. A
+     * terminal execution report releases the pot sooner.
+     */
     public boolean isOutstandingAt(Instant now) {
-        return state.isOutstanding() && expiresAt.isAfter(now);
+        boolean hasNoTerminalExecutionReport = state.isOutstanding()
+                || state == CommandState.EXPIRED;
+        return hasNoTerminalExecutionReport && occupancyEndsAt().isAfter(now);
+    }
+
+    /** The runtime-based instant at which this command stops occupying its pot. */
+    public Instant occupancyEndsAt() {
+        // Do not substitute expiresAt here. That is the short delivery TTL
+        // which discards the queued-command burst on reconnect (F3 in
+        // docs/design/edge_ai_hardening.md); lengthening or reusing it as a run
+        // bound would merge delivery freshness with actuator occupancy again.
+        return issuedAt.plusMillis(maxRuntimeMs).plus(TERMINAL_ACK_MARGIN);
     }
 }

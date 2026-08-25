@@ -26,15 +26,23 @@ public record IrrigationProperties(
         double implausibleJumpPct,
         Duration implausibleJumpWindow) {
 
+    // Best available fallback: one installed pump on one bench rig delivered
+    // 500 mL in one 510-second steady-state run (0.98 mL/s). Re-measure after
+    // changing the pump, tube length, or head height. Campaign doses are at most
+    // 30 seconds, so the lower effective short-run rate caused by priming still
+    // needs the planned 10 s x 5 plus 30 s refinement.
+    private static final double BENCH_RIG_STEADY_STATE_FLOW_ML_PER_S = 0.98;
+
     public IrrigationProperties {
         maxSampleAge = maxSampleAge == null ? Duration.ofMinutes(10) : maxSampleAge;
         minInterval = minInterval == null ? Duration.ofHours(6) : minInterval;
         dailyBudgetMl = dailyBudgetMl <= 0 ? 600 : dailyBudgetMl;
         doseMinMl = doseMinMl <= 0 ? 20 : doseMinMl;
         doseMaxMl = doseMaxMl <= 0 ? 200 : doseMaxMl;
-        // A2 in the design doc: there is no flow meter, so volume is inferred
-        // from pump runtime. Replace with a measured figure once one exists.
-        defaultFlowMlPerS = defaultFlowMlPerS <= 0 ? 8.0 : defaultFlowMlPerS;
+        // Keep the bench measurement as a fallback when configuration omits it.
+        defaultFlowMlPerS = defaultFlowMlPerS <= 0
+                ? BENCH_RIG_STEADY_STATE_FLOW_ML_PER_S
+                : defaultFlowMlPerS;
         commandTtl = commandTtl == null ? Duration.ofMinutes(2) : commandTtl;
         implausibleJumpPct = implausibleJumpPct <= 0 ? 30.0 : implausibleJumpPct;
         implausibleJumpWindow =

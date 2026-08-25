@@ -66,16 +66,13 @@ public class DeviceCommandRepository {
     /**
      * Gate 5: is there already a command in flight for this pot?
      *
-     * <p>Outstanding means not yet terminal (ISSUED or ACCEPTED) <em>and</em>
-     * not yet expired. The expiry half matters: without it, one command whose
-     * report never arrived would block the pot forever.
+     * <p>Outstanding is determined by the command's authorised runtime, not its
+     * delivery TTL. The time bound matters: without it, one command whose
+     * terminal report never arrived would block the pot forever.
      */
     public boolean hasOutstanding(long potId, Instant now) {
-        Integer count = jdbcTemplate.queryForObject("""
-                SELECT COUNT(*) FROM device_command
-                WHERE pot_id = ? AND state IN ('ISSUED', 'ACCEPTED') AND expires_at > ?
-                """, Integer.class, potId, Timestamp.from(now));
-        return count != null && count > 0;
+        return occupancyCandidates(potId).stream()
+                .anyMatch(command -> command.isOutstandingAt(now));
     }
 
     /**
@@ -85,13 +82,20 @@ public class DeviceCommandRepository {
      * again; telling them when it will work is the difference between a
      * safeguard and a fault.
      */
-    public Optional<Instant> outstandingExpiresAt(long potId, Instant now) {
-        List<Timestamp> rows = jdbcTemplate.queryForList("""
-                SELECT expires_at FROM device_command
-                WHERE pot_id = ? AND state IN ('ISSUED', 'ACCEPTED') AND expires_at > ?
-                ORDER BY expires_at DESC
-                """, Timestamp.class, potId, Timestamp.from(now));
-        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0).toInstant());
+    public Optional<Instant> outstandingUntil(long potId, Instant now) {
+        return occupancyCandidates(potId).stream()
+                .filter(command -> command.isOutstandingAt(now))
+                .map(DeviceCommand::occupancyEndsAt)
+                .max(Instant::compareTo);
+    }
+
+    private List<DeviceCommand> occupancyCandidates(long potId) {
+        // EXPIRED only says the delivery TTL elapsed without a terminal ack.
+        // It may still have started before expiry and remain inside its runtime.
+        return jdbcTemplate.query("""
+                SELECT * FROM device_command
+                WHERE pot_id = ? AND state IN ('ISSUED', 'ACCEPTED', 'EXPIRED')
+                """, this::mapCommand, potId);
     }
 
     /**

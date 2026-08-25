@@ -60,7 +60,7 @@ class IrrigationGovernorTests {
     private static IrrigationProperties defaults() {
         return new IrrigationProperties(
                 Duration.ofMinutes(10), Duration.ofHours(6), 600, 20, 200,
-                8.0, Duration.ofMinutes(2), 30.0, Duration.ofSeconds(60));
+                0.0, Duration.ofMinutes(2), 30.0, Duration.ofSeconds(60));
     }
 
     private static TelemetrySample sample(Instant observedAt, double moisture, boolean valid) {
@@ -247,14 +247,14 @@ class IrrigationGovernorTests {
     }
 
     @Test
-    void anInFlightRefusalSaysWhenTheCommandExpires() {
-        Instant expiry = NOW.plusSeconds(90);
-        commands.outstandingUntil = expiry;
+    void anInFlightRefusalSaysWhenThePotOccupancyEnds() {
+        Instant occupancyEnd = NOW.plusSeconds(90);
+        commands.outstandingUntil = occupancyEnd;
 
         AuthorizationResult.Denied denied = asDenied(governor.authorize(request(100)));
 
         assertThat(denied.reason()).isEqualTo(DenyReason.IN_FLIGHT);
-        assertThat(denied.nextAvailableAt()).isEqualTo(expiry);
+        assertThat(denied.nextAvailableAt()).isEqualTo(occupancyEnd);
     }
 
     @Test
@@ -369,10 +369,9 @@ class IrrigationGovernorTests {
 
     @Test
     void theGrantCarriesARuntimeDerivedFromTheFlowRate() {
-        // 100 mL at 8 mL/s is 12.5 s. The firmware interlock is the real
-        // backstop; this only has to be a sane upper bound.
-        AuthorizationResult.Granted granted = asGranted(governor.authorize(request(100)));
-        assertThat(granted.grant().maxRuntimeMs()).isEqualTo(12_500);
+        // The 200 mL ceiling at the 0.98 mL/s fallback needs just over 204 s.
+        AuthorizationResult.Granted granted = asGranted(governor.authorize(request(200)));
+        assertThat(granted.grant().maxRuntimeMs()).isEqualTo(204_082);
         assertThat(granted.grant().expiresAt()).isEqualTo(NOW.plus(Duration.ofMinutes(2)));
     }
 
@@ -385,7 +384,7 @@ class IrrigationGovernorTests {
                                 IllegalArgumentException.class,
                                 () -> new IrrigationProperties(
                                         Duration.ofMinutes(10), Duration.ofHours(6),
-                                        100, 20, 200, 8.0, Duration.ofMinutes(2),
+                                        100, 20, 200, 0.98, Duration.ofMinutes(2),
                                         30.0, Duration.ofSeconds(60))))
                 .hasMessageContaining("dose-max-ml");
     }
@@ -452,7 +451,7 @@ class IrrigationGovernorTests {
         }
 
         @Override
-        public Optional<Instant> outstandingExpiresAt(long potId, Instant now) {
+        public Optional<Instant> outstandingUntil(long potId, Instant now) {
             return Optional.ofNullable(outstandingUntil);
         }
 

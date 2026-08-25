@@ -21,6 +21,10 @@ NODE_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 
 CLAIM_CODE = re.compile(r"^[0-9]{6}$")
 
+# The firmware's host watchdog fires after 3 s. Keep a full second of margin so
+# scheduler jitter or a blocked write cannot cut a legitimate dose short.
+DEADMAN_MAX_INTERVAL_SECONDS = 2.0
+
 
 def _required(env: Mapping[str, str], name: str) -> str:
     value = env.get(name, "").strip()
@@ -222,6 +226,12 @@ class Settings:
     # fallback table (docs/design/irrigation_volume.md §2, §3.2).
     pot_substrate_ml: dict[str, int]
     pot_crop_codes: dict[str, str]
+    command_relay_enabled: bool = True
+    command_queue_max: int = 32
+    command_deadman_interval_seconds: float = 1.0
+    command_deadman_grace_seconds: float = 5.0
+    command_max_serial_bytes: int = 120
+    command_journal_retention_seconds: float = 86_400.0
 
     def substrate_volume_ml_for(self, node_id: str) -> int | None:
         return self.pot_substrate_ml.get(node_id)
@@ -296,6 +306,15 @@ class Settings:
         retry_max = _number(values, "TB_RETRY_MAX_SECONDS", 300.0, minimum=0.1)
         if retry_max < retry_base:
             raise ConfigError("TB_RETRY_MAX_SECONDS must not be below retry base")
+
+        deadman_interval = _number(
+            values, "TB_COMMAND_DEADMAN_INTERVAL_SECONDS", 1.0, minimum=0.1
+        )
+        if deadman_interval > DEADMAN_MAX_INTERVAL_SECONDS:
+            raise ConfigError(
+                "command deadman interval must stay below the firmware's 3 s "
+                "host watchdog"
+            )
 
         expected_node_id = _required(values, "TB_EXPECTED_NODE_ID")
         if NODE_ID.fullmatch(expected_node_id) is None:
@@ -372,5 +391,22 @@ class Settings:
                 "TB_POT_CROPS",
                 known_node_ids=known_node_ids,
                 parse_value=_crop_code("TB_POT_CROPS"),
+            ),
+            command_relay_enabled=_boolean(
+                values, "TB_COMMAND_RELAY_ENABLED", True
+            ),
+            command_queue_max=_integer(values, "TB_COMMAND_QUEUE_MAX", 32),
+            command_deadman_interval_seconds=deadman_interval,
+            command_deadman_grace_seconds=_number(
+                values, "TB_COMMAND_DEADMAN_GRACE_SECONDS", 5.0, minimum=0.5
+            ),
+            command_max_serial_bytes=_integer(
+                values, "TB_COMMAND_MAX_SERIAL_BYTES", 120, minimum=64
+            ),
+            command_journal_retention_seconds=_number(
+                values,
+                "TB_COMMAND_JOURNAL_RETENTION_SECONDS",
+                86_400.0,
+                minimum=60.0,
             ),
         )

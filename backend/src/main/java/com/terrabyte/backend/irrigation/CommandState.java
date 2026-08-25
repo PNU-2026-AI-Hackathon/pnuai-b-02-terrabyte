@@ -41,7 +41,14 @@ public enum CommandState {
         return this == COMPLETED || this == REJECTED || this == ABORTED || this == EXPIRED;
     }
 
-    /** Whether this command still occupies the pot and blocks a new one (gate 5). */
+    /**
+     * Whether the lifecycle is still directly awaiting a terminal report.
+     *
+     * <p>Pot occupancy is the time-aware calculation in
+     * {@link DeviceCommand#isOutstandingAt(java.time.Instant)}. In particular,
+     * an EXPIRED delivery lifecycle can still occupy its pot while its
+     * authorised runtime is open.
+     */
     public boolean isOutstanding() {
         return this == ISSUED || this == ACCEPTED;
     }

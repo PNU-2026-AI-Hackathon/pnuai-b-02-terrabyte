@@ -16,10 +16,15 @@ a reading and the number derived from it (D28).
 
 **The returned mL is an estimate, not a measurement.** There is no flow meter.
 The pump is a plain DC motor and volume is realised as
-``mL = flow_ml_per_s x runtime_ms`` from a single uncalibrated constant (8.0),
-so real delivery error is plausibly +-20~40%. That, not this formula's
-arithmetic, sets the precision ceiling on every number here. Do not read the
-integer as though the units digit means anything (G1, §0).
+``mL = flow_ml_per_s x runtime_ms / 1000``. The best available rate is 0.98
+mL/s: one installed pump on one rig delivered 500 mL in a single 510-second
+steady-state run. It is not portable across pump, tube length, or head height;
+re-measure when any changes. Campaign doses are at most 30 seconds, where
+priming makes the effective rate lower; the planned 10 s x 5 plus 30 s
+refinement is still outstanding, so no short-run deviation or standard
+deviation is known. That uncertainty, not this formula's arithmetic, sets the
+precision ceiling on every number here. Do not read the integer as though the
+units digit means anything (G1, §0).
 """
 
 from __future__ import annotations
