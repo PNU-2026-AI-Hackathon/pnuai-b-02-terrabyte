@@ -78,14 +78,14 @@ public class IrrigationGovernor {
         // invent a number the caller never asked for.
         if (request.requestedMl() <= 0) {
             return deny(request, now, DenyReason.AI_OUT_OF_RANGE,
-                    "requested volume must be positive: " + request.requestedMl(), null, null);
+                    "관수량은 0보다 커야 합니다. 요청한 값은 " + request.requestedMl() + " mL 입니다.", null, null);
         }
         if (request.cooldownOverride()
                 && (request.overrideReason() == null || request.overrideReason().isBlank())) {
             // The override is the one place a human can weaken a safeguard, so
             // it does not happen anonymously.
             return deny(request, now, DenyReason.COOLDOWN,
-                    "cooldown override requires a reason", null, null);
+                    "연속 관수 제한을 무시하려면 사유를 입력해야 합니다.", null, null);
         }
 
         Optional<TelemetrySample> latest = measurementStore.findLatest(request.potId());
@@ -94,24 +94,24 @@ public class IrrigationGovernor {
         // about the present.
         if (latest.isEmpty()) {
             return deny(request, now, DenyReason.INPUT_STALE,
-                    "no telemetry has ever been recorded for this pot", null, null);
+                    "이 화분에서 아직 센서 측정값을 한 번도 받지 못했습니다. 기기 연결을 확인해 주세요.", null, null);
         }
         TelemetrySample sample = latest.get();
         if (sample.observedAt().isBefore(now.minus(properties.maxSampleAge()))) {
             return deny(request, now, DenyReason.INPUT_STALE,
-                    "latest sample is older than " + properties.maxSampleAge(), sample, null);
+                    "센서 측정값이 너무 오래되어 지금 상태를 알 수 없습니다. 기기 연결을 확인해 주세요.", sample, null);
         }
 
         // Gate 2 — sensor validity. A probe that reports itself broken, or a
         // value outside the physical range, cannot support a watering decision.
         if (!sample.soilSensorValid()) {
             return deny(request, now, DenyReason.SENSOR_INVALID,
-                    "soil sensor reported itself invalid", sample, null);
+                    "토양 센서가 스스로 이상을 보고했습니다. 센서 연결과 삽입 상태를 확인해 주세요.", sample, null);
         }
         double moisture = sample.soilMoisturePct();
         if (moisture < 0.0 || moisture > 100.0 || Double.isNaN(moisture)) {
             return deny(request, now, DenyReason.SENSOR_INVALID,
-                    "soil moisture out of range: " + moisture, sample, null);
+                    "토양 수분 측정값이 정상 범위를 벗어났습니다. 측정값은 " + moisture + "% 입니다.", sample, null);
         }
 
         // Gate 3 — implausible jump. Soil moisture cannot move tens of points in
@@ -130,7 +130,7 @@ public class IrrigationGovernor {
                     && lastCompleted.get().isAfter(now.minus(properties.minInterval()))) {
                 Instant availableAt = lastCompleted.get().plus(properties.minInterval());
                 return deny(request, now, DenyReason.COOLDOWN,
-                        "last completed irrigation was at " + lastCompleted.get(),
+                        "조금 전에 이미 관수했습니다. 흙이 물을 머금을 시간이 필요해 잠시 뒤에 다시 시도할 수 있습니다.",
                         sample, availableAt);
             }
         }
@@ -142,7 +142,7 @@ public class IrrigationGovernor {
                         request.potId(), DeviceCommand.ACTUATOR_PUMP, now);
         if (outstandingUntil.isPresent()) {
             return deny(request, now, DenyReason.IN_FLIGHT,
-                    "a command for this pot is still outstanding", sample,
+                    "직전 명령이 아직 진행 중입니다. 끝난 뒤에 다시 시도해 주세요.", sample,
                     outstandingUntil.get());
         }
 
@@ -154,7 +154,7 @@ public class IrrigationGovernor {
         int remaining = properties.dailyBudgetMl() - consumed;
         if (remaining <= 0) {
             return deny(request, now, DenyReason.DAILY_BUDGET,
-                    "24h budget exhausted: " + consumed + "/" + properties.dailyBudgetMl() + "mL",
+                    "하루 관수량 한도를 모두 사용했습니다. 오늘 " + consumed + " mL / 한도 " + properties.dailyBudgetMl() + " mL.",
                     sample, budgetFreesAt(request.potId(), now));
         }
 
@@ -174,7 +174,7 @@ public class IrrigationGovernor {
             // anything. Raising it to the floor would spend budget the gate
             // above just said was not there.
             return deny(request, now, DenyReason.DAILY_BUDGET,
-                    "remaining budget " + remaining + "mL is below the minimum dose",
+                    "남은 하루 관수 한도가 최소 관수량보다 적습니다. 남은 양은 " + remaining + " mL 입니다.",
                     sample, budgetFreesAt(request.potId(), now));
         }
 
@@ -190,8 +190,8 @@ public class IrrigationGovernor {
             double delta = Math.abs(point.value() - sample.soilMoisturePct());
             if (delta >= properties.implausibleJumpPct()) {
                 return Optional.of(
-                        "soil moisture moved %.1f%%p within %s"
-                                .formatted(delta, properties.implausibleJumpWindow()));
+                        "토양 수분이 %s 사이에 %.1f%%p 급변했습니다. 센서 이상일 수 있어 관수를 보류합니다."
+                                .formatted(properties.implausibleJumpWindow(), delta));
             }
         }
         return Optional.empty();

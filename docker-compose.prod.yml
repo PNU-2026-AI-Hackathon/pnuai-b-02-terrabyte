@@ -106,6 +106,9 @@ services:
       # 이 스위치가 켜져야 백엔드가 승인한 관수를 실제로 발행한다. 꺼져 있으면
       # LoggingCommandDispatcher 가 경고만 남기고 명령은 TTL 로 만료된다.
       MQTT_COMMAND_DISPATCH_ENABLED: ${MQTT_COMMAND_DISPATCH_ENABLED:-false}
+      # 시연용 임시 완화 스위치. 게이트 1(오래된 측정값으로는 관수하지 않는다)의
+      # 기준을 밖에서 조절한다. 기본값은 코드와 같은 10분이다.
+      APP_IRRIGATION_MAX_SAMPLE_AGE: ${IRRIGATION_MAX_SAMPLE_AGE:-PT10M}
       JWT_ISSUER: ${JWT_ISSUER:-terrabyte-backend}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 을 32바이트 이상으로 설정하세요}
       JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT1H}
