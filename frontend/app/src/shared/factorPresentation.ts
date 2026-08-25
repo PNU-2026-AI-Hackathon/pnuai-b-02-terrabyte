@@ -18,8 +18,6 @@ const factorRecommendations: Record<ScoreFactor['key'], string> = {
   temperature: '온도가 적정 범위를 벗어나면 환기 또는 히팅 장치를 조절하세요.',
   humidity: '관수와 환기 시간을 조절해 적정 습도를 유지하세요.',
   plantLight: 'PPFD가 부족하면 생장등의 세기와 설치 거리를 조절하세요.',
-  soilMoisture: '토양 수분이 권장 범위를 벗어나면 관수량과 배수 상태를 확인하세요.',
-  soilTemperature: '토양 온도가 권장 범위를 벗어나면 화분 위치와 보온 상태를 확인하세요.',
 };
 
 export function getFactorRecommendation(key: ScoreFactor['key']): string {

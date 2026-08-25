@@ -1,19 +1,32 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { font } from '../../appTheme/glass';
 import { palette } from '../../appTheme/palette';
 import { scaleTypography } from '../../appTheme/scaleTypography';
 import { typeScale } from '../../appTheme/typography';
+import { ApiRequestError } from '../../auth/authApi';
 import { LineChart } from '../../components/LineChart';
+import { PrimaryButton } from '../../components/PrimaryButton';
 import { Surface } from '../../components/Surface';
 import { liveMetricDefinitions } from '../../data';
+import { requestIrrigation } from '../../irrigation/irrigationApi';
 import {
   useDeviceEnvironment,
   useMeasurementSeries,
 } from '../../shared/device-environment/DeviceEnvironmentProvider';
 
+const DEFAULT_IRRIGATION_VOLUME_ML = 20;
+
+type IrrigationResult = {
+  message: string;
+  status: 'success' | 'refused' | 'error';
+};
+
 export function LiveScreen({ compact }: { compact: boolean }) {
-  const { measurements: measurement } = useDeviceEnvironment();
+  const { measurements: measurement, potId, refetch } = useDeviceEnvironment();
+  const [irrigationLoading, setIrrigationLoading] = useState(false);
+  const [irrigationResult, setIrrigationResult] = useState<IrrigationResult | null>(null);
   const airTemperatureSeries = useMeasurementSeries('air_temperature_c', '1h');
   const airHumiditySeries = useMeasurementSeries('air_humidity_pct', '1h');
   const plantLightSeries = useMeasurementSeries('plant_light_ppfd_umol_m2_s', '1h');
@@ -47,6 +60,41 @@ export function LiveScreen({ compact }: { compact: boolean }) {
       value: current == null ? '--' : `${current.toLocaleString('ko-KR')}${metric.unit}`,
     };
   });
+
+  const irrigate = async () => {
+    if (potId === undefined || irrigationLoading) return;
+
+    setIrrigationLoading(true);
+    setIrrigationResult(null);
+    try {
+      const outcome = await requestIrrigation(potId, {
+        volumeMl: DEFAULT_IRRIGATION_VOLUME_ML,
+        cooldownOverride: false,
+        overrideReason: null,
+      });
+
+      if (!outcome.granted) {
+        setIrrigationResult({
+          message: outcome.detail ?? '안전 조건에 따라 관수가 거부되었습니다.',
+          status: 'refused',
+        });
+        return;
+      }
+
+      setIrrigationResult({
+        message: `${outcome.grantedMl ?? DEFAULT_IRRIGATION_VOLUME_ML} mL 관수를 시작했습니다`,
+        status: 'success',
+      });
+      await refetch();
+    } catch (caught) {
+      setIrrigationResult({
+        message: caught instanceof Error ? caught.message : '관수 요청을 처리하지 못했습니다.',
+        status: caught instanceof ApiRequestError && caught.status === 409 ? 'refused' : 'error',
+      });
+    } finally {
+      setIrrigationLoading(false);
+    }
+  };
 
   return (
     <View style={styles.pageBody}>
@@ -85,6 +133,30 @@ export function LiveScreen({ compact }: { compact: boolean }) {
         </Surface>
         ))}
       </View>
+      <Surface flat style={[styles.irrigationCard, compact && styles.irrigationCardCompact]}>
+        <View style={styles.irrigationCopy}>
+          <Text style={styles.irrigationTitle}>수동 관수</Text>
+          <Text style={styles.liveCaption}>현재 화분에 {DEFAULT_IRRIGATION_VOLUME_ML} mL를 관수합니다.</Text>
+          {irrigationResult ? (
+            <Text
+              style={[
+                styles.irrigationResult,
+                irrigationResult.status === 'success' && styles.irrigationSuccess,
+                irrigationResult.status === 'refused' && styles.irrigationRefused,
+                irrigationResult.status === 'error' && styles.irrigationError,
+              ]}
+            >
+              {irrigationResult.message}
+            </Text>
+          ) : null}
+        </View>
+        <PrimaryButton
+          disabled={potId === undefined || irrigationLoading}
+          label={irrigationLoading ? '관수 요청 중…' : `${DEFAULT_IRRIGATION_VOLUME_ML} mL 관수하기`}
+          onPress={() => { void irrigate(); }}
+          style={styles.irrigationButton}
+        />
+      </Surface>
     </View>
   );
 }
@@ -102,4 +174,13 @@ const styles = StyleSheet.create(scaleTypography({
   liveCaption: { ...typeScale.body, color: palette.muted, fontFamily: font },
   liveFooter: { borderTopColor: palette.line, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 },
   liveFooterText: { ...typeScale.caption, color: palette.muted, fontFamily: font },
+  irrigationCard: { alignItems: 'center', flexDirection: 'row', gap: 24, justifyContent: 'space-between', padding: 34 },
+  irrigationCardCompact: { alignItems: 'stretch', flexDirection: 'column' },
+  irrigationCopy: { flex: 1, gap: 8 },
+  irrigationTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '700' },
+  irrigationResult: { ...typeScale.body, fontFamily: font },
+  irrigationSuccess: { color: palette.green },
+  irrigationRefused: { color: palette.amber },
+  irrigationError: { color: palette.red },
+  irrigationButton: { minWidth: 180 },
 }));

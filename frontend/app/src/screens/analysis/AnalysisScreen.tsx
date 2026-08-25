@@ -101,8 +101,6 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
   const managementPriorities = carePlan?.managementPriorities ?? [];
   const soilMoisture = analysisLatest?.measurements.soilMoisturePct;
   const soilTemperature = analysisLatest?.measurements.soilTemperatureC;
-  const soilMoistureFactor = analysisScore?.factors.find((factor) => factor.key === 'soilMoisture');
-  const soilTemperatureFactor = analysisScore?.factors.find((factor) => factor.key === 'soilTemperature');
   const spaceName = device?.space?.name ?? '등록된 공간 없음';
   const improvementActions = carePlan?.improvementActions ?? [];
   const expectedOutcome = carePlan?.expectedOutcome;
@@ -255,8 +253,8 @@ export function AnalysisScreen({ compact, device, onNavigate, onSelectCrop, sele
           <SectionHeader title="토양 및 배지 추천" description="토양분석 세트의 수분·온도 측정값과 선택한 작물의 뿌리 특성을 반영했습니다." />
         </View>
         <View style={[styles.soilSummaryGrid, compact && styles.stack]}>
-          <View style={styles.soilSummaryItem}><Text style={styles.soilSummaryLabel}>토양 수분</Text><Text style={styles.soilSummaryValue}>{soilMoisture == null ? '--' : `${soilMoisture}%`}</Text><Text style={soilMoistureFactor?.status === 'OK' ? styles.soilSummaryState : styles.soilSummaryStateWarn}>{soilMoistureFactor == null ? '수신 대기' : soilMoistureFactor.status === 'OK' ? '적정' : '확인 필요'}</Text></View>
-          <View style={styles.soilSummaryItem}><Text style={styles.soilSummaryLabel}>토양 온도</Text><Text style={styles.soilSummaryValue}>{soilTemperature == null ? '--' : `${soilTemperature.toLocaleString('ko-KR')}℃`}</Text><Text style={soilTemperatureFactor?.status === 'OK' ? styles.soilSummaryState : styles.soilSummaryStateWarn}>{soilTemperatureFactor == null ? '수신 대기' : soilTemperatureFactor.status === 'OK' ? '적정' : '확인 필요'}</Text></View>
+          <View style={styles.soilSummaryItem}><Text style={styles.soilSummaryLabel}>토양 수분</Text><Text style={styles.soilSummaryValue}>{soilMoisture == null ? '--' : `${soilMoisture}%`}</Text></View>
+          <View style={styles.soilSummaryItem}><Text style={styles.soilSummaryLabel}>토양 온도</Text><Text style={styles.soilSummaryValue}>{soilTemperature == null ? '--' : `${soilTemperature.toLocaleString('ko-KR')}℃`}</Text></View>
           <View style={styles.soilSummaryItem}><Text style={styles.soilSummaryLabel}>추천 배합</Text><Text style={styles.soilSummaryValue}>{soilRecommendation?.mixRatio ?? '--'}</Text><Text style={soilRecommendation ? styles.soilSummaryState : styles.soilSummaryStateWarn}>{soilRecommendation ? 'API 추천' : '수신 대기'}</Text></View>
         </View>
         <View style={styles.soilRecommendationList}>

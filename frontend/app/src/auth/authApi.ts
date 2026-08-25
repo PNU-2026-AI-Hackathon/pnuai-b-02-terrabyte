@@ -38,6 +38,7 @@ export type MeResponse = {
 
 type ApiErrorBody = {
   message?: string;
+  detail?: string;
   fieldErrors?: Array<{ field: string; message: string }>;
 };
 
@@ -75,7 +76,7 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
     const errorBody = body as ApiErrorBody | undefined;
     const fieldMessage = errorBody?.fieldErrors?.[0]?.message;
     throw new ApiRequestError(
-      fieldMessage ?? errorBody?.message ?? '요청을 처리하지 못했습니다.',
+      fieldMessage ?? errorBody?.detail ?? errorBody?.message ?? '요청을 처리하지 못했습니다.',
       response.status,
     );
   }
