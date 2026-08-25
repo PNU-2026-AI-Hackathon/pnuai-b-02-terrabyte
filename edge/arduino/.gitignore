@@ -1,2 +1,3 @@
 include/TelemetryConfig.local.h
 
+.pio/
