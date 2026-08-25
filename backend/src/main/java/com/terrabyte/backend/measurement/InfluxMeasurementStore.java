@@ -40,7 +40,6 @@ public class InfluxMeasurementStore implements MeasurementStore {
                 .addField("soil_moisture_raw_adc", sample.soilMoistureRawAdc())
                 .addField("air_temperature_c", sample.airTemperatureC())
                 .addField("air_humidity_pct", sample.airHumidityPct())
-                .addField("plant_light_ppfd_umol_m2_s", sample.plantLightPpfdUmolM2S())
                 .addField("soil_sensor_valid", sample.soilSensorValid())
                 .addField("air_sensor_valid", sample.airSensorValid())
                 .addField("light_sensor_valid", sample.lightSensorValid())
@@ -49,6 +48,14 @@ public class InfluxMeasurementStore implements MeasurementStore {
         // the series with a confident "0°C" for nodes that have no soil probe.
         if (sample.soilTemperatureC() != null) {
             point.addField("soil_temperature_c", sample.soilTemperatureC());
+        }
+        if (sample.illuminanceLux() != null) {
+            point.addField("illuminance_lux", sample.illuminanceLux());
+        }
+        // New nodes send lux, not PPFD. Legacy nodes are the only remaining
+        // source of this field, so it is preserved as-is rather than derived.
+        if (sample.plantLightPpfdUmolM2S() != null) {
+            point.addField("plant_light_ppfd_umol_m2_s", sample.plantLightPpfdUmolM2S());
         }
         // Fields, not tags, for the same reason as event_id above: the volume
         // varies per sample, so tagging it would mint a new series per dose.
@@ -162,7 +169,8 @@ public class InfluxMeasurementStore implements MeasurementStore {
                 number(values.get("soil_moisture_raw_adc")).longValue(),
                 number(values.get("air_temperature_c")).doubleValue(),
                 number(values.get("air_humidity_pct")).doubleValue(),
-                number(values.get("plant_light_ppfd_umol_m2_s")).doubleValue(),
+                optionalNumber(values.get("illuminance_lux")),
+                optionalNumber(values.get("plant_light_ppfd_umol_m2_s")),
                 optionalNumber(values.get("soil_temperature_c")),
                 Boolean.TRUE.equals(values.get("soil_sensor_valid")),
                 Boolean.TRUE.equals(values.get("air_sensor_valid")),

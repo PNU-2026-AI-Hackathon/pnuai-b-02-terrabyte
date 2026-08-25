@@ -9,10 +9,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
+
 import com.terrabyte.backend.api.ApiException;
 import com.terrabyte.backend.score.CropScoreProfileRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -89,7 +93,48 @@ class MeasurementServiceIngestTests {
         verify(measurementStore).write(any(TelemetrySample.class));
     }
 
+    @Test
+    void lux_만_있어도_수집된다() {
+        TelemetryEnvelope envelope = envelope(
+                HARDWARE_ID, NODE_ID, UUID.randomUUID().toString(), 15000.0, null);
+
+        measurementService.ingest(HARDWARE_ID, envelope);
+
+        ArgumentCaptor<TelemetrySample> captor = ArgumentCaptor.forClass(TelemetrySample.class);
+        verify(measurementStore).write(captor.capture());
+        assertThat(captor.getValue().illuminanceLux()).isEqualTo(15000.0);
+        assertThat(captor.getValue().plantLightPpfdUmolM2S()).isNull();
+    }
+
+    @Test
+    void 구버전_노드의_PPFD_만_있어도_수집된다() {
+        TelemetryEnvelope envelope = envelope(
+                HARDWARE_ID, NODE_ID, UUID.randomUUID().toString(), null, 230.5);
+
+        measurementService.ingest(HARDWARE_ID, envelope);
+
+        ArgumentCaptor<TelemetrySample> captor = ArgumentCaptor.forClass(TelemetrySample.class);
+        verify(measurementStore).write(captor.capture());
+        assertThat(captor.getValue().illuminanceLux()).isNull();
+        assertThat(captor.getValue().plantLightPpfdUmolM2S()).isEqualTo(230.5);
+    }
+
+    @Test
+    void 광량_값이_둘_다_없으면_검증에_걸린다() {
+        TelemetryEnvelope.Measurements measurements =
+                new TelemetryEnvelope.Measurements(27.0, 58.0, null, null, null, null, null);
+
+        try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+            assertThat(factory.getValidator().validate(measurements)).isNotEmpty();
+        }
+    }
+
     private TelemetryEnvelope envelope(String gatewayId, String nodeId, String eventId) {
+        return envelope(gatewayId, nodeId, eventId, null, 230.0);
+    }
+
+    private TelemetryEnvelope envelope(
+            String gatewayId, String nodeId, String eventId, Double lux, Double ppfd) {
         return new TelemetryEnvelope(
                 2,
                 "telemetry.sample",
@@ -99,7 +144,7 @@ class MeasurementServiceIngestTests {
                 List.of(new TelemetryEnvelope.Node(
                         nodeId,
                         1,
-                        new TelemetryEnvelope.Measurements(27.0, 58.0, 230.0, null, null, null),
+                        new TelemetryEnvelope.Measurements(27.0, 58.0, lux, ppfd, null, null, null),
                         new TelemetryEnvelope.Quality(true, true, null),
                         null)));
     }

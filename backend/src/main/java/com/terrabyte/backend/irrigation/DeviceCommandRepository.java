@@ -6,6 +6,7 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -225,6 +226,7 @@ public class DeviceCommandRepository {
             Integer actualRuntimeMs,
             String stopCause,
             Instant completedAt) {
+        Instant storedAt = completedAt.truncatedTo(ChronoUnit.MICROS);
         // acked_at is COALESCEd rather than set: it means "when the device first
         // answered", and a command that went ISSUED → ACCEPTED → COMPLETED
         // already has the earlier, truer value.
@@ -235,8 +237,8 @@ public class DeviceCommandRepository {
                 WHERE command_id = ? AND state IN (%s)
                 """.formatted(allowedFrom(phase)),
                 phase.target().name(),
-                Timestamp.from(completedAt),
-                Timestamp.from(completedAt),
+                Timestamp.from(storedAt),
+                Timestamp.from(storedAt),
                 actualMl,
                 actualRuntimeMs,
                 stopCause,
@@ -289,7 +291,6 @@ public class DeviceCommandRepository {
                 .map(state -> "'" + state.name() + "'")
                 .collect(Collectors.joining(", "));
     }
-
     private static void setNullableInt(PreparedStatement statement, int index, Integer value)
             throws SQLException {
         if (value == null) {

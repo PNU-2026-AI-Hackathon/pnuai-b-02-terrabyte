@@ -27,6 +27,17 @@
 //
 // =============================================================================
 
+// Build selector. This translation unit defines setup() and loop(), and so does
+// main.cpp; a build system that compiles both gets a duplicate-symbol link
+// error. PlatformIO excludes one of them per environment via build_src_filter,
+// but Arduino CLI has no equivalent and compiles every source under src/, so
+// without this guard `arduino-cli compile` cannot build the sketch at all -
+// which is the documented procedure for the gateway, where PlatformIO is not
+// installed. Opt-in rather than opt-out: the default build is the production
+// firmware, and this bench sketch drives no actuators and carries none of the
+// interlocks.
+#if defined(TB_DATASET_LOGGER) && TB_DATASET_LOGGER
+
 #include <Arduino.h>
 #include <ctype.h>
 #include <math.h>
@@ -224,3 +235,5 @@ void loop() {
     nextSampleAtMs = now + TB_DATASET_INTERVAL_MS;
   }
 }
+
+#endif  // TB_DATASET_LOGGER

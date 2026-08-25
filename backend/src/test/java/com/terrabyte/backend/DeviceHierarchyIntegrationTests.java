@@ -256,7 +256,7 @@ class DeviceHierarchyIntegrationTests {
                 List.of(new TelemetryEnvelope.Node(
                         nodeId,
                         sequence,
-                        new TelemetryEnvelope.Measurements(27.0, 58.0, 230.0, null, null, null),
+                        new TelemetryEnvelope.Measurements(27.0, 58.0, null, 230.0, null, null, null),
                         new TelemetryEnvelope.Quality(true, true, null),
                         null)));
         mockMvc.perform(post("/api/telemetry")
@@ -267,7 +267,7 @@ class DeviceHierarchyIntegrationTests {
     private TelemetrySample sample(long potId, long deviceId) {
         return new TelemetrySample(
                 potId, deviceId, "node-a", "basil", "orangepi-pro-01", UUID.randomUUID().toString(),
-                Instant.now(), 1, 30, 1000, 27.1, 58, 230.5, null,
+                Instant.now(), 1, 30, 1000, 27.1, 58, null, 230.5, null,
                 true, true, true, null);
     }
 

@@ -9,5 +9,7 @@ public record CultivationSpace(
         String name,
         String spaceType,
         BigDecimal areaSquareMeters,
+        // NULL 은 "모름 또는 미설정". space_type 으로 추정한다.
+        LightSource lightSource,
         Instant createdAt) {
 }

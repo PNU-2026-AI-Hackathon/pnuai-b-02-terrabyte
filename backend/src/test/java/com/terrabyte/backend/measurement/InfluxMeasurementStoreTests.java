@@ -133,7 +133,7 @@ class InfluxMeasurementStoreTests {
     private static TelemetrySample sample(IrrigationSuggestion suggestion) {
         return new TelemetrySample(
                 POT_ID, 1L, "node-1", "lettuce", "orangepi-pro-01", "evt-1",
-                OBSERVED_AT, 1L, 22.0, 1847L, 24.0, 55.0, 300.0, 21.0,
+                OBSERVED_AT, 1L, 22.0, 1847L, 24.0, 55.0, null, 300.0, 21.0,
                 true, true, true, suggestion);
     }
 }

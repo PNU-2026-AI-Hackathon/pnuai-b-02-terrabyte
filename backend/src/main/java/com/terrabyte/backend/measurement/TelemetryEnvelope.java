@@ -6,6 +6,7 @@ import java.util.List;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -57,7 +58,7 @@ public record TelemetryEnvelope(
     }
 
     /**
-     * The three air/light metrics are required because the environment score
+     * Air temperature and humidity are required because the environment score
      * cannot be computed without them. The soil metrics are optional: the
      * probes are physically optional on the board, and requiring
      * {@code soil_moisture_raw_adc} while the firmware never emitted it is
@@ -67,11 +68,18 @@ public record TelemetryEnvelope(
     public record Measurements(
             @NotNull @DecimalMin("-50.0") @DecimalMax("80.0") Double airTemperatureC,
             @NotNull @DecimalMin("0.0") @DecimalMax("100.0") Double airHumidityPct,
-            @NotNull @DecimalMin("0.0") @DecimalMax("5000.0")
-            Double plantLightPpfdUmolM2S,
+            @DecimalMin("0.0") @DecimalMax("200000.0") Double illuminanceLux,
+            // 필수에서 선택으로 강등. 신규 노드는 lux 를 보내고 PPFD 는 서버가
+            // 유도한다. 구버전 노드가 보내는 값만 레거시로 받아준다.
+            @DecimalMin("0.0") @DecimalMax("5000.0") Double plantLightPpfdUmolM2S,
             @DecimalMin("-20.0") @DecimalMax("80.0") Double soilTemperatureC,
             @DecimalMin("0.0") @DecimalMax("100.0") Double soilMoisturePct,
             @PositiveOrZero Long soilMoistureRawAdc) {
+
+        @AssertTrue(message = "illuminance_lux 또는 plant_light_ppfd_umol_m2_s 중 하나는 필요합니다")
+        public boolean isLightPresent() {
+            return illuminanceLux != null || plantLightPpfdUmolM2S != null;
+        }
 
         public double soilMoisturePctOrZero() {
             return soilMoisturePct == null ? 0.0 : soilMoisturePct;

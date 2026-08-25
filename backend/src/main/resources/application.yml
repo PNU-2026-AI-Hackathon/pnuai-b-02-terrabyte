@@ -82,6 +82,19 @@ app:
   telemetry:
     http-ingest:
       enabled: ${TELEMETRY_HTTP_INGEST_ENABLED:false}
+  notification:
+    sensor-reminder-interval: ${NOTIFICATION_SENSOR_REMINDER_INTERVAL:PT1H}
+    offline-reminder-interval: ${NOTIFICATION_OFFLINE_REMINDER_INTERVAL:PT6H}
+    delivery:
+      poll-delay-ms: ${NOTIFICATION_DELIVERY_POLL_DELAY_MS:5000}
+      batch-size: ${NOTIFICATION_DELIVERY_BATCH_SIZE:50}
+      max-attempts: ${NOTIFICATION_DELIVERY_MAX_ATTEMPTS:5}
+      retry-interval: ${NOTIFICATION_DELIVERY_RETRY_INTERVAL:PT30S}
+      claim-timeout: ${NOTIFICATION_DELIVERY_CLAIM_TIMEOUT:PT5M}
+    firebase:
+      enabled: ${FIREBASE_ENABLED:false}
+      project-id: ${FIREBASE_PROJECT_ID:}
+      credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
   ai:
     enabled: ${AI_ENABLED:false}
     base-url: ${AI_BASE_URL:http://localhost:8000}
@@ -95,8 +108,10 @@ app:
     # validates. app.ai.gemini.* is the advisory care-plan agent, which
     # produces text and touches no actuator. Separate @ConfigurationProperties
     # records (app.ai and app.ai.gemini) bind them, so neither sees the other's
-    # keys - but they must live under ONE `ai:` mapping. Two `ai:` keys in the
-    # same document is a duplicate mapping key and one of them is silently lost.
+    # keys - but they must live under ONE `ai:` mapping. SnakeYAML rejects a
+    # duplicate mapping key outright, so a second `ai:` here does not merely
+    # shadow the first: the whole application refuses to start. That failure is
+    # what PR #120 was opened to fix.
     gemini:
       enabled: ${GEMINI_ENABLED:false}
       api-key: ${GEMINI_API_KEY:}
