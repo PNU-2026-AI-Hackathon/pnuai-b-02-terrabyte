@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
+import sys
 import tempfile
 from threading import Lock
 import time
@@ -14,7 +15,36 @@ from typing import Literal
 
 
 SNAPSHOT_SCHEMA = 1
-DEFAULT_SNAPSHOT_PATH = Path("/run/terrabyte-edge/status.json")
+
+
+def _default_snapshot_path() -> Path:
+    """Where the status snapshot lives, per platform.
+
+    The snapshot is ephemeral runtime state: a reader wants to know what the
+    gateway is doing *now*, and a stale file left over from a previous boot is
+    worse than no file. On Linux ``/run`` is exactly that — a tmpfs cleared on
+    every boot — so the Orange Pi keeps it.
+
+    macOS has no ``/run`` and its root filesystem is read-only, so that path
+    raises ``OSError: Read-only file system`` before the service finishes
+    starting. That is not hypothetical: the gateway has had to run on a Mac
+    while the Orange Pi was out of service, and the hard-coded path crash-looped
+    it. The per-user temporary directory is the closest portable equivalent —
+    ephemeral, writable without privileges, and cleaned by the OS.
+
+    ``TB_SNAPSHOT_PATH`` overrides both, for a deployment that wants the file
+    somewhere specific. ``--snapshot-path`` on the CLI still wins over this.
+    """
+
+    override = os.environ.get("TB_SNAPSHOT_PATH", "").strip()
+    if override:
+        return Path(override)
+    if sys.platform.startswith("linux"):
+        return Path("/run/terrabyte-edge/status.json")
+    return Path(tempfile.gettempdir()) / "terrabyte-edge" / "status.json"
+
+
+DEFAULT_SNAPSHOT_PATH = _default_snapshot_path()
 MAX_EVENTS = 20
 
 LinkState = Literal["up", "down", "never_seen"]
