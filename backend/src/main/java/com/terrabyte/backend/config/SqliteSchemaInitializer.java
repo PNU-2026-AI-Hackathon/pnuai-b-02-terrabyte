@@ -189,16 +189,55 @@ class SqliteSchemaInitializer {
         if (!resource.exists()) {
             throw new IllegalStateException("SQL resource not found on classpath: " + classpathLocation);
         }
-        try (Connection conn = scoreDataSource.getConnection();
-             Statement stmt = conn.createStatement()) {
-            String sql = new String(
+
+        String sql;
+        try {
+            sql = new String(
                     resource.getInputStream().readAllBytes(),
                     java.nio.charset.StandardCharsets.UTF_8);
-            stmt.execute(sql);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to read SQL from classpath: " + classpathLocation, e);
+        }
+
+        List<String> statements = SqlScriptSplitter.split(sql);
+        if (statements.isEmpty()) {
+            throw new IllegalStateException("SQL resource contains no statements: " + classpathLocation);
+        }
+
+        // One execute() per statement. sqlite-jdbc runs only the first statement
+        // of a multi-statement script and discards the rest without raising, so
+        // handing it the whole file executed `PRAGMA foreign_keys = ON;` and
+        // silently dropped everything after it — the application logged
+        // "applying full schema" and then failed verification on an empty
+        // database. See SqlScriptSplitter.
+        try (Connection conn = scoreDataSource.getConnection();
+             Statement stmt = conn.createStatement()) {
+            int index = 0;
+            for (String statement : statements) {
+                index++;
+                try {
+                    stmt.execute(statement);
+                } catch (Exception e) {
+                    // Naming the statement matters: a 51 KB script that fails
+                    // somewhere in the middle is otherwise a guessing game.
+                    throw new RuntimeException(
+                            "Failed at statement " + index + " of " + statements.size()
+                                    + " in " + classpathLocation + ": " + summarise(statement),
+                            e);
+                }
+            }
+            log.debug("Executed {} statements from {}", statements.size(), classpathLocation);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException(
                     "Failed to execute SQL from classpath: " + classpathLocation, e);
         }
+    }
+
+    private static String summarise(String statement) {
+        String flat = statement.replaceAll("\s+", " ").trim();
+        return flat.length() <= 80 ? flat : flat.substring(0, 80) + "…";
     }
 
     private enum SchemaState {
