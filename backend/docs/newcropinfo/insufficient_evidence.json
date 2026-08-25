@@ -161,7 +161,7 @@
       "crop": "arugula",
       "axis": "plant_light",
       "candidate_value": {"ppfd": 217.5, "unit": "umol_m-2_s-1", "photoperiod_hours": 24},
-      "source_claim": "연속광 처리에서 아루굴라와 청경채에 심한 황화가 나타나 해당 처리가 중단됐다.",
+      "source_claim": "연속광 처리에서 루꼴라와 청경채에 심한 황화가 나타나 해당 처리가 중단됐다.",
       "quarantine_reasons": ["coupled_intervention", "endpoint_mismatch"],
       "why_not_scoreable": "PPFD 단독 위험선이 아니라 연속광·DLI와 결합된 한 처리의 관찰이며 보편 임계값을 찾은 시험이 아니다.",
       "source": {

@@ -14,7 +14,7 @@
 
 | 조사 항목 | 조사 결과 |
 | --- | --- |
-| 작물명 | 루꼴라, 로켓, 아루굴라 |
+| 작물명 | 루꼴라, 로켓 |
 | 학명 | *Eruca vesicaria* subsp. *sativa*; 동의명 *Eruca sativa* Mill. |
 | 품종 | ‘Standard’가 NFT EC 연구에 사용됐다. 와일드 루꼴라(*Diplotaxis tenuifolia*)는 다른 종이므로 자료를 섞지 않는다. |
 | 재배 난이도 | 등급 직접 근거 없음. |

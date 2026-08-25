@@ -23,7 +23,14 @@ public record TelemetrySample(
         long soilMoistureRawAdc,
         double airTemperatureC,
         double airHumidityPct,
-        double plantLightPpfdUmolM2S,
+        // Nullable: new nodes send raw lux and let the backend derive PPFD.
+        // Legacy nodes still send lux as null, which is why this cannot be
+        // @NotNull the way airTemperatureC/airHumidityPct are above.
+        Double illuminanceLux,
+        // Nullable, unlike soilMoisturePct above: legacy nodes are the only
+        // remaining source of this field, and a missing reading must stay
+        // distinguishable from a genuine zero rather than collapsing to 0.0.
+        Double plantLightPpfdUmolM2S,
         // Nullable, unlike soilMoisturePct above: the probe is optional, and a
         // missing reading collapsing to 0.0 would read as a confident "0°C"
         // rather than "unknown" — the same hazard soilMoisturePctOrZero()
@@ -31,7 +38,11 @@ public record TelemetrySample(
         Double soilTemperatureC,
         boolean soilSensorValid,
         boolean airSensorValid,
-        boolean lightSensorValid) {
+        boolean lightSensorValid,
+        // Null whenever the edge could not compute a dose for this reading. The
+        // irrigation path falls back to the pot-size table rather than treating
+        // the absence as an error.
+        IrrigationSuggestion irrigationSuggestion) {
 
     public static TelemetrySample from(
             TelemetryEnvelope envelope,
@@ -54,10 +65,12 @@ public record TelemetrySample(
                 measurements.soilMoistureRawAdcOrZero(),
                 measurements.airTemperatureC(),
                 measurements.airHumidityPct(),
+                measurements.illuminanceLux(),
                 measurements.plantLightPpfdUmolM2S(),
                 measurements.soilTemperatureC(),
                 quality.soilSensorValidOrFalse(),
                 quality.airSensorValid(),
-                quality.lightSensorValid());
+                quality.lightSensorValid(),
+                node.irrigationSuggestion());
     }
 }

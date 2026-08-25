@@ -30,17 +30,18 @@ uses 115200 baud after the sketch starts.
 - Mock sensors are disabled by default and can only be enabled explicitly at
   compile time for an E2E test build.
 - DHT22 air temperature and relative humidity are read from digital pin 2.
-- A waterproof DS18B20 soil-temperature probe can be enabled on digital pin 3.
-- An analog capacitive soil-moisture sensor can be enabled on A1 after dry/wet
-  calibration. Both soil adapters are disabled by default.
-- GY-30/BH1750 illuminance is read over I2C using A4/SDA and A5/SCL. The
-  default address is `0x23` with ADD connected to GND.
-- PPFD is **disabled by default**, so the firmware emits `sensor_status` rather
-  than a telemetry record until a valid GY-30 lux-to-PPFD calibration is
-  configured. The measured lux value is still present in `sensor_status`.
-- GY-30 measures illuminance in lux, not PPFD. Lux must not be labelled
-  `ppfd_umol_m2_s` without calibration against a reference PAR/PPFD meter using
-  the final light source and geometry.
+- A waterproof DS18B20 soil-temperature probe is enabled on digital pin 3.
+- An analog capacitive soil-moisture sensor is enabled on A0. Its provisioned
+  dry/wet endpoints are provisional placeholders, so the percentage is not
+  trustworthy until calibration in real soil; the bench logger retains raw ADC.
+- TSL2591 illuminance is read over I2C using A4/SDA and A5/SCL at its fixed
+  address, `0x29`.
+- PPFD conversion is **disabled in the base defaults**. The provisioned device
+  configuration knowingly enables a daylight-spectrum lux estimate so complete
+  telemetry can be emitted; this is not a PAR-meter calibration.
+- TSL2591 measures illuminance in lux, not PPFD. Lux must not be presented as a
+  measured `ppfd_umol_m2_s` value without calibration against a reference
+  PAR/PPFD meter using the final light source and geometry.
 - `NaN`, infinity, missing readings, and values outside configured ranges are
   rejected. Invalid samples are never sent as telemetry.
 
@@ -98,13 +99,13 @@ pull-up resistor between DATA and VCC:
 ```
 
 The soil-moisture adapter targets an analog capacitive sensor. Connect its
-analog output to A1, then measure raw ADC readings in representative dry and wet
+analog output to A0, then measure raw ADC readings in representative dry and wet
 soil with the final supply voltage, board, and probe. Configure those measured
 endpoints; the conversion supports either ADC direction:
 
 ```cpp
 #define TB_SOIL_MOISTURE_ENABLED 1
-#define TB_SOIL_MOISTURE_ADC_PIN A1
+#define TB_SOIL_MOISTURE_ADC_PIN A0
 #define TB_SOIL_MOISTURE_DRY_ADC 800  // Example syntax only.
 #define TB_SOIL_MOISTURE_WET_ADC 350  // Replace both with measured values.
 ```
@@ -113,33 +114,36 @@ The calculation maps the dry endpoint to 0% and the wet endpoint to 100%.
 Samples outside the calibrated ADC interval, disconnected DS18B20 probes, and
 out-of-range values produce `sensor_status` instead of fabricated telemetry.
 
-### GY-30 illuminance and optional PPFD calibration
+### TSL2591 illuminance and optional PPFD calibration
 
-Connect the GY-30 to the Nano I2C pins. Connect VCC according to the specific
-module's rated supply voltage:
+Connect the TSL2591 breakout to the Nano I2C pins. The TSL2591 die is a 3.3 V
+device, but most breakouts include a regulator and I2C level shifting. Connect
+VIN according to the specific breakout board's rated supply voltage:
 
-| GY-30 | Arduino Nano | Purpose |
+| TSL2591 | Arduino Nano | Purpose |
 | --- | --- | --- |
 | `GND` | `GND` | Common ground |
-| `ADD` | `GND` | Address `0x23` (default) |
 | `SDA` | `A4` / `SDA` | I2C data |
 | `SCL` | `A5` / `SCL` | I2C clock |
-| `VCC` | Rated supply | Module power |
+| `VIN` | Rated supply | Breakout power |
 
-Connect ADD to VCC and set `TB_GY30_I2C_ADDRESS` to `0x5C` only when the second
-address is needed. The default configuration is:
+The address is fixed at `0x29`. The default configuration uses 25x gain, a
+300 ms integration period, and bounded auto-gain:
 
 ```cpp
-#define TB_GY30_ENABLED 1
-#define TB_GY30_I2C_ADDRESS 0x23
+#define TB_TSL2591_ENABLED 1
+#define TB_TSL2591_I2C_ADDRESS 0x29
+#define TB_TSL2591_GAIN 25
+#define TB_TSL2591_INTEGRATION_MS 300
+#define TB_TSL2591_AUTO_GAIN_ENABLED 1
 ```
 
-The firmware always reports the validated BH1750 reading as
-`illuminance_lux`. To additionally produce PPFD, calibration must provide the
-conversion coefficients and calibrated lux bounds:
+The firmware reports the validated TSL2591 reading as `illuminance_lux`. To
+additionally produce PPFD, calibration must provide the conversion coefficients
+and calibrated lux bounds:
 
 ```cpp
-#define TB_GY30_PPFD_CALIBRATION_ENABLED 1
+#define TB_PPFD_CALIBRATION_ENABLED 1
 #define TB_PPFD_PER_LUX 0.0123f
 #define TB_PPFD_OFFSET -1.25f
 #define TB_PPFD_CALIBRATED_MIN_LUX 100.0f
@@ -224,7 +228,7 @@ If any required field is unavailable or invalid, no telemetry is fabricated:
 {"message_type":"sensor_status","protocol_version":1,"node_id":"terrabyte-node-001","sequence":43,"uptime_ms":220000,"validity":{"air_temperature_c":true,"relative_humidity_pct":true,"ppfd_umol_m2_s":false,"illuminance_lux":true,"soil_temperature_c":true,"soil_moisture_pct":true},"illuminance_lux":18420.83,"reason":"sensor_unavailable_or_out_of_range"}
 ```
 
-The two soil keys are emitted only when their adapters are enabled. The GY-30
+The two soil keys are emitted only when their adapters are enabled. The TSL2591
 lux key is emitted when its adapter is enabled, including in `sensor_status`
 when PPFD calibration is unavailable. The current Orange Pi/backend v1 contract
 accepts the serial record but forwards only air temperature, relative humidity,

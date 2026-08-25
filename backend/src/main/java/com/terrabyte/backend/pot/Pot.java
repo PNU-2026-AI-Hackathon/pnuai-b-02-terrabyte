@@ -13,5 +13,8 @@ public record Pot(
         Instant cropSelectedAt,
         DeviceStatus status,
         Instant lastSeenAt,
-        Instant createdAt) {
+        Instant createdAt,
+        // Null means the volume was never recorded, which the irrigation
+        // fallback table treats as the smallest pot rather than guessing.
+        Integer substrateVolumeMl) {
 }

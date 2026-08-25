@@ -2,11 +2,14 @@ package com.terrabyte.backend.space;
 
 import java.util.List;
 
+import com.terrabyte.backend.api.ApiException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -39,7 +42,21 @@ public class CultivationSpaceController {
                 Long.parseLong(jwt.getSubject()),
                 request.name().trim(),
                 request.spaceType().trim(),
-                request.areaSquareMeters());
+                request.areaSquareMeters(),
+                request.lightSource());
         return CultivationSpaceResponse.from(space);
+    }
+
+    @PatchMapping("/{spaceId}")
+    public CultivationSpaceResponse updateLightSource(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable long spaceId,
+            @Valid @RequestBody UpdateSpaceLightSourceRequest request) {
+        long userId = Long.parseLong(jwt.getSubject());
+        CultivationSpace updated = spaceRepository
+                .updateLightSource(spaceId, userId, request.lightSource())
+                .orElseThrow(() -> new ApiException(
+                        HttpStatus.NOT_FOUND, "SPACE_NOT_FOUND", "공간을 찾을 수 없습니다."));
+        return CultivationSpaceResponse.from(updated);
     }
 }

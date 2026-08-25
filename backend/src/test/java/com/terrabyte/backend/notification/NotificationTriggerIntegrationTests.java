@@ -162,7 +162,8 @@ class NotificationTriggerIntegrationTests {
                         "pot-alert",
                         1,
                         new TelemetryEnvelope.Measurements(
-                                27.0, 58.0, 230.0, null, null, null),
-                        new TelemetryEnvelope.Quality(airSensorValid, true, null))));
+                                27.0, 58.0, null, 230.0, null, null, null),
+                        new TelemetryEnvelope.Quality(airSensorValid, true, null),
+                        null)));
     }
 }
