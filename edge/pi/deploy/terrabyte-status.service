@@ -1,0 +1,24 @@
+[Unit]
+# The status board. Separate from terrabyte-edge.service on purpose: restarting
+# the board must never interrupt telemetry, and the board is optional on a
+# headless gateway that is only ever read over SSH with `status --text`.
+Description=TerraByte gateway status board
+After=terrabyte-edge.service
+Wants=terrabyte-edge.service
+
+[Service]
+Type=simple
+User=terrabyte-edge
+WorkingDirectory=/opt/terrabyte-edge
+# Loopback by default. The board is read-only but unauthenticated and it names
+# the pots, so exposing it to the LAN is an explicit edit, not a default.
+ExecStart=/opt/terrabyte-edge/.venv/bin/python -m terrabyte_edge status --host 127.0.0.1 --port 8090
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
