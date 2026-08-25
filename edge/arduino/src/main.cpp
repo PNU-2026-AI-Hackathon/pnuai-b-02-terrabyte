@@ -42,6 +42,7 @@ char lastLedCommandId[tb::kCommandIdCapacity] = "";
 #endif
 
 tb::ActuatorGuard actuatorGuard;
+uint16_t activePumpVolumeMl = 0;
 #if TB_LED_ENABLED
 tb::LedGuard ledGuard;
 #endif
@@ -326,13 +327,22 @@ void emitAckRejected(const char* commandId, const tb::RejectReason reason) {
   Serial.println(F("\"}"));
 }
 
-void emitAckRunEnded(const char* commandId, const tb::PumpStop& stop) {
+void emitAckRunEnded(const char* commandId, const tb::PumpStop& stop,
+                     const uint16_t commandedVolumeMl) {
   // A run cut short by the dead-man watchdog did not deliver its dose, so it is
   // an abort. Every other ending ran to the deadline it was granted.
   const bool aborted = stop.cause == tb::StopCause::kWatchdog;
   printAckStart(commandId, aborted ? F("aborted") : F("completed"));
   Serial.print(F(",\"ms\":"));
   Serial.print(stop.runtimeMs);
+  // `ms` stays authoritative; `ml` preserves the request, so an abort can
+  // disagree and the campaign loader can recompute delivery from runtime.
+  // Zero also means "absent" after parsing, and emitting it would falsely
+  // claim that a zero-millilitre dose was delivered.
+  if (commandedVolumeMl > 0) {
+    Serial.print(F(",\"ml\":"));
+    Serial.print(commandedVolumeMl);
+  }
   Serial.print(F(",\"stop\":\""));
   Serial.print(stopCauseToken(stop.cause));
   Serial.println(F("\"}"));
@@ -398,6 +408,7 @@ void handleInboundLine(const uint32_t nowMs) {
       // timing the run, and the ack costs milliseconds of serial output that
       // would otherwise be charged to a pump that is not yet on.
       writePumpOutput(true);
+      activePumpVolumeMl = message.volumeMl;
       emitAckAccepted(message.id);
       break;
     }
@@ -472,7 +483,9 @@ void serviceActuators(const uint32_t nowMs) {
     // Output first, ack second. Writing about 60 bytes at 115200 baud takes
     // several milliseconds, and none of them should be pumping.
     writePumpOutput(false);
-    emitAckRunEnded(actuatorGuard.activeCommandId(), stop);
+    emitAckRunEnded(actuatorGuard.activeCommandId(), stop,
+                    activePumpVolumeMl);
+    activePumpVolumeMl = 0;
   }
 
 #if TB_LED_ENABLED
