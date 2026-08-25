@@ -94,6 +94,7 @@ class LoopbackArduino:
         self._outbound: deque[bytes] = deque()
         self._write_buffer = bytearray()
         self._seen_command_ids: deque[str] = deque(maxlen=COMMAND_ID_RING)
+        self.light_on = False
         self._closed = False
         # Everything the double was told, in order, for assertions.
         self.received: list[dict] = []
@@ -248,6 +249,32 @@ class LoopbackArduino:
             # answer to. Dropping it is what the firmware would do.
             LOGGER.warning("loopback ignoring a command with no id")
             return []
+
+        if message.get("act") == "led":
+            requested_on = message.get("on")
+            if (
+                not isinstance(requested_on, int)
+                or isinstance(requested_on, bool)
+                or requested_on not in (0, 1)
+            ):
+                return [
+                    {
+                        "t": "ack",
+                        "id": command_id,
+                        "ph": "rejected",
+                        "r": "bad_request",
+                    }
+                ]
+            self.light_on = bool(requested_on)
+            return [
+                {
+                    "t": "ack",
+                    "id": command_id,
+                    "ph": "accepted",
+                    "on": requested_on,
+                }
+            ]
+
         if command_id in self._seen_command_ids:
             return [{"t": "ack", "id": command_id, "ph": "rejected", "r": "duplicate"}]
         self._seen_command_ids.append(command_id)

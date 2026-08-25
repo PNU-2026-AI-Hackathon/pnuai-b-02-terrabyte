@@ -385,6 +385,9 @@ class SerialAck:
     # Only if the firmware measures it. Absent is the normal case; the relay
     # then derives an estimate from the commanded volume and the runtime.
     volume_ml: int | None = None
+    # The light latch echoes its resulting state as the serial integer 0 or 1.
+    # It is optional because pump acks predate and never carry this field.
+    on: bool | None = None
 
 
 # The strictness split below is deliberate, and it is a safety judgement rather
@@ -416,6 +419,17 @@ def _lenient_uint32(message: dict[str, Any], name: str) -> int | None:
         return None
 
 
+def _lenient_bool(message: dict[str, Any], name: str) -> bool | None:
+    value = message.get(name)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int) and value in (0, 1):
+        return bool(value)
+    if value is not None:
+        LOGGER.warning("ignoring unusable ack field %s=%r", name, value)
+    return None
+
+
 def parse_serial_ack(message: dict[str, Any]) -> SerialAck:
     """Validate one decoded short-key ack frame.
 
@@ -442,6 +456,7 @@ def parse_serial_ack(message: dict[str, Any]) -> SerialAck:
         runtime_ms=_lenient_uint32(message, "ms"),
         stop_cause=stop_cause,
         volume_ml=_lenient_uint32(message, "ml"),
+        on=_lenient_bool(message, "on"),
     )
 
 
@@ -470,6 +485,7 @@ class CommandAck:
     runtime_ms: int | None = None
     estimated_ml: int | None = None
     stop_cause: str | None = None
+    on: bool | None = None
 
     @property
     def event_id(self) -> str:
@@ -514,6 +530,8 @@ class CommandAck:
             actual["estimated_ml"] = self.estimated_ml
         if self.stop_cause is not None:
             actual["stop_cause"] = self.stop_cause
+        if self.on is not None:
+            actual["on"] = self.on
         if actual:
             body["actual"] = actual
         return body

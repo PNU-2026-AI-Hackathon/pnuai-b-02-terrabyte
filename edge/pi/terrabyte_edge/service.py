@@ -145,6 +145,9 @@ class BridgeService:
             deadman_interval_seconds=getattr(
                 self.settings, "command_deadman_interval_seconds", 1.0
             ),
+            light_keepalive_interval_seconds=getattr(
+                self.settings, "light_keepalive_interval_seconds", 60.0
+            ),
             deadman_grace_seconds=getattr(
                 self.settings, "command_deadman_grace_seconds", 5.0
             ),

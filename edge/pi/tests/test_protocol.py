@@ -6,11 +6,13 @@ import unittest
 import uuid
 
 from terrabyte_edge.protocol import (
+    CommandAck,
     Event,
     IrrigationSuggestion,
     NonTelemetryMessage,
     ProtocolError,
     parse_line,
+    parse_serial_ack,
 )
 
 
@@ -294,3 +296,35 @@ class IrrigationSuggestionTests(unittest.TestCase):
             if key != "irrigation_suggestion"
         }
         self.assertIsNone(Event.from_record(legacy).irrigation_suggestion)
+
+
+class LightAckTests(unittest.TestCase):
+    def test_serial_light_state_is_read_leniently(self) -> None:
+        self.assertTrue(
+            parse_serial_ack(
+                {"t": "ack", "id": "light-on", "ph": "accepted", "on": 1}
+            ).on
+        )
+        self.assertFalse(
+            parse_serial_ack(
+                {"t": "ack", "id": "light-off", "ph": "accepted", "on": 0}
+            ).on
+        )
+        self.assertIsNone(
+            parse_serial_ack(
+                {"t": "ack", "id": "light-bad", "ph": "accepted", "on": "1"}
+            ).on
+        )
+
+    def test_command_ack_omits_unknown_state_but_preserves_false(self) -> None:
+        base = {
+            "command_id": "light-off",
+            "phase": "accepted",
+            "at_utc": "2026-08-26T00:00:00Z",
+            "reason": "OK",
+        }
+        unknown = CommandAck(**base).ack_payload(gateway_id="gw")
+        self.assertNotIn("actual", unknown)
+
+        known = CommandAck(**base, on=False).ack_payload(gateway_id="gw")
+        self.assertEqual(known["actual"], {"on": False})

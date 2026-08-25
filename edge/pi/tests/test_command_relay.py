@@ -71,6 +71,14 @@ def command(**overrides) -> bytes:
     return json.dumps(body).encode()
 
 
+def light_command(*, on: bool = True, **overrides) -> bytes:
+    action = overrides.pop("action", "on" if on else "off")
+    params = overrides.pop("params", {"on": on})
+    return command(
+        actuator="light", action=action, params=params, **overrides
+    )
+
+
 class FakeReader:
     def __init__(self, port: str, *, up: bool = True) -> None:
         self.port = port
@@ -296,6 +304,13 @@ class CommandParsingTests(unittest.TestCase):
         )
         self.assertIsNone(fractional.volume_ml)
 
+    def test_light_on_is_read_strictly_but_left_for_validation_when_bad(self) -> None:
+        self.assertTrue(parse_command(light_command()).on)
+        self.assertFalse(parse_command(light_command(on=False)).on)
+        self.assertIsNone(
+            parse_command(light_command(params={"on": 1})).on
+        )
+
 
 class SerialFrameTests(unittest.TestCase):
     def test_the_keys_are_renamed_to_the_short_serial_spelling(self) -> None:
@@ -317,6 +332,20 @@ class SerialFrameTests(unittest.TestCase):
         )
         self.assertEqual(frame["ms"], 240000)
         self.assertGreater(frame["ms"], PUMP_ABS_MAX_MS)
+
+    def test_a_light_frame_translates_to_led_and_has_no_pump_fields(self) -> None:
+        frame = json.loads(serial_command_frame(parse_command(light_command())))
+        self.assertEqual(
+            frame,
+            {
+                "t": "cmd",
+                "id": "01J8F3QK2M7X9ZB4CDEFGH",
+                "act": "led",
+                "on": 1,
+            },
+        )
+        self.assertNotIn("ms", frame)
+        self.assertNotIn("ml", frame)
 
     def test_volume_is_omitted_when_the_command_did_not_size_one(self) -> None:
         frame = json.loads(
@@ -379,6 +408,12 @@ class JournalTests(unittest.TestCase):
         context = self.open().context(request.command_id)
         self.assertEqual(context["pot_id"], 42)
         self.assertEqual(context["max_runtime_ms"], 18000)
+
+        light = parse_command(light_command(command_id="light-1"))
+        self.open().claim(light)
+        light_context = self.open().context(light.command_id)
+        self.assertEqual(light_context["actuator"], "light")
+        self.assertTrue(light_context["on"])
 
     def test_pruning_bounds_the_table_without_reopening_the_window(self) -> None:
         journal = self.open()
@@ -504,6 +539,28 @@ class RelayDecisionTests(unittest.TestCase):
                 fixture.relay._process(command(params=params))
                 self.assertEqual(fixture.reader.written, [])
                 self.assertEqual(fixture.outbox.acks[0].stop_cause, "pi_bad_params")
+
+    def test_light_action_and_on_must_agree(self) -> None:
+        for action, params in (
+            ("on", {"on": False}),
+            ("off", {"on": True}),
+            ("on", {"on": 1}),
+            ("dose", {"on": True}),
+        ):
+            with self.subTest(action=action, params=params):
+                fixture = RelayFixture(self)
+                fixture.relay._process(light_command(action=action, params=params))
+                self.assertEqual(fixture.reader.written, [])
+                self.assertEqual(fixture.outbox.acks[0].stop_cause, "pi_bad_params")
+
+    def test_light_does_not_require_pump_runtime_or_volume(self) -> None:
+        fixture = RelayFixture(self)
+        fixture.relay._process(light_command())
+
+        (frame,) = fixture.reader.commands()
+        self.assertEqual(frame["act"], "led")
+        self.assertNotIn("ms", frame)
+        self.assertNotIn("ml", frame)
 
     def test_a_node_nobody_has_reported_is_offline_not_assumed(self) -> None:
         """Falling back to "the only port we have" would water the wrong pot."""
@@ -784,6 +841,76 @@ class AckTranslationTests(unittest.TestCase):
         self.assertIsNone(ack.runtime_ms)
         self.assertIsNone(ack.stop_cause)
 
+    def test_light_accepted_is_terminal_and_carries_the_echo_to_the_backend(
+        self,
+    ) -> None:
+        fixture = RelayFixture(self)
+        fixture.relay._process(light_command())
+        fixture.relay.handle_serial_ack(
+            PORT,
+            {
+                "t": "ack",
+                "id": "01J8F3QK2M7X9ZB4CDEFGH",
+                "ph": "accepted",
+                "on": 1,
+            },
+        )
+
+        self.assertEqual(tuple(fixture.relay.in_flight_ids()), ())
+        self.assertEqual(fixture.relay._pending_lights, {})
+        (ack,) = fixture.outbox.acks
+        self.assertTrue(ack.on)
+        self.assertIsNone(ack.estimated_ml)
+        self.assertEqual(
+            ack.ack_payload(gateway_id=GATEWAY)["actual"], {"on": True}
+        )
+
+    def test_light_latch_uses_the_echoed_state_not_the_requested_state(self) -> None:
+        fixture = RelayFixture(self)
+        fixture.relay._process(light_command())
+        fixture.relay.handle_serial_ack(
+            PORT,
+            {
+                "t": "ack",
+                "id": "01J8F3QK2M7X9ZB4CDEFGH",
+                "ph": "accepted",
+                "on": 0,
+            },
+        )
+
+        self.assertEqual(fixture.relay._light_latches, {})
+        self.assertFalse(fixture.outbox.acks[0].on)
+
+    def test_light_watchdog_abort_clears_the_latch_without_estimating_water(
+        self,
+    ) -> None:
+        fixture = RelayFixture(self)
+        fixture.relay._process(light_command())
+        fixture.relay.handle_serial_ack(
+            PORT,
+            {
+                "t": "ack",
+                "id": "01J8F3QK2M7X9ZB4CDEFGH",
+                "ph": "accepted",
+                "on": 1,
+            },
+        )
+        fixture.relay.handle_serial_ack(
+            PORT,
+            {
+                "t": "ack",
+                "id": "01J8F3QK2M7X9ZB4CDEFGH",
+                "ph": "aborted",
+                "ms": 60_000,
+                "stop": "watchdog",
+            },
+        )
+
+        self.assertEqual(fixture.relay._light_latches, {})
+        aborted = fixture.outbox.acks[1]
+        self.assertEqual(aborted.runtime_ms, 60_000)
+        self.assertIsNone(aborted.estimated_ml)
+
 
 class DeadmanTests(unittest.TestCase):
     def test_a_running_dose_gets_a_tick_and_a_finished_one_does_not(self) -> None:
@@ -850,6 +977,55 @@ class DeadmanTests(unittest.TestCase):
 
         ticks = [line for line in fixture.reader.written if line == DEADMAN_FRAME]
         self.assertEqual(len(ticks), 1)
+
+
+class LightKeepaliveTests(unittest.TestCase):
+    def accept(self, fixture: RelayFixture, *, command_id: str, on: int) -> None:
+        fixture.relay.handle_serial_ack(
+            PORT,
+            {
+                "t": "ack",
+                "id": command_id,
+                "ph": "accepted",
+                "on": on,
+            },
+        )
+
+    def test_pump_deadman_never_ticks_or_sweeps_a_light_latch(self) -> None:
+        fixture = RelayFixture(self)
+        fixture.relay._process(light_command(command_id="light-on"))
+        self.accept(fixture, command_id="light-on", on=1)
+        before = len(fixture.reader.written)
+
+        fixture.advance(1_000)
+        fixture.relay.tick_deadman()
+
+        self.assertEqual(len(fixture.reader.written), before)
+        self.assertIn(PORT, fixture.relay._light_latches)
+        fixture.relay.tick_light_keepalive()
+        self.assertEqual(fixture.reader.written[-1], DEADMAN_FRAME)
+
+    def test_light_keepalive_writes_only_while_the_echoed_latch_is_on(self) -> None:
+        fixture = RelayFixture(self)
+        fixture.relay.tick_light_keepalive()
+        self.assertEqual(fixture.reader.written, [])
+
+        fixture.relay._process(light_command(command_id="light-on"))
+        fixture.relay.tick_light_keepalive()
+        self.assertEqual(
+            [line for line in fixture.reader.written if line == DEADMAN_FRAME], []
+        )
+        self.accept(fixture, command_id="light-on", on=1)
+        fixture.relay.tick_light_keepalive()
+        self.assertEqual(fixture.reader.written[-1], DEADMAN_FRAME)
+
+        fixture.relay._process(
+            light_command(command_id="light-off", on=False)
+        )
+        self.accept(fixture, command_id="light-off", on=0)
+        before = len(fixture.reader.written)
+        fixture.relay.tick_light_keepalive()
+        self.assertEqual(len(fixture.reader.written), before)
 
 
 if __name__ == "__main__":
