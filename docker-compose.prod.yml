@@ -41,6 +41,32 @@ services:
       - influxdb-config:/etc/influxdb2
     restart: unless-stopped
 
+  mosquitto:
+    image: ${MOSQUITTO_IMAGE:-eclipse-mosquitto:2}
+    ports:
+      # 게이트웨이는 컨테이너 네트워크 밖 LAN 에 있으므로 브로커만은 공개한다.
+      # 다른 서비스가 포트를 하나도 열지 않는 것과 대비되는 의도적 예외다.
+      - "${MQTT_PORT:-1883}:1883"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./infra/mosquitto/aclfile:/mosquitto/config/aclfile:ro
+      - ./infra/mosquitto/passwd:/mosquitto/config/passwd:ro
+      # retained 메시지(특히 up/status 온라인 상태)와 로그가 재시작 후에도 남아야
+      # 백엔드가 게이트웨이 프레즌스를 다시 계산하지 않아도 된다.
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    healthcheck:
+      # 컨테이너가 떠 있는지가 아니라 브로커가 실제로 응답하는지 확인한다:
+      # mosquitto_sub 로 구독을 시도해 접속·인증 경로가 살아있음을 증명한다.
+      test:
+        - CMD-SHELL
+        - mosquitto_sub -h localhost -p 1883 -u terrabyte-backend -P "${MQTT_PASSWORD}" -t '$$SYS/#' -C 1 -W 3 || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -54,6 +80,9 @@ services:
         condition: service_healthy
       influxdb:
         condition: service_started
+      mosquitto:
+        # MQTT 연결 없이는 게이트웨이 텔레메트리를 받을 수 없으므로 healthy 를 기다린다.
+        condition: service_healthy
       ai-server:
         # AI 장애가 백엔드 장애가 되면 안 된다. service_healthy 금지.
         condition: service_started
@@ -69,6 +98,14 @@ services:
       INFLUX_ORG: ${INFLUX_ORG:-terrabyte}
       INFLUX_BUCKET: ${INFLUX_BUCKET:-telemetry}
       TELEMETRY_DEVICE_KEY: ${TELEMETRY_DEVICE_KEY:?TELEMETRY_DEVICE_KEY 를 설정하세요}
+      MQTT_ENABLED: ${MQTT_ENABLED:-true}
+      MQTT_URL: ${MQTT_URL:-tcp://mosquitto:1883}
+      MQTT_USERNAME: ${MQTT_USERNAME:-terrabyte-backend}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:?MQTT_PASSWORD 를 설정하세요}
+      MQTT_TOPIC_PREFIX: ${MQTT_TOPIC_PREFIX:-tb/v2}
+      # 이 스위치가 켜져야 백엔드가 승인한 관수를 실제로 발행한다. 꺼져 있으면
+      # LoggingCommandDispatcher 가 경고만 남기고 명령은 TTL 로 만료된다.
+      MQTT_COMMAND_DISPATCH_ENABLED: ${MQTT_COMMAND_DISPATCH_ENABLED:-false}
       JWT_ISSUER: ${JWT_ISSUER:-terrabyte-backend}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 을 32바이트 이상으로 설정하세요}
       JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT1H}
@@ -136,4 +173,6 @@ volumes:
   postgres-data:
   influxdb-data:
   influxdb-config:
+  mosquitto-data:
+  mosquitto-log:
   backend-data:
