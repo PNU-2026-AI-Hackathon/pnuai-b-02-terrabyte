@@ -14,9 +14,17 @@
 #include <OneWire.h>
 #include <math.h>
 
+#include "../include/TelemetryConfig.h"
+
 namespace {
 
-constexpr uint8_t kOneWirePin = 4;
+// The probe sits on the line the production firmware reads, so this tracks
+// TB_SOIL_TEMPERATURE_PIN rather than repeating the number. It was hard-coded
+// to 4 until 2026-08-25, which is the PUMP output: every run of this
+// diagnostic clocked OneWire timing onto the pump MOSFET gate and then
+// reported DISCONNECTED or the 85 C power-on value, because no DS18B20 was
+// ever on that line.
+constexpr uint8_t kOneWirePin = TB_SOIL_TEMPERATURE_PIN;
 constexpr unsigned long kSampleIntervalMs = 2000UL;
 constexpr float kDs18b20PowerOnC = 85.0f;
 
