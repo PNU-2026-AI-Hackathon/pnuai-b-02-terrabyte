@@ -312,10 +312,10 @@ class SerialFrameTests(unittest.TestCase):
 
         frame = json.loads(
             serial_command_frame(
-                parse_command(command(params={"volume_ml": 120, "max_runtime_ms": 60000}))
+                parse_command(command(params={"volume_ml": 120, "max_runtime_ms": 240000}))
             )
         )
-        self.assertEqual(frame["ms"], 60000)
+        self.assertEqual(frame["ms"], 240000)
         self.assertGreater(frame["ms"], PUMP_ABS_MAX_MS)
 
     def test_volume_is_omitted_when_the_command_did_not_size_one(self) -> None:
@@ -340,6 +340,9 @@ class SerialFrameTests(unittest.TestCase):
     def test_the_firmware_run_limit_mirror_agrees_with_the_test_double(self) -> None:
         """Two independent mirrors of one C++ constant; drift must be visible."""
 
+        # TelemetryConfig.h/TB_PUMP_ABS_MAX_MS is authoritative; pin both
+        # Python mirrors to its value so they cannot drift together unnoticed.
+        self.assertEqual(PUMP_ABS_MAX_MS, 210_000)
         self.assertEqual(PUMP_ABS_MAX_MS, ABS_MAX_RUN_MS)
 
 
@@ -663,11 +666,11 @@ class AckTranslationTests(unittest.TestCase):
         self.assertTrue(body["at"].endswith("Z"))
 
     def test_a_clamped_run_reports_the_water_that_actually_moved(self) -> None:
-        """G1 halves a 60 s dose. Charging the full volume would inflate the budget."""
+        """G1 shortens a 240 s dose. Charging the full volume inflates the budget."""
 
         fixture = RelayFixture(self)
         self.relay_a_command(
-            fixture, params={"volume_ml": 120, "max_runtime_ms": 60000}
+            fixture, params={"volume_ml": 120, "max_runtime_ms": 240000}
         )
         fixture.relay.handle_serial_ack(
             PORT,
@@ -675,14 +678,14 @@ class AckTranslationTests(unittest.TestCase):
                 "t": "ack",
                 "id": "01J8F3QK2M7X9ZB4CDEFGH",
                 "ph": "completed",
-                "ms": 30000,
+                "ms": 210000,
                 "stop": "max_runtime",
             },
         )
 
         (ack,) = fixture.outbox.acks
         self.assertEqual(ack.reason, "OK")
-        self.assertEqual(ack.estimated_ml, 60)
+        self.assertEqual(ack.estimated_ml, 105)
 
     def test_a_measured_volume_from_the_firmware_wins_over_the_estimate(self) -> None:
         fixture = RelayFixture(self)

@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from typing import Any, Callable
 
 from .protocol import CommandAck, Event
@@ -59,23 +60,54 @@ class MqttPublisher:
         tls_ca_cert: str | None = None,
         keepalive_seconds: int = 30,
         publish_timeout_seconds: float = 10.0,
+        max_consecutive_link_failures: int = 3,
+        max_seconds_since_success: float = 90.0,
+        min_rebuild_interval_seconds: float = 30.0,
         client_factory: Callable[[], Any] | None = None,
+        clock: Callable[[], float] = time.time,
     ) -> None:
         if mqtt is None and client_factory is None:
             raise RuntimeError(
                 "paho-mqtt is not installed; add paho-mqtt to requirements.txt"
             )
+        if max_consecutive_link_failures < 1:
+            raise ValueError("max_consecutive_link_failures must be at least 1")
+        if max_seconds_since_success <= 0:
+            raise ValueError("max_seconds_since_success must be positive")
+        if min_rebuild_interval_seconds < 0:
+            raise ValueError("min_rebuild_interval_seconds must not be negative")
         self._gateway_id = gateway_id
         self._telemetry_topic = f"{topic_prefix}/{gateway_id}/up/telemetry"
         self._status_topic = f"{topic_prefix}/{gateway_id}/up/status"
         self._ack_topic = f"{topic_prefix}/{gateway_id}/up/ack"
         self._command_topic = f"{topic_prefix}/{gateway_id}/dn/command"
+        self._host = host
+        self._port = port
+        self._username = username
+        self._password = password
+        self._tls = tls
+        self._tls_ca_cert = tls_ca_cert
+        self._keepalive_seconds = keepalive_seconds
         self._publish_timeout_seconds = publish_timeout_seconds
+        self._max_consecutive_link_failures = max_consecutive_link_failures
+        self._max_seconds_since_success = max_seconds_since_success
+        self._min_rebuild_interval_seconds = min_rebuild_interval_seconds
+        self._clock = clock
         self._connected = threading.Event()
         self._publish_reasons: dict[int, Any] = {}
         self._publish_lock = threading.Lock()
         self._command_handler: CommandHandler | None = None
         self._command_lock = threading.Lock()
+        self._client_lock = threading.Lock()
+        self._health_lock = threading.Lock()
+        self._client: Any | None = None
+        self._closed = False
+        self._consecutive_link_failures = 0
+        # Until the first PUBACK, construction is the only honest lower bound
+        # on how long this generation has gone without proving the link works.
+        self._last_success_at = self._clock()
+        self._last_rebuild_at: float | None = None
+        self._rebuild_in_progress = False
 
         # MQTT v5, not 3.1.1, for one specific reason: a broker that refuses a
         # publish on ACL grounds still returns a PUBACK under 3.1.1, so a
@@ -85,49 +117,65 @@ class MqttPublisher:
         # ("Not authorized"), which makes that failure detectable — see
         # _publish_failure below. Silent success is the exact failure mode the
         # v1 contract had, and it must not be reintroduced here.
-        factory = client_factory or (
+        self._client_factory = client_factory or (
             lambda: mqtt.Client(
                 mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5
             )
         )
-        self._client = factory()
+        client = self._build_client()
+        with self._client_lock:
+            self._client = client
+            self._start_client(client)
+
+    def _build_client(self) -> Any:
+        client = self._client_factory()
 
         # The will must be registered before connect() — brokers only honour
         # a will captured at CONNECT time, and a dropped connection (the
         # whole point of the will) happens after that.
-        self._client.will_set(self._status_topic, OFFLINE_PAYLOAD, qos=1, retain=True)
-        self._client.on_connect = self._on_connect
-        self._client.on_disconnect = self._on_disconnect
-        self._client.on_publish = self._on_publish
-        self._client.on_message = self._on_message
-        if username:
-            self._client.username_pw_set(username, password)
-        if tls:
+        client.will_set(self._status_topic, OFFLINE_PAYLOAD, qos=1, retain=True)
+        client.on_connect = self._on_connect
+        client.on_disconnect = self._on_disconnect
+        client.on_publish = self._on_publish
+        client.on_message = self._on_message
+        if self._username:
+            client.username_pw_set(self._username, self._password)
+        if self._tls:
             # Without a CA file paho trusts only the system bundle, which never
             # contains a self-signed broker certificate — so TB_MQTT_TLS would
             # be unusable against the demo broker. Passing the CA explicitly is
             # what makes a self-signed deployment work, and it still verifies
             # the certificate rather than disabling the check.
-            self._client.tls_set(ca_certs=tls_ca_cert)
+            client.tls_set(ca_certs=self._tls_ca_cert)
         # paho's own reconnect backoff keeps the socket from hammering the
         # broker; the outbox's exponential backoff in service.py remains the
         # authoritative retry schedule at the application level.
-        self._client.reconnect_delay_set(min_delay=1, max_delay=30)
+        client.reconnect_delay_set(min_delay=1, max_delay=30)
+        return client
+
+    def _start_client(self, client: Any) -> None:
         # connect_async, never connect: a synchronous connect raises when the
         # broker is unreachable, which would abort service start-up. The edge
         # is expected to boot before the broker is reachable — that is exactly
         # what the durable outbox exists for — so an unreachable broker has to
         # degrade into retries, not kill the process. loop_start() drives the
         # connection and paho's reconnect backoff in the background.
-        self._client.connect_async(host, port, keepalive=keepalive_seconds)
-        self._client.loop_start()
+        client.connect_async(
+            self._host, self._port, keepalive=self._keepalive_seconds
+        )
+        client.loop_start()
 
     def _on_disconnect(self, client, userdata, *args) -> None:
-        self._connected.clear()
+        with self._client_lock:
+            if client is self._client:
+                self._connected.clear()
 
     def _on_publish(self, client, userdata, mid, reason_code=None, properties=None) -> None:
-        with self._publish_lock:
-            self._publish_reasons[mid] = reason_code
+        with self._client_lock:
+            if client is not self._client:
+                return
+            with self._publish_lock:
+                self._publish_reasons[mid] = reason_code
 
     def _publish_failure(self, mid: int) -> str | None:
         """Return the broker's rejection reason for ``mid``, or None if it accepted.
@@ -155,6 +203,12 @@ class MqttPublisher:
         # Commands (dn/command) must NEVER be retained — a retained command
         # would re-execute stale irrigation on every reconnect. Only this
         # up/status publish is retained.
+        with self._client_lock:
+            # A stopped generation can finish a callback while its replacement
+            # is starting. Letting it mark the publisher connected would route
+            # the next upload to a client whose network loop is already gone.
+            if client is not self._client:
+                return
         client.publish(self._status_topic, ONLINE_PAYLOAD, qos=1, retain=True)
         # Subscriptions have to be renewed after reconnect. Store the handler
         # independently so a broker blip cannot leave telemetry flowing while
@@ -164,19 +218,26 @@ class MqttPublisher:
         if handler is not None:
             client.subscribe(self._command_topic, qos=1)
             LOGGER.info("subscribed to commands topic=%s", self._command_topic)
-        self._connected.set()
+        with self._client_lock:
+            if client is self._client:
+                self._connected.set()
 
     def subscribe_commands(self, handler: CommandHandler) -> None:
         """Register the relay without doing command work on paho's thread."""
 
         with self._command_lock:
             self._command_handler = handler
-        is_connected = getattr(self._client, "is_connected", None)
-        if callable(is_connected) and is_connected():
-            self._client.subscribe(self._command_topic, qos=1)
-            LOGGER.info("subscribed to commands topic=%s", self._command_topic)
+        with self._client_lock:
+            client = self._client
+            is_connected = getattr(client, "is_connected", None)
+            if client is not None and callable(is_connected) and is_connected():
+                client.subscribe(self._command_topic, qos=1)
+                LOGGER.info("subscribed to commands topic=%s", self._command_topic)
 
     def _on_message(self, client, userdata, message) -> None:
+        with self._client_lock:
+            if client is not self._client:
+                return
         with self._command_lock:
             handler = self._command_handler
         if handler is None:
@@ -214,14 +275,22 @@ class MqttPublisher:
         # disconnected client queues the message locally and the caller waits
         # the whole PUBACK timeout before learning nothing happened — which
         # also mislabels an authentication rejection as "puback_timeout".
-        is_connected = getattr(self._client, "is_connected", None)
-        if callable(is_connected) and not is_connected():
-            return DeliveryResult(Delivery.RETRY, "not_connected")
+        with self._client_lock:
+            client = self._client
+            is_connected = getattr(client, "is_connected", None)
+            if client is None or (callable(is_connected) and not is_connected()):
+                info = None
+            else:
+                try:
+                    info = client.publish(topic, payload, qos=1, retain=False)
+                except Exception as exc:
+                    # Broker/socket errors arrive as whichever exception the
+                    # installed paho version chooses to expose.
+                    return DeliveryResult(Delivery.RETRY, type(exc).__name__)
 
-        try:
-            info = self._client.publish(topic, payload, qos=1, retain=False)
-        except Exception as exc:  # broker/socket errors, however paho raises them
-            return DeliveryResult(Delivery.RETRY, type(exc).__name__)
+        if info is None:
+            self._record_link_failure("not_connected")
+            return DeliveryResult(Delivery.RETRY, "not_connected")
 
         rc = getattr(info, "rc", 0)
         if rc != 0:
@@ -231,9 +300,11 @@ class MqttPublisher:
             info.wait_for_publish(timeout=self._publish_timeout_seconds)
         except (ValueError, RuntimeError):
             # paho raises when wait_for_publish() times out before a PUBACK.
+            self._record_link_failure("puback_timeout")
             return DeliveryResult(Delivery.RETRY, "puback_timeout")
 
         if not info.is_published():
+            self._record_link_failure("puback_timeout")
             return DeliveryResult(Delivery.RETRY, "puback_timeout")
 
         rejection = self._publish_failure(getattr(info, "mid", -1))
@@ -247,8 +318,112 @@ class MqttPublisher:
                 "broker rejected publish topic=%s reason=%s", topic, rejection
             )
             return DeliveryResult(Delivery.RETRY, f"rejected:{rejection}")
+        self._record_publish_success()
         return DeliveryResult(Delivery.DELIVERED, "puback")
 
+    def _record_publish_success(self) -> None:
+        with self._health_lock:
+            self._consecutive_link_failures = 0
+            self._last_success_at = self._clock()
+
+    def _record_link_failure(self, failure: str) -> None:
+        now = self._clock()
+        with self._health_lock:
+            self._consecutive_link_failures += 1
+            dead_seconds = max(0.0, now - self._last_success_at)
+            tripped = []
+            if (
+                self._consecutive_link_failures
+                >= self._max_consecutive_link_failures
+            ):
+                tripped.append(
+                    "consecutive_link_failures"
+                    f"({self._consecutive_link_failures}>="
+                    f"{self._max_consecutive_link_failures})"
+                )
+            if dead_seconds >= self._max_seconds_since_success:
+                tripped.append(
+                    "seconds_since_success"
+                    f"({dead_seconds:.1f}>={self._max_seconds_since_success:.1f})"
+                )
+            if not tripped or self._rebuild_in_progress:
+                return
+            if (
+                self._last_rebuild_at is not None
+                and now - self._last_rebuild_at
+                < self._min_rebuild_interval_seconds
+            ):
+                return
+            # Reserve the interval before touching paho. Two uploader threads
+            # can discover the same dead client together, and only one of them
+            # may be allowed to replace it.
+            self._last_rebuild_at = now
+            self._rebuild_in_progress = True
+
+        LOGGER.warning(
+            "rebuilding stalled MQTT client failure=%s threshold=%s "
+            "link_dead_seconds=%.1f",
+            failure,
+            ",".join(tripped),
+            dead_seconds,
+        )
+        try:
+            self._rebuild_client()
+        finally:
+            with self._health_lock:
+                self._consecutive_link_failures = 0
+                self._last_rebuild_at = self._clock()
+                self._rebuild_in_progress = False
+
+    def _rebuild_client(self) -> None:
+        # Detach before stopping the loop so uploads fail fast instead of racing
+        # a generation whose socket and callback thread are being dismantled.
+        with self._client_lock:
+            old_client = self._client
+            self._client = None
+            self._connected.clear()
+
+        if old_client is not None:
+            self._stop_client(old_client)
+        with self._publish_lock:
+            self._publish_reasons.clear()
+
+        new_client = None
+        try:
+            new_client = self._build_client()
+            with self._client_lock:
+                if self._closed:
+                    return
+                self._client = new_client
+                try:
+                    self._start_client(new_client)
+                except Exception:
+                    self._client = None
+                    raise
+        except Exception:
+            # A failed repair still observes the rebuild interval. Otherwise a
+            # broken local TLS file or exhausted resource can turn every outbox
+            # attempt into a tight client-construction loop.
+            if new_client is not None:
+                self._stop_client(new_client)
+            LOGGER.exception("failed to rebuild MQTT client")
+
+    @staticmethod
+    def _stop_client(client: Any) -> None:
+        try:
+            client.loop_stop()
+        except Exception:
+            LOGGER.debug("MQTT loop_stop failed during teardown", exc_info=True)
+        try:
+            client.disconnect()
+        except Exception:
+            LOGGER.debug("MQTT disconnect failed during teardown", exc_info=True)
+
     def close(self) -> None:
-        self._client.loop_stop()
-        self._client.disconnect()
+        with self._client_lock:
+            self._closed = True
+            client = self._client
+            self._client = None
+            self._connected.clear()
+        if client is not None:
+            self._stop_client(client)

@@ -68,7 +68,7 @@ LOGGER = logging.getLogger(__name__)
 # source: the firmware enforces it whatever this file says. Used here only to
 # size the deadman window, never to clamp an outgoing command — see
 # serial_command_frame for why clamping here would destroy evidence.
-PUMP_ABS_MAX_MS = 30_000
+PUMP_ABS_MAX_MS = 210_000
 
 # The deadman frame. Content-free on purpose: G3 counts *bytes received*, not
 # messages understood, and the firmware answers it with nothing.

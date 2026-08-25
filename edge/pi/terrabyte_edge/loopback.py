@@ -55,7 +55,7 @@ LOGGER = logging.getLogger(__name__)
 # Mirrors TB_PUMP_ABS_MAX_MS in the firmware. Duplicated rather than imported
 # because it lives in C++; if the two ever disagree the firmware wins and this
 # constant is the one that is wrong.
-ABS_MAX_RUN_MS = 30_000
+ABS_MAX_RUN_MS = 210_000
 
 # The firmware remembers this many command ids. Beyond it, an old id is
 # forgotten and would execute a second time.
