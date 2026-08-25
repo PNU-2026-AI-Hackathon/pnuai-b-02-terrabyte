@@ -1,6 +1,9 @@
-// The production firmware. Mutually exclusive with dataset_logger.cpp, which
-// also defines setup() and loop(); see the note at the top of that file.
-#if !defined(TB_DATASET_LOGGER) || !TB_DATASET_LOGGER
+// The production firmware. Mutually exclusive with the three bench sketches,
+// which also define setup() and loop(); see the build-selector notes at the top
+// of those files.
+#if (!defined(TB_DATASET_LOGGER) || !TB_DATASET_LOGGER) &&                 \
+    (!defined(TB_DS18B20_DIAGNOSTIC) || !TB_DS18B20_DIAGNOSTIC) &&       \
+    (!defined(TB_PIN_SMOKE_TEST) || !TB_PIN_SMOKE_TEST)
 
 #include <Arduino.h>
 #include <ctype.h>
@@ -579,4 +582,4 @@ void loop() {
   }
 }
 
-#endif  // !TB_DATASET_LOGGER
+#endif  // No bench build selector
