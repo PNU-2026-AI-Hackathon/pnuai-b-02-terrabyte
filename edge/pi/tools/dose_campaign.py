@@ -2,9 +2,16 @@
 
 This is bench tooling, not part of the deployed edge service. It talks directly
 to the Arduino, appends every board line to JSONL, and never uses the backend,
-MQTT, an Orange Pi, or an irrigation model.
+MQTT, an Orange Pi, or an irrigation model. The operator uses a measuring cup
+to log reservoir volumes, saucer runoff, and optional open-water evaporation.
+The manual TSV kinds are ``reservoir_before``, ``reservoir_after``, ``runoff``,
+and ``evap_reference``. A dry saucer needs an explicit 0 mL runoff row because
+an absent row means unknown. For ``evap_reference``, log loss since the prior
+cadence point and put ``surface_area_cm2=<number>`` in the note.
 
-    python tools/dose_campaign.py --port COM5 --pot-volume-ml 3000 --substrate-description "potting soil" --dry-mass-g 742 --soil-moisture-dry-adc 800 --soil-moisture-wet-adc 350 --probe-depth-mm 55
+    python tools/dose_campaign.py --port COM5 --substrate-volume-ml 3000 \
+        --substrate-description "potting soil" --soil-moisture-dry-adc 800 \
+        --soil-moisture-wet-adc 350 --probe-depth-mm 55
 """
 
 from __future__ import annotations
@@ -38,7 +45,10 @@ DEFAULT_VOLUMES_ML = (10, 20, 30, 50, 80)
 # measured about 0.98 mL/s by pumping 500 mL in 8 minutes 30 seconds.
 DEFAULT_FLOW_ML_PER_S = 0.98
 
-MANUAL_LOG_HEADER = "timestamp_utc\tkind\tvalue_g\tnote\n"
+MANUAL_LOG_HEADER = "timestamp_utc\tkind\tvalue_ml\tnote\n"
+MANUAL_LOG_KINDS = frozenset(
+    {"reservoir_before", "reservoir_after", "runoff", "evap_reference"}
+)
 REJECTION_REASONS = {"bad_request", "duplicate", "busy", "cooldown"}
 TERMINAL_STOPS = {"volume_reached", "max_runtime", "watchdog"}
 
@@ -633,7 +643,7 @@ def open_serial_port(port: str, baud: int, timeout_seconds: float = 0.1) -> Tran
 
 
 def ensure_manual_log(path: Path) -> None:
-    """Create the stable operator weighing vocabulary without truncating logs."""
+    """Create the stable measuring-cup log without truncating existing data."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -689,9 +699,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--manifest", type=Path, default=manifest)
     parser.add_argument("--manual-log", type=Path, default=manual_log)
 
-    parser.add_argument("--pot-volume-ml", type=int, required=True)
+    parser.add_argument("--substrate-volume-ml", type=int, required=True)
     parser.add_argument("--substrate-description", required=True)
-    parser.add_argument("--dry-mass-g", type=float, required=True)
     parser.add_argument("--soil-moisture-dry-adc", type=int, required=True)
     parser.add_argument("--soil-moisture-wet-adc", type=int, required=True)
     parser.add_argument("--probe-depth-mm", type=float, required=True)
@@ -702,10 +711,8 @@ def _validated_arguments(parser: argparse.ArgumentParser, argv: Sequence[str] | 
     arguments = parser.parse_args(argv)
     if arguments.dose_count is not None and arguments.dose_count <= 0:
         parser.error("--dose-count must be positive")
-    if arguments.pot_volume_ml <= 0:
-        parser.error("--pot-volume-ml must be positive")
-    if arguments.dry_mass_g <= 0:
-        parser.error("--dry-mass-g must be positive")
+    if arguments.substrate_volume_ml <= 0:
+        parser.error("--substrate-volume-ml must be positive")
     if arguments.probe_depth_mm <= 0:
         parser.error("--probe-depth-mm must be positive")
     if arguments.settling_seconds < 0:
@@ -727,9 +734,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
     ensure_manual_log(arguments.manual_log)
     manifest_data: dict[str, Any] = {
-        "pot_volume_ml": arguments.pot_volume_ml,
+        "substrate_volume_ml": arguments.substrate_volume_ml,
         "substrate_description": arguments.substrate_description,
-        "dry_mass_g": arguments.dry_mass_g,
         "crop_code": "unknown",
         "soil_moisture_dry_adc": arguments.soil_moisture_dry_adc,
         "soil_moisture_wet_adc": arguments.soil_moisture_wet_adc,

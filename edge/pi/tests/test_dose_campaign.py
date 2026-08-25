@@ -418,11 +418,10 @@ class DoseCampaignTests(unittest.TestCase):
         self.assertTrue(set(first_schedule).issubset(allowed))
         self.assertGreater(len(set(first_schedule)), 1)
 
-    def test_manifest_and_manual_weighing_log_have_required_fields(self) -> None:
+    def test_manifest_and_manual_volume_log_have_required_fields(self) -> None:
         manifest = {
-            "pot_volume_ml": 3_000,
+            "substrate_volume_ml": 3_000,
             "substrate_description": "soil only",
-            "dry_mass_g": 742.0,
             "crop_code": "unknown",
             "soil_moisture_dry_adc": 800,
             "soil_moisture_wet_adc": 350,
@@ -441,6 +440,15 @@ class DoseCampaignTests(unittest.TestCase):
             self.assertEqual(json.loads(manifest_path.read_text("utf-8")), manifest)
             self.assertEqual(
                 manual_path.read_text("utf-8"), campaign.MANUAL_LOG_HEADER
+            )
+            self.assertEqual(
+                campaign.MANUAL_LOG_KINDS,
+                {
+                    "reservoir_before",
+                    "reservoir_after",
+                    "runoff",
+                    "evap_reference",
+                },
             )
 
 
