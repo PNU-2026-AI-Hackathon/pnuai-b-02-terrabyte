@@ -19,6 +19,8 @@ class ConfigError(ValueError):
 
 NODE_ID = re.compile(r"^[A-Za-z0-9_.:-]{1,64}$")
 
+CLAIM_CODE = re.compile(r"^[0-9]{6}$")
+
 
 def _required(env: Mapping[str, str], name: str) -> str:
     value = env.get(name, "").strip()
@@ -194,6 +196,7 @@ class Settings:
     crop_context_id: str
     device_id: str
     expected_node_id: str
+    claim_code: str
     device_token: str
     clock_minimum_utc: datetime
     http_timeout_seconds: float
@@ -298,6 +301,10 @@ class Settings:
         if NODE_ID.fullmatch(expected_node_id) is None:
             raise ConfigError("TB_EXPECTED_NODE_ID contains unsupported characters")
 
+        claim_code = values.get("TB_CLAIM_CODE", "").strip()
+        if claim_code and CLAIM_CODE.fullmatch(claim_code) is None:
+            raise ConfigError("TB_CLAIM_CODE must be exactly six digits")
+
         # One Arduino per gateway today, so the allowlist has one member. Kept
         # as a set because the pot maps are written to survive a multi-node
         # gateway without their parsing changing.
@@ -325,6 +332,7 @@ class Settings:
             crop_context_id=_required(values, "TB_CROP_CONTEXT_ID"),
             device_id=_required(values, "TB_DEVICE_ID"),
             expected_node_id=expected_node_id,
+            claim_code=claim_code,
             device_token=device_token,
             clock_minimum_utc=_utc_timestamp(
                 values, "TB_CLOCK_MINIMUM_UTC", "2025-01-01T00:00:00Z"

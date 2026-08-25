@@ -14,11 +14,14 @@ DEFAULT_SNAPSHOT_PATH = Path("/run/terrabyte-edge/status.json")
 
 
 class GatewayState:
-    def __init__(self, *, gateway_id: str, port: str, clock=time.time) -> None:
+    def __init__(self, *, gateway_id: str, port: str, claim_code: str = "", clock=time.time) -> None:
         self._lock = Lock()
         self._clock = clock
         self._started = clock()
         self._gateway_id = gateway_id
+        # 기기 등록용 6자리 코드. 미프로비저닝 게이트웨이는 빈 값이고,
+        # 그때는 화면이 render.py 의 자리표시자를 대신 보여준다.
+        self._claim_code = claim_code
         self._port = port
         self._last_frame: float | None = None
         self._node_id: str | None = None
@@ -64,7 +67,7 @@ class GatewayState:
                 "generated_at_epoch": self._clock(),
                 "started_at_epoch": self._started,
                 "gateway_id": self._gateway_id,
-                "claim_code": "",
+                "claim_code": self._claim_code,
                 "transport": {
                     "connected": self._connected,
                     "last_error": self._last_error,

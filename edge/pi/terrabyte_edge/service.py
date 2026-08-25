@@ -82,6 +82,7 @@ class BridgeService:
         self.state = state or GatewayState(
             gateway_id=getattr(settings, "device_id", "—"),
             port=getattr(settings, "serial_port", "—"),
+            claim_code=getattr(settings, "claim_code", ""),
         )
         self.snapshot_path = snapshot_path
 
