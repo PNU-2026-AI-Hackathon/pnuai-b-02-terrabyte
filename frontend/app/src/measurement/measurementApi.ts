@@ -44,7 +44,7 @@ export type MeasurementSeries = {
 };
 
 export type ScoreFactor = {
-  key: 'temperature' | 'humidity' | 'plantLight' | 'soilMoisture' | 'soilTemperature';
+  key: 'temperature' | 'humidity' | 'plantLight';
   label: string;
   unit: string;
   current: number;

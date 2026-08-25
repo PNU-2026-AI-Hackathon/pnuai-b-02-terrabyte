@@ -361,8 +361,9 @@ class MeasurementApiIntegrationTests {
                 .andExpect(jsonPath("$.factors[2].key").value("plantLight"))
                 .andExpect(jsonPath("$.factors[2].current").value(365.25))
                 .andExpect(jsonPath("$.factors[2].score").value(100.0))
-                .andExpect(jsonPath("$.factors[3].key").value("soilMoisture"))
-                .andExpect(jsonPath("$.factors[4].key").value("soilTemperature"));
+                // 적합도 축은 온도·습도·광량 셋뿐이다. 토양 항목이 다시 실리면
+                // 점수에 기여하지 않으면서 적합도처럼 읽히므로 개수를 고정한다.
+                .andExpect(jsonPath("$.factors.length()").value(3));
     }
 
     @Test

@@ -25,14 +25,6 @@ public class EnvironmentScoreService {
 
     private static final String EQUAL_FORMULA = "100 × (T/100 × H/100 × L/100)^(1/3)";
     private static final long SCORE_AVERAGE_WINDOW_SECONDS = 24L * 60 * 60;
-    private static final double SOIL_MOISTURE_ZERO_LOW = 0;
-    private static final double SOIL_MOISTURE_OPTIMAL_LOW = 30;
-    private static final double SOIL_MOISTURE_OPTIMAL_HIGH = 45;
-    private static final double SOIL_MOISTURE_ZERO_HIGH = 100;
-    private static final double SOIL_TEMPERATURE_ZERO_LOW = 5;
-    private static final double SOIL_TEMPERATURE_OPTIMAL_LOW = 18;
-    private static final double SOIL_TEMPERATURE_OPTIMAL_HIGH = 25;
-    private static final double SOIL_TEMPERATURE_ZERO_HIGH = 40;
 
     private final PotRepository potRepository;
     private final DeviceRepository deviceRepository;
@@ -110,19 +102,10 @@ public class EnvironmentScoreService {
                 profile.temperatureExponent(),
                 profile.humidityExponent(),
                 profile.plantLightExponent());
-        List<EnvironmentScoreResponse.Factor> factors = new ArrayList<>(List.of(temperature, humidity, light));
-        if (sample.soilSensorValid()) {
-            factors.add(factor(
-                    "soilMoisture", "토양 수분", "%", sample.soilMoisturePct(),
-                    SOIL_MOISTURE_ZERO_LOW, SOIL_MOISTURE_OPTIMAL_LOW,
-                    SOIL_MOISTURE_OPTIMAL_HIGH, SOIL_MOISTURE_ZERO_HIGH));
-            if (sample.soilTemperatureC() != null) {
-                factors.add(factor(
-                        "soilTemperature", "토양 온도", "℃", sample.soilTemperatureC(),
-                        SOIL_TEMPERATURE_ZERO_LOW, SOIL_TEMPERATURE_OPTIMAL_LOW,
-                        SOIL_TEMPERATURE_OPTIMAL_HIGH, SOIL_TEMPERATURE_ZERO_HIGH));
-            }
-        }
+        // 적합도는 온도·습도·광량 세 축으로만 계산한다. 토양 수분·온도는 센서
+        // 측정값으로 따로 노출되며, 여기 factors 에 함께 실리면 점수에 기여하지
+        // 않으면서도 적합도 항목처럼 읽힌다.
+        List<EnvironmentScoreResponse.Factor> factors = List.of(temperature, humidity, light);
 
         return new EnvironmentScoreResponse(
                 pot.id(),
