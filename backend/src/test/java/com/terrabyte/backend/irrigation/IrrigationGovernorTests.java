@@ -451,7 +451,8 @@ class IrrigationGovernorTests {
         }
 
         @Override
-        public Optional<Instant> outstandingUntil(long potId, Instant now) {
+        public Optional<Instant> outstandingUntil(long potId, String actuator, Instant now) {
+            assertThat(actuator).isEqualTo(DeviceCommand.ACTUATOR_PUMP);
             return Optional.ofNullable(outstandingUntil);
         }
 

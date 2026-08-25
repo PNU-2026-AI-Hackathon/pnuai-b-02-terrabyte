@@ -23,6 +23,7 @@ import com.terrabyte.backend.irrigation.CommandOrigin;
 import com.terrabyte.backend.irrigation.CommandSource;
 import com.terrabyte.backend.irrigation.CommandTargetResolver;
 import com.terrabyte.backend.irrigation.CommandTargetResolver.CommandTarget;
+import com.terrabyte.backend.irrigation.DeviceCommand;
 import com.terrabyte.backend.irrigation.IrrigationGrant;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
@@ -162,6 +163,27 @@ class MqttCommandDispatcherTests {
         // Paho's own default is to wait indefinitely.
         verify(token).waitForCompletion(5_000L);
         verify(token, never()).waitForCompletion();
+    }
+
+    @Test
+    void publishesALightCommandThroughTheSameDownlink() throws Exception {
+        DeviceCommand command = DeviceCommand.issuedLight(
+                "01J8LIGHT",
+                POT_ID,
+                "manual-light-1",
+                true,
+                NOW.minusSeconds(1),
+                NOW.plusSeconds(90));
+        CommandTarget target = new CommandTarget(
+                POT_ID, "orangepi-pro-01", "terrabyte-node-01");
+
+        assertThat(dispatcher.dispatchLight(command, target)).isTrue();
+
+        ArgumentCaptor<MqttMessage> published = ArgumentCaptor.forClass(MqttMessage.class);
+        verify(mqttTopic).publish(published.capture());
+        JsonNode json = objectMapper.readTree(published.getValue().getPayload());
+        assertThat(json.get("actuator").asText()).isEqualTo("light");
+        assertThat(json.get("params").get("on").asBoolean()).isTrue();
     }
 
     private static IrrigationGrant grant(Instant expiresAt) {
