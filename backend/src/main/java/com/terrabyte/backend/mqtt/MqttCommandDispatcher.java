@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.terrabyte.backend.irrigation.CommandDispatcher;
 import com.terrabyte.backend.irrigation.CommandTargetResolver;
 import com.terrabyte.backend.irrigation.CommandTargetResolver.CommandTarget;
+import com.terrabyte.backend.irrigation.DeviceCommand;
 import com.terrabyte.backend.irrigation.IrrigationGrant;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
@@ -105,16 +106,52 @@ public class MqttCommandDispatcher implements CommandDispatcher {
             return false;
         }
 
+        return publish(
+                CommandMessage.from(grant, target.gatewayId(), target.nodeId()), target);
+    }
+
+    @Override
+    public boolean dispatchLight(DeviceCommand command, CommandTarget target) {
+        if (!command.expiresAt().isAfter(clock.instant())) {
+            LOGGER.warn(
+                    "not publishing an expired command command_id={} pot_id={} expires_at={}",
+                    command.commandId(), command.potId(), command.expiresAt());
+            return false;
+        }
+        boolean supportedAction = DeviceCommand.ACTION_ON.equals(command.action())
+                || DeviceCommand.ACTION_OFF.equals(command.action());
+        if (!DeviceCommand.ACTUATOR_LIGHT.equals(command.actuator()) || !supportedAction) {
+            LOGGER.error(
+                    "not publishing an invalid light command command_id={} pot_id={} "
+                            + "actuator={} action={}",
+                    command.commandId(), command.potId(), command.actuator(), command.action());
+            return false;
+        }
+        if (target.potId() != command.potId() || !target.isAddressable()) {
+            // The target was resolved before the row was authorised. Check it
+            // again at this boundary because a mismatched target would send a
+            // valid command to the wrong physical node.
+            LOGGER.warn(
+                    "not publishing, unusable light target command_id={} pot_id={} "
+                            + "target_pot_id={} gateway_id={}",
+                    command.commandId(), command.potId(), target.potId(), target.gatewayId());
+            return false;
+        }
+
+        return publish(
+                CommandMessage.fromLight(command, target.gatewayId(), target.nodeId()), target);
+    }
+
+    private boolean publish(CommandMessage command, CommandTarget target) {
         String topic;
         byte[] payload;
         try {
             topic = mqttProperties.downlinkTopic(target.gatewayId(), CommandMessage.SUFFIX);
-            payload = objectMapper.writeValueAsBytes(
-                    CommandMessage.from(grant, target.gatewayId(), target.nodeId()));
+            payload = objectMapper.writeValueAsBytes(command);
         } catch (Exception e) {
             LOGGER.error(
                     "failed to build the command payload command_id={} pot_id={}",
-                    grant.commandId(), grant.potId(), e);
+                    command.commandId(), command.potId(), e);
             return false;
         }
 
@@ -137,15 +174,15 @@ public class MqttCommandDispatcher implements CommandDispatcher {
             // retry succeeded the reading behind the decision would be stale.
             LOGGER.error(
                     "failed to publish command command_id={} pot_id={} topic={} connected={}",
-                    grant.commandId(), grant.potId(), topic, mqttClient.isConnected(), e);
+                    command.commandId(), command.potId(), topic, mqttClient.isConnected(), e);
             return false;
         }
 
         LOGGER.info(
                 "command published command_id={} pot_id={} gateway_id={} node_id={} "
-                        + "granted_ml={} max_runtime_ms={} expires_at={}",
-                grant.commandId(), grant.potId(), target.gatewayId(), target.nodeId(),
-                grant.grantedMl(), grant.maxRuntimeMs(), grant.expiresAt());
+                        + "actuator={} action={} expires_at={}",
+                command.commandId(), command.potId(), target.gatewayId(), target.nodeId(),
+                command.actuator(), command.action(), command.expiresAt());
         return true;
     }
 }

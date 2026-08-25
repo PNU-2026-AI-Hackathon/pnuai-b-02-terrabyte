@@ -22,4 +22,8 @@ public interface CommandDispatcher {
      *         delivery. False means it was recorded but nobody will act on it.
      */
     boolean dispatch(IrrigationGrant grant);
+
+    /** Delivers a manual light latch to the already resolved target. */
+    boolean dispatchLight(
+            DeviceCommand command, CommandTargetResolver.CommandTarget target);
 }

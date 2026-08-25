@@ -70,8 +70,8 @@ public class DeviceCommandRepository {
      * delivery TTL. The time bound matters: without it, one command whose
      * terminal report never arrived would block the pot forever.
      */
-    public boolean hasOutstanding(long potId, Instant now) {
-        return occupancyCandidates(potId).stream()
+    public boolean hasOutstanding(long potId, String actuator, Instant now) {
+        return occupancyCandidates(potId, actuator).stream()
                 .anyMatch(command -> command.isOutstandingAt(now));
     }
 
@@ -82,20 +82,21 @@ public class DeviceCommandRepository {
      * again; telling them when it will work is the difference between a
      * safeguard and a fault.
      */
-    public Optional<Instant> outstandingUntil(long potId, Instant now) {
-        return occupancyCandidates(potId).stream()
+    public Optional<Instant> outstandingUntil(long potId, String actuator, Instant now) {
+        return occupancyCandidates(potId, actuator).stream()
                 .filter(command -> command.isOutstandingAt(now))
                 .map(DeviceCommand::occupancyEndsAt)
                 .max(Instant::compareTo);
     }
 
-    private List<DeviceCommand> occupancyCandidates(long potId) {
+    private List<DeviceCommand> occupancyCandidates(long potId, String actuator) {
         // EXPIRED only says the delivery TTL elapsed without a terminal ack.
         // It may still have started before expiry and remain inside its runtime.
         return jdbcTemplate.query("""
                 SELECT * FROM device_command
-                WHERE pot_id = ? AND state IN ('ISSUED', 'ACCEPTED', 'EXPIRED')
-                """, this::mapCommand, potId);
+                WHERE pot_id = ? AND actuator = ?
+                  AND state IN ('ISSUED', 'ACCEPTED', 'EXPIRED')
+                """, this::mapCommand, potId, actuator);
     }
 
     /**

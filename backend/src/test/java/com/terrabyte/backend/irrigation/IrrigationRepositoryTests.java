@@ -151,7 +151,8 @@ class IrrigationRepositoryTests {
                 now.minus(Duration.ofMinutes(50)));
 
         // Otherwise one lost report would block this pot forever.
-        assertThat(commandRepository.hasOutstanding(potId, now)).isFalse();
+        assertThat(commandRepository.hasOutstanding(
+                potId, DeviceCommand.ACTUATOR_PUMP, now)).isFalse();
     }
 
     @Test
@@ -159,7 +160,8 @@ class IrrigationRepositoryTests {
         Instant now = Instant.now();
         insert(CommandState.ISSUED, 80, null, now.minusSeconds(10), now.plusSeconds(110));
 
-        assertThat(commandRepository.hasOutstanding(potId, now)).isTrue();
+        assertThat(commandRepository.hasOutstanding(
+                potId, DeviceCommand.ACTUATOR_PUMP, now)).isTrue();
     }
 
     @Test
@@ -170,10 +172,46 @@ class IrrigationRepositoryTests {
         int maxRuntimeMs = 204_082;
         insert(CommandState.EXPIRED, 200, null, issuedAt, deliveryExpiry, maxRuntimeMs);
 
-        assertThat(commandRepository.hasOutstanding(potId, now)).isTrue();
-        assertThat(commandRepository.outstandingUntil(potId, now))
+        assertThat(commandRepository.hasOutstanding(
+                potId, DeviceCommand.ACTUATOR_PUMP, now)).isTrue();
+        assertThat(commandRepository.outstandingUntil(
+                        potId, DeviceCommand.ACTUATOR_PUMP, now))
                 .contains(issuedAt.plusMillis(maxRuntimeMs)
                         .plus(DeviceCommand.TERMINAL_ACK_MARGIN));
+    }
+
+    @Test
+    void aLitLightDoesNotBlockAPumpDose() {
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        Instant issuedAt = now.minusSeconds(1);
+        DeviceCommand issued = DeviceCommand.issuedLight(
+                commandIdGenerator.next(now.minusSeconds(1)),
+                potId,
+                "manual-light-on",
+                true,
+                issuedAt,
+                now.plusSeconds(119));
+        commandRepository.save(new DeviceCommand(
+                issued.commandId(), issued.potId(), issued.correlationId(),
+                issued.actuator(), issued.action(), issued.grantedMl(), issued.maxRuntimeMs(),
+                CommandState.ACCEPTED, issued.issuedAt(), issued.expiresAt(),
+                issuedAt.plusMillis(100), null, null, null, null, issued.origin()));
+
+        assertThat(commandRepository.hasOutstanding(
+                potId, DeviceCommand.ACTUATOR_LIGHT, now)).isTrue();
+        assertThat(commandRepository.hasOutstanding(
+                potId, DeviceCommand.ACTUATOR_PUMP, now)).isFalse();
+    }
+
+    @Test
+    void aRunningPumpDoseDoesNotBlockALightSwitch() {
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        insert(CommandState.ACCEPTED, 80, null, now.minusSeconds(1), now.plusSeconds(119));
+
+        assertThat(commandRepository.hasOutstanding(
+                potId, DeviceCommand.ACTUATOR_PUMP, now)).isTrue();
+        assertThat(commandRepository.hasOutstanding(
+                potId, DeviceCommand.ACTUATOR_LIGHT, now)).isFalse();
     }
 
     @Test

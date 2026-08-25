@@ -28,4 +28,15 @@ public class LoggingCommandDispatcher implements CommandDispatcher {
                 grant.commandId(), grant.potId(), grant.grantedMl(), grant.expiresAt());
         return false;
     }
+
+    @Override
+    public boolean dispatchLight(
+            DeviceCommand command, CommandTargetResolver.CommandTarget target) {
+        LOGGER.warn(
+                "light command authorised but not delivered: no downlink transport is configured "
+                        + "(app.mqtt.command-dispatch.enabled is off) command_id={} pot_id={} "
+                        + "action={} expires_at={}",
+                command.commandId(), command.potId(), command.action(), command.expiresAt());
+        return false;
+    }
 }

@@ -97,6 +97,10 @@ public class CommandAckService {
 
         Instant at = effectiveAt(ack, command);
         String stopCause = stopCause(ack, command.commandId());
+        CommandState recordedState = phase == CommandAckPhase.ACCEPTED
+                        && DeviceCommand.ACTUATOR_LIGHT.equals(command.actuator())
+                ? CommandState.COMPLETED
+                : phase.target();
         int rows = applyTransition(phase, command, ack, stopCause, at);
 
         if (rows == 0) {
@@ -114,7 +118,7 @@ public class CommandAckService {
         LOGGER.info(
                 "command state {} -> {} command_id={} pot_id={} gateway_id={} phase={} "
                         + "reason={} stop_cause={} actual_ml={} actual_runtime_ms={} at={}",
-                command.state(), phase.target(), command.commandId(), command.potId(), gatewayId,
+                command.state(), recordedState, command.commandId(), command.potId(), gatewayId,
                 phase.wireValue(), ack.reason(), stopCause, ack.actualMl(), ack.actualRuntimeMs(),
                 at);
         return AckResult.APPLIED;
@@ -127,7 +131,21 @@ public class CommandAckService {
             String stopCause,
             Instant at) {
         return switch (phase) {
-            case ACCEPTED -> commandRepository.markAccepted(command.commandId(), at);
+            case ACCEPTED -> {
+                if (DeviceCommand.ACTUATOR_LIGHT.equals(command.actuator())) {
+                    // A light is a latch: accepted says it was set, and the firmware
+                    // sends no completed report after that success. Completing it here
+                    // does mean a later dead-man aborted for this command cannot land:
+                    // ABORTED is allowed only from ISSUED or ACCEPTED, so its guarded
+                    // update matches no COMPLETED row. What we lose is notice that the
+                    // light was later forced off. That is acceptable today because
+                    // server-side light state tracking is deliberately out of scope;
+                    // StatusUplinkHandler already discards the actuators block.
+                    yield commandRepository.markCompleted(
+                            command.commandId(), null, null, stopCause, at);
+                }
+                yield commandRepository.markAccepted(command.commandId(), at);
+            }
             case REJECTED -> commandRepository.markRejected(command.commandId(), stopCause, at);
             case COMPLETED -> commandRepository.markCompleted(
                     command.commandId(), ack.actualMl(), ack.actualRuntimeMs(), stopCause, at);

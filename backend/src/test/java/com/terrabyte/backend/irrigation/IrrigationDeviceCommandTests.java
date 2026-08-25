@@ -49,6 +49,26 @@ class IrrigationDeviceCommandTests {
                 .isFalse();
     }
 
+    @Test
+    void aLightLatchStoresNoRuntimeButOccupiesItsAcknowledgementWindow() {
+        DeviceCommand command = DeviceCommand.issuedLight(
+                "01LIGHTCOMMAND",
+                42L,
+                "manual-light-1",
+                true,
+                ISSUED_AT,
+                ISSUED_AT.plus(Duration.ofMinutes(2)));
+
+        assertThat(command.actuator()).isEqualTo(DeviceCommand.ACTUATOR_LIGHT);
+        assertThat(command.action()).isEqualTo(DeviceCommand.ACTION_ON);
+        assertThat(command.grantedMl()).isNull();
+        assertThat(command.maxRuntimeMs()).isZero();
+        assertThat(command.occupancyEndsAt())
+                .isEqualTo(ISSUED_AT.plus(DeviceCommand.TERMINAL_ACK_MARGIN));
+        assertThat(command.isOutstandingAt(command.occupancyEndsAt().minusNanos(1))).isTrue();
+        assertThat(command.isOutstandingAt(command.occupancyEndsAt())).isFalse();
+    }
+
     private static DeviceCommand command(CommandState state) {
         return new DeviceCommand(
                 "01TESTCOMMAND",

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.terrabyte.backend.irrigation.ClampReason;
 import com.terrabyte.backend.irrigation.CommandOrigin;
 import com.terrabyte.backend.irrigation.CommandSource;
+import com.terrabyte.backend.irrigation.DeviceCommand;
 import com.terrabyte.backend.irrigation.IrrigationGrant;
 
 import org.junit.jupiter.api.Test;
@@ -101,5 +102,27 @@ class CommandMessageTests {
         assertThat(safety.get("granted_ml").asInt()).isEqualTo(40);
         assertThat(safety.has("clamp_reason")).isFalse();
         assertThat(safety.has("ai_model_version")).isFalse();
+    }
+
+    @Test
+    void aLightPayloadHasOnlyItsLatchStateAndNoVolumeSafetyShape() {
+        DeviceCommand command = DeviceCommand.issuedLight(
+                "01J8LIGHT",
+                42L,
+                "manual-light-1",
+                true,
+                Instant.parse("2026-08-04T10:00:00Z"),
+                Instant.parse("2026-08-04T10:02:00Z"));
+
+        JsonNode json = objectMapper.valueToTree(
+                CommandMessage.fromLight(command, "orangepi-pro-01", "terrabyte-node-01"));
+
+        assertThat(json.get("actuator").asText()).isEqualTo("light");
+        assertThat(json.get("action").asText()).isEqualTo("on");
+        assertThat(json.get("issued_by").asText()).isEqualTo("MANUAL");
+        assertThat(json.get("params").get("on").asBoolean()).isTrue();
+        assertThat(json.get("params").has("volume_ml")).isFalse();
+        assertThat(json.get("params").has("max_runtime_ms")).isFalse();
+        assertThat(json.has("safety")).isFalse();
     }
 }

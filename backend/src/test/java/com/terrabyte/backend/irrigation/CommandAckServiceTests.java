@@ -59,7 +59,7 @@ class CommandAckServiceTests {
     // -- the happy path ----------------------------------------------------
 
     @Test
-    void anAcceptedAckMovesIssuedToAccepted() {
+    void anAcceptedPumpAckMovesIssuedToAcceptedAndCanExpire() {
         String commandId = issue(100);
 
         assertThat(ackService.apply(gatewayId, ack(commandId, "accepted", null, null, null)))
@@ -68,6 +68,26 @@ class CommandAckServiceTests {
         DeviceCommand command = commands.findById(commandId).orElseThrow();
         assertThat(command.state()).isEqualTo(CommandState.ACCEPTED);
         assertThat(command.ackedAt()).isNotNull();
+        assertThat(commands.expirableCommandIds(Instant.now().plus(Duration.ofMinutes(5))))
+                .contains(commandId);
+    }
+
+    @Test
+    void anAcceptedLightAckCompletesTheLatchAndCannotExpire() {
+        String commandId = issueLight(true);
+
+        assertThat(ackService.apply(gatewayId, ack(commandId, "accepted", null, null, null)))
+                .isEqualTo(AckResult.APPLIED);
+
+        DeviceCommand command = commands.findById(commandId).orElseThrow();
+        assertThat(command.state()).isEqualTo(CommandState.COMPLETED);
+        assertThat(command.ackedAt()).isNotNull();
+        assertThat(command.completedAt()).isNotNull();
+        assertThat(command.actualMl()).isNull();
+        assertThat(command.actualRuntimeMs()).isNull();
+        assertThat(command.stopCause()).isEqualTo("OK");
+        assertThat(commands.expirableCommandIds(Instant.now().plus(Duration.ofMinutes(5))))
+                .doesNotContain(commandId);
     }
 
     @Test
@@ -309,6 +329,15 @@ class CommandAckServiceTests {
                 grantedMl, 20_000, CommandState.ISSUED,
                 issuedAt, issuedAt.plus(Duration.ofMinutes(2)),
                 null, null, null, null, null, CommandOrigin.CLOUD));
+        return commandId;
+    }
+
+    private String issueLight(boolean on) {
+        Instant issuedAt = Instant.now();
+        String commandId = commandIdGenerator.next(issuedAt);
+        commands.save(DeviceCommand.issuedLight(
+                commandId, POT_ID, "evt-" + commandId, on, issuedAt,
+                issuedAt.plus(Duration.ofMinutes(2))));
         return commandId;
     }
 

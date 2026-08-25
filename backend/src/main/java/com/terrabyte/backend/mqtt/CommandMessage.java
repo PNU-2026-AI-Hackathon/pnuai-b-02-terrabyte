@@ -5,6 +5,8 @@ import java.time.Instant;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.terrabyte.backend.irrigation.CommandSource;
+import com.terrabyte.backend.irrigation.DeviceCommand;
 import com.terrabyte.backend.irrigation.IrrigationGrant;
 
 /**
@@ -43,7 +45,8 @@ public record CommandMessage(
     public static final String SUFFIX = "command";
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record Params(int volumeMl, int maxRuntimeMs) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Params(Integer volumeMl, Integer maxRuntimeMs, Boolean on) {
     }
 
     /**
@@ -74,7 +77,7 @@ public record CommandMessage(
                 grant.potId(),
                 "pump",
                 "dose",
-                new Params(grant.grantedMl(), grant.maxRuntimeMs()),
+                new Params(grant.grantedMl(), grant.maxRuntimeMs(), null),
                 grant.issuedAt(),
                 grant.expiresAt(),
                 grant.origin().name(),
@@ -84,5 +87,27 @@ public record CommandMessage(
                         grant.grantedMl(),
                         grant.clampReason() == null ? null : grant.clampReason().name(),
                         grant.aiModelVersion()));
+    }
+
+    /** Builds a manual light-latch payload, addressed to one resolved node. */
+    public static CommandMessage fromLight(
+            DeviceCommand command, String gatewayId, String nodeId) {
+        boolean on = DeviceCommand.ACTION_ON.equals(command.action());
+        return new CommandMessage(
+                SCHEMA_VERSION,
+                MESSAGE_TYPE,
+                command.commandId(),
+                command.correlationId(),
+                gatewayId,
+                nodeId,
+                command.potId(),
+                DeviceCommand.ACTUATOR_LIGHT,
+                on ? DeviceCommand.ACTION_ON : DeviceCommand.ACTION_OFF,
+                new Params(null, null, on),
+                command.issuedAt(),
+                command.expiresAt(),
+                command.origin().name(),
+                CommandSource.MANUAL.name(),
+                null);
     }
 }

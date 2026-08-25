@@ -138,7 +138,8 @@ public class IrrigationGovernor {
         // Gate 5 — in flight. An outstanding command may still be running; a
         // second one would stack on top of it.
         Optional<Instant> outstandingUntil =
-                commandRepository.outstandingUntil(request.potId(), now);
+                commandRepository.outstandingUntil(
+                        request.potId(), DeviceCommand.ACTUATOR_PUMP, now);
         if (outstandingUntil.isPresent()) {
             return deny(request, now, DenyReason.IN_FLIGHT,
                     "a command for this pot is still outstanding", sample,
