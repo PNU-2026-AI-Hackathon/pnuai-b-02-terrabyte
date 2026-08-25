@@ -141,7 +141,7 @@ class IrrigationRepositoryTests {
     }
 
     @Test
-    void treatsAnExpiredIssuedCommandAsNoLongerBlockingThePot() {
+    void treatsACommandPastItsRuntimeAsNoLongerBlockingThePot() {
         Instant now = Instant.now();
         insert(CommandState.ISSUED, 80, null, now.minus(Duration.ofHours(1)),
                 now.minus(Duration.ofMinutes(50)));
@@ -156,6 +156,20 @@ class IrrigationRepositoryTests {
         insert(CommandState.ISSUED, 80, null, now.minusSeconds(10), now.plusSeconds(110));
 
         assertThat(commandRepository.hasOutstanding(potId, now)).isTrue();
+    }
+
+    @Test
+    void deliveryExpiryDoesNotReleaseAPotWhileTheAuthorisedRunMayContinue() {
+        Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+        Instant issuedAt = now.minusSeconds(130);
+        Instant deliveryExpiry = issuedAt.plusSeconds(120);
+        int maxRuntimeMs = 204_082;
+        insert(CommandState.EXPIRED, 200, null, issuedAt, deliveryExpiry, maxRuntimeMs);
+
+        assertThat(commandRepository.hasOutstanding(potId, now)).isTrue();
+        assertThat(commandRepository.outstandingUntil(potId, now))
+                .contains(issuedAt.plusMillis(maxRuntimeMs)
+                        .plus(DeviceCommand.TERMINAL_ACK_MARGIN));
     }
 
     @Test
@@ -204,6 +218,16 @@ class IrrigationRepositoryTests {
 
     private String insert(
             CommandState state, Integer grantedMl, Integer actualMl, Instant issuedAt, Instant expiresAt) {
+        return insert(state, grantedMl, actualMl, issuedAt, expiresAt, 20_000);
+    }
+
+    private String insert(
+            CommandState state,
+            Integer grantedMl,
+            Integer actualMl,
+            Instant issuedAt,
+            Instant expiresAt,
+            int maxRuntimeMs) {
         String commandId = commandIdGenerator.next(issuedAt);
         commandRepository.save(new DeviceCommand(
                 commandId,
@@ -212,7 +236,7 @@ class IrrigationRepositoryTests {
                 DeviceCommand.ACTUATOR_PUMP,
                 DeviceCommand.ACTION_DOSE,
                 grantedMl,
-                20_000,
+                maxRuntimeMs,
                 state,
                 issuedAt,
                 expiresAt,
