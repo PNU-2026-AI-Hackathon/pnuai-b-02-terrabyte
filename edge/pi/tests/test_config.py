@@ -33,6 +33,7 @@ class ConfigTests(unittest.TestCase):
     def test_required_settings_and_telemetry_url(self) -> None:
         settings = Settings.from_env(BASE_ENV)
         self.assertEqual(settings.serial_baud, 115200)
+        self.assertEqual(settings.light_keepalive_interval_seconds, 60.0)
         self.assertEqual(
             settings.telemetry_url(),
             "https://api.example.test/api/telemetry",
@@ -133,6 +134,29 @@ class ConfigTests(unittest.TestCase):
         env = dict(MQTT_ENV, TB_TRANSPORT="carrier-pigeon")
         with self.assertRaisesRegex(ConfigError, "TB_TRANSPORT"):
             Settings.from_env(env)
+
+    def test_light_keepalive_has_its_own_floor_and_ceiling(self) -> None:
+        for value in ("1", "0.5", "120.1", "nan"):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ConfigError, "light keepalive"):
+                    Settings.from_env(
+                        dict(
+                            MQTT_ENV,
+                            TB_LIGHT_KEEPALIVE_INTERVAL_SECONDS=value,
+                        )
+                    )
+
+        for value in ("1.1", "120"):
+            with self.subTest(value=value):
+                settings = Settings.from_env(
+                    dict(
+                        MQTT_ENV,
+                        TB_LIGHT_KEEPALIVE_INTERVAL_SECONDS=value,
+                    )
+                )
+                self.assertEqual(
+                    settings.light_keepalive_interval_seconds, float(value)
+                )
 
 
 class PotConfigTests(unittest.TestCase):

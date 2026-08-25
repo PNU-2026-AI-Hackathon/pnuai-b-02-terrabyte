@@ -25,6 +25,12 @@ CLAIM_CODE = re.compile(r"^[0-9]{6}$")
 # scheduler jitter or a blocked write cannot cut a legitimate dose short.
 DEADMAN_MAX_INTERVAL_SECONDS = 2.0
 
+# Light needs both bounds because every serial byte feeds both firmware guards:
+# too-fast light traffic would defeat the pump's 3 s dead-man, while traffic too
+# close to the light latch's 300 s timeout would let scheduler jitter turn it off.
+LIGHT_KEEPALIVE_MIN_INTERVAL_SECONDS = 1.0
+LIGHT_KEEPALIVE_MAX_INTERVAL_SECONDS = 120.0
+
 
 def _required(env: Mapping[str, str], name: str) -> str:
     value = env.get(name, "").strip()
@@ -229,6 +235,7 @@ class Settings:
     command_relay_enabled: bool = True
     command_queue_max: int = 32
     command_deadman_interval_seconds: float = 1.0
+    light_keepalive_interval_seconds: float = 60.0
     command_deadman_grace_seconds: float = 5.0
     command_max_serial_bytes: int = 120
     command_journal_retention_seconds: float = 86_400.0
@@ -316,6 +323,18 @@ class Settings:
                 "host watchdog"
             )
 
+        light_keepalive_interval = _number(
+            values, "TB_LIGHT_KEEPALIVE_INTERVAL_SECONDS", 60.0
+        )
+        if not (
+            LIGHT_KEEPALIVE_MIN_INTERVAL_SECONDS
+            < light_keepalive_interval
+            <= LIGHT_KEEPALIVE_MAX_INTERVAL_SECONDS
+        ):
+            raise ConfigError(
+                "light keepalive interval must be above 1 s and at most 120 s"
+            )
+
         expected_node_id = _required(values, "TB_EXPECTED_NODE_ID")
         if NODE_ID.fullmatch(expected_node_id) is None:
             raise ConfigError("TB_EXPECTED_NODE_ID contains unsupported characters")
@@ -397,6 +416,7 @@ class Settings:
             ),
             command_queue_max=_integer(values, "TB_COMMAND_QUEUE_MAX", 32),
             command_deadman_interval_seconds=deadman_interval,
+            light_keepalive_interval_seconds=light_keepalive_interval,
             command_deadman_grace_seconds=_number(
                 values, "TB_COMMAND_DEADMAN_GRACE_SECONDS", 5.0, minimum=0.5
             ),

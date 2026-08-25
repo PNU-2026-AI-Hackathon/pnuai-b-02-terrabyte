@@ -84,6 +84,23 @@ class CommandHandlingTests(unittest.TestCase):
     def test_the_deadman_tick_is_not_acknowledged(self) -> None:
         self.assertEqual(self.send({"t": "ka"}), [])
 
+    def test_light_commands_echo_and_update_the_latch(self) -> None:
+        answered = self.send(
+            {"t": "cmd", "id": "light-on", "act": "led", "on": 1}
+        )
+        self.assertEqual(
+            answered,
+            [{"t": "ack", "id": "light-on", "ph": "accepted", "on": 1}],
+        )
+        self.assertTrue(self.handle.light_on)
+
+        answered = self.send(
+            {"t": "cmd", "id": "light-off", "act": "led", "on": 0}
+        )
+        self.assertEqual(answered[0]["ph"], "accepted")
+        self.assertEqual(answered[0]["on"], 0)
+        self.assertFalse(self.handle.light_on)
+
     def test_a_command_with_no_id_gets_no_ack(self) -> None:
         """Nothing could correlate the answer, so there is no answer to give."""
 
@@ -202,6 +219,23 @@ class ThroughTheReaderTests(unittest.TestCase):
             if message["id"] == "c1" and message["ph"] == "rejected"
         ]
         self.assertEqual([reply["r"] for reply in replies], ["duplicate"])
+        generator.close()
+
+    def test_a_light_command_round_trips_through_the_serial_reader(self) -> None:
+        handle = LoopbackArduino(node_id="terrabyte-node-01", announce_hello=False)
+        reader = reader_for(handle)
+        generator = reader.lines(Event())
+        handle.queue_telemetry()
+        next(generator)  # opens the loopback handle before the first write
+
+        self.assertTrue(
+            reader.write_line(b'{"t":"cmd","id":"light-1","act":"led","on":1}')
+        )
+        self.assertEqual(
+            json.loads(next(generator)),
+            {"t": "ack", "id": "light-1", "ph": "accepted", "on": 1},
+        )
+        self.assertTrue(handle.light_on)
         generator.close()
 
 

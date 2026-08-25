@@ -32,6 +32,7 @@ calls the handler on its own thread, and then dies on real hardware. So:
     command-relay         run()            -> parse, TTL, dedup, serial write
     serial-ingest-N       handle_serial_ack() -> translate ack, queue it
     command-deadman       run_deadman()    -> {"t":"ka"} while a pump runs
+    light-keepalive       run_light_keepalive() -> {"t":"ka"} for ON latches
     ack-upload            (service.py)     -> drains the ack kind from the outbox
 """
 
@@ -74,13 +75,14 @@ PUMP_ABS_MAX_MS = 210_000
 # messages understood, and the firmware answers it with nothing.
 DEADMAN_FRAME = b'{"t":"ka"}'
 
-SUPPORTED_ACTUATORS = ("pump",)
-# "dose" is the only action in the contract today. Abort is listed as future
+SUPPORTED_ACTUATORS = ("pump", "light")
+# Each actuator still validates its own subset below. Abort is listed as future
 # work, so an unknown action is refused rather than guessed at: guessing which
 # verb means "run the pump" is the one mistake that moves water by accident.
-SUPPORTED_ACTIONS = ("dose",)
+SUPPORTED_ACTIONS = ("dose", "on", "off")
 
 TERMINAL_PHASES = ("rejected", "completed", "aborted")
+LIGHT_TERMINAL_PHASES = ("accepted", "rejected", "aborted")
 
 
 # --- the three reason vocabularies -----------------------------------------
@@ -229,6 +231,11 @@ def _optional_int(message: dict[str, Any], name: str) -> int | None:
     return None
 
 
+def _optional_bool(message: dict[str, Any], name: str) -> bool | None:
+    value = message.get(name)
+    return value if isinstance(value, bool) else None
+
+
 @dataclass(frozen=True)
 class CommandRequest:
     """One ``dn/command`` payload, parsed as permissively as correlation allows.
@@ -252,6 +259,7 @@ class CommandRequest:
     action: str | None = None
     volume_ml: int | None = None
     max_runtime_ms: int | None = None
+    on: bool | None = None
     expires_at_epoch: float | None = None
     expires_at_raw: str | None = None
 
@@ -267,8 +275,10 @@ class CommandRequest:
             "correlation_id": self.correlation_id,
             "node_id": self.node_id,
             "pot_id": self.pot_id,
+            "actuator": self.actuator,
             "volume_ml": self.volume_ml,
             "max_runtime_ms": self.max_runtime_ms,
+            "on": self.on,
         }
 
 
@@ -319,6 +329,7 @@ def parse_command(payload: bytes) -> CommandRequest:
         # The rename that is easy to get wrong: MQTT spells it max_runtime_ms,
         # the serial link spells it ms, and they are the same number.
         max_runtime_ms=_optional_int(params, "max_runtime_ms"),
+        on=_optional_bool(params, "on"),
         expires_at_epoch=expires_at_epoch,
         expires_at_raw=expires_at_raw,
     )
@@ -335,6 +346,20 @@ def serial_command_frame(request: CommandRequest) -> bytes:
     the over-long value through preserves that evidence: the firmware answers
     ``stop:"max_runtime"`` with the runtime it really achieved.
     """
+
+    if request.actuator == "light":
+        # Like FIRMWARE_REASONS, this reconciles vocabulary at the one layer
+        # that speaks both contracts: MQTT calls the actuator "light", while
+        # the firmware's serial verb is "led".
+        return json.dumps(
+            {
+                "t": "cmd",
+                "id": request.command_id,
+                "act": "led",
+                "on": 1 if request.on else 0,
+            },
+            separators=(",", ":"),
+        ).encode("utf-8")
 
     frame: dict[str, object] = {
         "t": "cmd",
@@ -507,6 +532,30 @@ class _InFlight:
     deadman_until_epoch: float
 
 
+@dataclass(frozen=True)
+class _PendingLight:
+    """A light command written to serial but not yet settled by firmware."""
+
+    command_id: str
+    port: str
+    node_id: str | None
+    pot_id: int | None
+    correlation_id: str | None
+    on: bool
+
+
+@dataclass(frozen=True)
+class _LightLatch:
+    """The firmware-authoritative ON latch whose host timeout must be fed."""
+
+    command_id: str
+    port: str
+    node_id: str | None
+    pot_id: int | None
+    correlation_id: str | None
+    on: bool
+
+
 class CommandRelay:
     def __init__(
         self,
@@ -520,6 +569,7 @@ class CommandRelay:
         stop_event: threading.Event,
         queue_max: int = 32,
         deadman_interval_seconds: float = 1.0,
+        light_keepalive_interval_seconds: float = 60.0,
         deadman_grace_seconds: float = 5.0,
         max_serial_bytes: int = 120,
         journal_prune_interval_seconds: float = 3600.0,
@@ -533,6 +583,7 @@ class CommandRelay:
         self._journal = journal
         self._stop = stop_event
         self._deadman_interval_seconds = deadman_interval_seconds
+        self._light_keepalive_interval_seconds = light_keepalive_interval_seconds
         self._deadman_grace_seconds = deadman_grace_seconds
         self._max_serial_bytes = max_serial_bytes
         self._journal_prune_interval_seconds = journal_prune_interval_seconds
@@ -544,6 +595,8 @@ class CommandRelay:
         self._queue: queue.Queue[bytes] = queue.Queue(maxsize=queue_max)
         self._lock = threading.Lock()
         self._in_flight: dict[str, _InFlight] = {}
+        self._pending_lights: dict[str, _PendingLight] = {}
+        self._light_latches: dict[str, _LightLatch] = {}
         self._next_prune_epoch = 0.0
         # Counters for the display and for tests: "how many commands did this
         # gateway actually put on the wire" is the number the delayed-bomb
@@ -555,17 +608,17 @@ class CommandRelay:
     # -- wiring ----------------------------------------------------------
 
     def workers(self) -> list[tuple[str, Callable[[], None]]]:
-        """The two threads this relay needs, for ``BridgeService._critical_workers``.
+        """The three threads this relay needs, for ``BridgeService._critical_workers``.
 
-        The deadman is a separate thread but not an independent collaborator: it
-        reads this object's in-flight table, which is the only place that knows a
-        pump is running. A standalone keepalive worker would either tick forever
-        (defeating G3) or need the same state passed to it anyway.
+        Both keepalive workers read actuator-specific state from this object.
+        Keeping their tables and cadences separate is what prevents an ON light
+        from holding the pump watchdog open after a pump command ends.
         """
 
         return [
             ("command-relay", self.run),
             ("command-deadman", self.run_deadman),
+            ("light-keepalive", self.run_light_keepalive),
         ]
 
     def offer(self, payload: bytes, retained: bool = False) -> None:
@@ -700,7 +753,10 @@ class CommandRelay:
                 now - request.expires_at_epoch,
             )
             self._reject(request, REASON_EXPIRED, STOP_PI_EXPIRED)
-            self._state.add_event("warn", "만료된 관수 명령을 폐기했습니다")
+            if request.actuator == "light":
+                self._state.add_event("warn", "만료된 조명 명령을 폐기했습니다")
+            else:
+                self._state.add_event("warn", "만료된 관수 명령을 폐기했습니다")
             return
 
         if request.actuator not in SUPPORTED_ACTUATORS:
@@ -719,25 +775,52 @@ class CommandRelay:
                 request.action,
             )
             return
+
         runtime_ms = request.max_runtime_ms
-        if runtime_ms is None or not 0 < runtime_ms <= 0xFFFFFFFF:
-            # uint32 because the firmware's millis() arithmetic is uint32; a
-            # value beyond it would wrap into a short run or an instant stop.
-            LOGGER.error(
-                "refusing command with unusable max_runtime_ms command_id=%s ms=%s",
-                request.command_id,
-                runtime_ms,
-            )
-            self._reject(request, REASON_NODE_OFFLINE, STOP_PI_BAD_PARAMS)
-            return
-        if request.volume_ml is not None and request.volume_ml <= 0:
-            LOGGER.error(
-                "refusing command with unusable volume_ml command_id=%s ml=%s",
-                request.command_id,
-                request.volume_ml,
-            )
-            self._reject(request, REASON_NODE_OFFLINE, STOP_PI_BAD_PARAMS)
-            return
+        if request.actuator == "pump":
+            if request.action != "dose":
+                self._reject(request, REASON_NODE_OFFLINE, STOP_PI_BAD_ACTUATOR)
+                LOGGER.error(
+                    "refusing unsupported pump action command_id=%s action=%s",
+                    request.command_id,
+                    request.action,
+                )
+                return
+            if runtime_ms is None or not 0 < runtime_ms <= 0xFFFFFFFF:
+                # uint32 because the firmware's millis() arithmetic is uint32; a
+                # value beyond it would wrap into a short run or an instant stop.
+                LOGGER.error(
+                    "refusing command with unusable max_runtime_ms "
+                    "command_id=%s ms=%s",
+                    request.command_id,
+                    runtime_ms,
+                )
+                self._reject(request, REASON_NODE_OFFLINE, STOP_PI_BAD_PARAMS)
+                return
+            if request.volume_ml is not None and request.volume_ml <= 0:
+                LOGGER.error(
+                    "refusing command with unusable volume_ml command_id=%s ml=%s",
+                    request.command_id,
+                    request.volume_ml,
+                )
+                self._reject(request, REASON_NODE_OFFLINE, STOP_PI_BAD_PARAMS)
+                return
+        else:
+            expected_on = {"on": True, "off": False}.get(request.action)
+            if (
+                not isinstance(request.on, bool)
+                or expected_on is None
+                or request.on is not expected_on
+            ):
+                LOGGER.error(
+                    "refusing light command whose action and on disagree "
+                    "command_id=%s action=%s on=%s",
+                    request.command_id,
+                    request.action,
+                    request.on,
+                )
+                self._reject(request, REASON_NODE_OFFLINE, STOP_PI_BAD_PARAMS)
+                return
 
         port, failure = self._resolve_port(request.node_id)
         if port is None:
@@ -761,13 +844,20 @@ class CommandRelay:
             return
 
         reader = self._readers.get(port)
-        # Registered *before* the write, not after: the firmware may start the
-        # pump the instant the bytes land, and a deadman that only starts once
-        # the write call returns leaves a window in which G3 would cut a
-        # legitimate dose short.
-        self._register_in_flight(request, port=port, runtime_ms=runtime_ms)
+        # Registered *before* the write, not after: the ingest thread can receive
+        # the firmware's answer as soon as the bytes land. For a pump, this also
+        # closes the window in which G3 could cut a legitimate dose short.
+        if request.actuator == "pump":
+            assert runtime_ms is not None
+            self._register_in_flight(request, port=port, runtime_ms=runtime_ms)
+        else:
+            assert request.on is not None
+            self._register_pending_light(request, port=port, on=request.on)
         if reader is None or not reader.write_line(frame):
-            self._discard_in_flight(request.command_id)
+            if request.actuator == "pump":
+                self._discard_in_flight(request.command_id)
+            else:
+                self._discard_pending_light(request.command_id)
             LOGGER.error(
                 "could not deliver command to the node command_id=%s port=%s",
                 request.command_id,
@@ -778,17 +868,30 @@ class CommandRelay:
 
         self.relayed += 1
         self._journal.mark(request.command_id, "relayed")
-        LOGGER.info(
-            "command relayed command_id=%s node_id=%s port=%s ms=%d ml=%s",
-            request.command_id,
-            request.node_id,
-            port,
-            runtime_ms,
-            request.volume_ml,
-        )
-        self._state.add_event(
-            "info", f"관수 명령 전달 {request.node_id} {request.volume_ml or '?'} mL"
-        )
+        if request.actuator == "light":
+            LOGGER.info(
+                "light command relayed command_id=%s node_id=%s port=%s on=%s",
+                request.command_id,
+                request.node_id,
+                port,
+                request.on,
+            )
+            light_state = "켜짐" if request.on else "꺼짐"
+            self._state.add_event(
+                "info", f"조명 명령 전달 {request.node_id} {light_state}"
+            )
+        else:
+            LOGGER.info(
+                "command relayed command_id=%s node_id=%s port=%s ms=%d ml=%s",
+                request.command_id,
+                request.node_id,
+                port,
+                runtime_ms,
+                request.volume_ml,
+            )
+            self._state.add_event(
+                "info", f"관수 명령 전달 {request.node_id} {request.volume_ml or '?'} mL"
+            )
 
     def _resolve_port(self, node_id: str | None) -> tuple[str | None, str]:
         """Which cable this node is on, from what the link has actually reported.
@@ -844,6 +947,23 @@ class CommandRelay:
         with self._lock:
             return self._in_flight.pop(command_id, None)
 
+    def _register_pending_light(
+        self, request: CommandRequest, *, port: str, on: bool
+    ) -> None:
+        with self._lock:
+            self._pending_lights[request.command_id] = _PendingLight(
+                command_id=request.command_id,
+                port=port,
+                node_id=request.node_id,
+                pot_id=request.pot_id,
+                correlation_id=request.correlation_id,
+                on=on,
+            )
+
+    def _discard_pending_light(self, command_id: str) -> _PendingLight | None:
+        with self._lock:
+            return self._pending_lights.pop(command_id, None)
+
     # -- the deadman thread ----------------------------------------------
 
     def run_deadman(self) -> None:
@@ -894,6 +1014,37 @@ class CommandRelay:
                 # that abort will carry stop_cause "watchdog".
                 LOGGER.warning("deadman tick could not reach port=%s", port)
 
+    # -- the light keepalive thread --------------------------------------
+
+    def run_light_keepalive(self) -> None:
+        while not self._stop.is_set():
+            try:
+                self.tick_light_keepalive()
+            except Exception:
+                LOGGER.exception("light keepalive tick failed")
+            self._stop.wait(self._light_keepalive_interval_seconds)
+
+    def tick_light_keepalive(self) -> None:
+        """Refresh ports where the firmware says the light latch is ON.
+
+        This cadence is intentionally independent from the pump deadman. The
+        firmware counts every host byte as activity for both guards, so putting
+        a light latch on the 1 Hz pump loop would keep an orphaned pump alive.
+        The slower interval still stays comfortably inside the LED guard's
+        300 s timeout.
+        """
+
+        with self._lock:
+            ports = sorted(
+                port for port, latch in self._light_latches.items() if latch.on
+            )
+        for port in ports:
+            reader = self._readers.get(port)
+            if reader is None:
+                continue
+            if not reader.write_line(DEADMAN_FRAME):
+                LOGGER.warning("light keepalive could not reach port=%s", port)
+
     # -- the ingest thread ------------------------------------------------
 
     def handle_serial_ack(self, port: str, message: dict[str, Any]) -> None:
@@ -914,6 +1065,16 @@ class CommandRelay:
 
         with self._lock:
             flight = self._in_flight.get(ack.command_id)
+            pending_light = self._pending_lights.get(ack.command_id)
+            latch = next(
+                (
+                    candidate
+                    for candidate in self._light_latches.values()
+                    if candidate.command_id == ack.command_id
+                ),
+                None,
+            )
+            live = flight or pending_light or latch
             if flight is not None:
                 if ack.phase in TERMINAL_PHASES:
                     del self._in_flight[ack.command_id]
@@ -925,8 +1086,51 @@ class CommandRelay:
                         + min(flight.max_runtime_ms, PUMP_ABS_MAX_MS) / 1000.0
                         + self._deadman_grace_seconds
                     )
+            elif pending_light is not None and ack.phase in LIGHT_TERMINAL_PHASES:
+                del self._pending_lights[ack.command_id]
 
-        context = self._context_for(ack.command_id, flight)
+            # A later watchdog abort names the ON command, after its accepted
+            # ack already removed the pending record. Only that terminal event
+            # clears this latch without an echoed state.
+            if ack.phase == "aborted" and latch is not None:
+                self._light_latches.pop(latch.port, None)
+
+        context = self._context_for(ack.command_id, live)
+        is_light = (
+            isinstance(live, (_PendingLight, _LightLatch))
+            or context.get("actuator") == "light"
+            or ack.on is not None
+        )
+        if is_light and ack.phase == "accepted":
+            # The echo is the firmware's verdict, which may differ from the
+            # request when LedGuard refuses a transition. Never keep the latch
+            # alive from the requested value when the hardware reported another.
+            if ack.on is None:
+                LOGGER.warning(
+                    "accepted light ack has no usable on state command_id=%s",
+                    ack.command_id,
+                )
+            elif ack.on:
+                node_id = context.get("node_id")
+                pot_id = context.get("pot_id")
+                correlation_id = context.get("correlation_id")
+                with self._lock:
+                    self._light_latches[port] = _LightLatch(
+                        command_id=ack.command_id,
+                        port=port,
+                        node_id=node_id if isinstance(node_id, str) else None,
+                        pot_id=pot_id if isinstance(pot_id, int) else None,
+                        correlation_id=(
+                            correlation_id
+                            if isinstance(correlation_id, str)
+                            else None
+                        ),
+                        on=True,
+                    )
+            else:
+                with self._lock:
+                    self._light_latches.pop(port, None)
+
         node_id = context.get("node_id") or self._node_on(port)
         pot_id = context.get("pot_id")
         command_ack = CommandAck(
@@ -938,10 +1142,11 @@ class CommandRelay:
             node_id=node_id if isinstance(node_id, str) else None,
             pot_id=pot_id if isinstance(pot_id, int) else None,
             runtime_ms=ack.runtime_ms,
-            estimated_ml=self._estimated_ml(ack, context),
+            estimated_ml=None if is_light else self._estimated_ml(ack, context),
             # Verbatim. This is the only field in which the firmware's own word
             # survives two translations.
             stop_cause=ack.stop_cause,
+            on=ack.on,
         )
         LOGGER.info(
             "command ack command_id=%s phase=%s reason=%s stop_cause=%s runtime_ms=%s",
@@ -951,18 +1156,32 @@ class CommandRelay:
             command_ack.stop_cause,
             command_ack.runtime_ms,
         )
-        self._enqueue_ack(command_ack)
+        self._enqueue_ack(command_ack, actuator="light" if is_light else "pump")
 
     def _context_for(
-        self, command_id: str, flight: _InFlight | None
+        self,
+        command_id: str,
+        live: _InFlight | _PendingLight | _LightLatch | None,
     ) -> dict[str, object]:
-        if flight is not None:
+        if isinstance(live, _InFlight):
             return {
-                "correlation_id": flight.correlation_id,
-                "node_id": flight.node_id,
-                "pot_id": flight.pot_id,
-                "volume_ml": flight.volume_ml,
-                "max_runtime_ms": flight.max_runtime_ms,
+                "correlation_id": live.correlation_id,
+                "node_id": live.node_id,
+                "pot_id": live.pot_id,
+                "actuator": "pump",
+                "volume_ml": live.volume_ml,
+                "max_runtime_ms": live.max_runtime_ms,
+                "on": None,
+            }
+        if isinstance(live, (_PendingLight, _LightLatch)):
+            return {
+                "correlation_id": live.correlation_id,
+                "node_id": live.node_id,
+                "pot_id": live.pot_id,
+                "actuator": "light",
+                "volume_ml": None,
+                "max_runtime_ms": None,
+                "on": live.on,
             }
         # No live record: either the ack is late, or this process restarted while
         # the dose was running. The journal is why the second case still produces
@@ -1033,10 +1252,11 @@ class CommandRelay:
                 node_id=request.node_id,
                 pot_id=request.pot_id,
                 stop_cause=stop_cause or None,
-            )
+            ),
+            actuator=request.actuator,
         )
 
-    def _enqueue_ack(self, ack: CommandAck) -> None:
+    def _enqueue_ack(self, ack: CommandAck, *, actuator: str | None = None) -> None:
         try:
             enqueued = self._outbox.enqueue(ack, kind=KIND_ACK)
         except OutboxFullError as exc:
@@ -1050,7 +1270,10 @@ class CommandRelay:
                 ack.command_id,
                 exc,
             )
-            self._state.add_event("error", "저장 큐가 가득 차 관수 결과를 버렸습니다")
+            if actuator == "light":
+                self._state.add_event("error", "저장 큐가 가득 차 조명 결과를 버렸습니다")
+            else:
+                self._state.add_event("error", "저장 큐가 가득 차 관수 결과를 버렸습니다")
             return
         if not enqueued:
             LOGGER.info(
