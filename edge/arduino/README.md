@@ -420,8 +420,8 @@ Every command that carries a readable `id` is answered:
 ```json
 {"t":"ack","id":"01J8F3","ph":"accepted"}
 {"t":"ack","id":"01J8F3","ph":"rejected","r":"cooldown"}
-{"t":"ack","id":"01J8F3","ph":"completed","ms":17950,"stop":"volume_reached"}
-{"t":"ack","id":"01J8F3","ph":"aborted","ms":3020,"stop":"watchdog"}
+{"t":"ack","id":"01J8F3","ph":"completed","ms":17950,"ml":120,"stop":"volume_reached"}
+{"t":"ack","id":"01J8F3","ph":"aborted","ms":3020,"ml":120,"stop":"watchdog"}
 ```
 
 `r` is one of `bad_request`, `duplicate`, `busy`, `cooldown`. `stop` is one of
@@ -430,6 +430,12 @@ it), or `watchdog` (G3). These are lower-case firmware-local tokens; the
 UPPER_SNAKE `reason` vocabulary belongs to the MQTT contract, and mapping between
 them is the Orange Pi's job. A word can mean different things at different
 layers, so upstream state should be keyed off `ph`, never off `r`.
+
+`ml` echoes the volume the command asked for, and appears only when the command
+carried one. It is a label, not a measurement. `ms` is what actually ran, so on
+a `watchdog` abort the two deliberately disagree and the delivered volume has to
+be recomputed from `ms`. An analysis that reads `ml` as delivered volume will
+over-count exactly the doses that failed.
 
 A line longer than `TB_SERIAL_RX_LINE_MAX` is discarded whole rather than parsed
 as a truncated command, and a command whose `id` could not be read is not acked
