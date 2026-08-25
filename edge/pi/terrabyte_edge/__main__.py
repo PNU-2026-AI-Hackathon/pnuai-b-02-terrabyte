@@ -47,12 +47,9 @@ def _print_status(snapshot_path: Path, watch: float | None) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "command", nargs="?", choices=("run", "status", "dashboard"), default="run"
-    )
+    parser.add_argument("command", nargs="?", choices=("run", "status"), default="run")
     parser.add_argument("--snapshot-path", type=Path, default=DEFAULT_SNAPSHOT_PATH)
-    parser.add_argument("--windowed", action="store_true")
-    # Loopback by default. The board is read-only but unauthenticated, and it
+    # Loopback by default: the board is read-only but unauthenticated, and it
     # names the pots. Exposing it is an explicit choice.
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8090)
@@ -73,9 +70,6 @@ def main(argv: list[str] | None = None) -> int:
             return _print_status(args.snapshot_path, args.watch)
         from .ui.web import serve
         return serve(args.snapshot_path, host=args.host, port=args.port)
-    if args.command == "dashboard":
-        from .ui.dashboard import run
-        return run(args.snapshot_path, fullscreen=not args.windowed)
 
     try:
         settings = Settings.from_env()

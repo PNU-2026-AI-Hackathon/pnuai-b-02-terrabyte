@@ -418,36 +418,40 @@ tr '\0' '\n' < /proc/$pid/environ | grep -E '^(DISPLAY|XAUTHORITY)='
 
 ##### 4.9.3. 상태판 띄우기
 
-`root`로 접속한 뒤 데스크톱 세션 사용자로 전환해 실행합니다. `setsid --fork`를 쓰면 SSH 세션이 프로세스를 붙잡지 않고 바로 반환됩니다.
+상태판은 브릿지가 직접 HTTP로 서빙합니다. GUI 세션에 붙일 필요가 없으므로
+`DISPLAY`·`XAUTHORITY`·`setsid` 씨름이 통째로 사라졌습니다.
 
 ```bash
-runuser -u orangepi -- sh -c 'cd /opt/terrabyte-edge && \
-  exec setsid --fork env DISPLAY=:0 XAUTHORITY=/home/orangepi/.Xauthority \
-  .venv/bin/python -m terrabyte_edge dashboard \
-  >/tmp/tb-dash.log 2>&1 </dev/null'
+# 게이트웨이에서
+cd /opt/terrabyte-edge && .venv/bin/python -m terrabyte_edge status
 ```
 
-`cd /opt/terrabyte-edge`는 생략할 수 없습니다. 패키지가 venv에 설치되어 있지 않고 소스 디렉터리를 작업 디렉터리로 두고 `-m`으로 실행하는 구조라, 생략하면 `No module named terrabyte_edge`가 납니다.
-
-확인과 종료:
+기본은 `127.0.0.1:8090`입니다. 다른 기기(노트북·휴대폰)에서 보려면 호스트를
+명시합니다. 읽기 전용이지만 인증이 없고 화분 이름과 마지막 수신 시각이
+드러나므로, 노출은 기본값이 아니라 명시적 선택입니다.
 
 ```bash
-pgrep -af 'terrabyte_edge dashboard'
-cat /tmp/tb-dash.log        # 비어 있으면 정상 기동
-pkill -f 'terrabyte_edge dashboard'
+.venv/bin/python -m terrabyte_edge status --host 0.0.0.0
 ```
 
-`pkill -f`를 `ssh host '...'` 한 줄 안에서 다른 명령과 함께 쓰면 원격 셸 자신의 명령줄에도 그 문자열이 들어 있어 셸이 스스로를 죽이고 SSH가 255로 끊깁니다. 종료는 별도 명령으로 실행하거나 PID를 지정합니다.
-
-개발 중에는 전체화면 대신 창 모드로 띄울 수 있습니다.
+브라우저조차 없는 상황(순수 SSH)에서는 같은 내용을 텍스트로 뽑습니다.
 
 ```bash
-.venv/bin/python -m terrabyte_edge dashboard --windowed
+.venv/bin/python -m terrabyte_edge status --text
+.venv/bin/python -m terrabyte_edge status --text --watch 2   # 2초마다 덮어쓰기
 ```
 
 ##### 4.9.4. 부팅 시 자동 실행
 
-`.desktop` 파일을 autostart에 넣으면 데스크톱 로그인 5초 뒤 자동으로 뜹니다.
+상태판은 브릿지와 별도 유닛입니다. 상태판을 재시작하는 일이 텔레메트리를
+끊어서는 안 되고, SSH로만 보는 헤드리스 게이트웨이에서는 선택 사항입니다.
+
+```bash
+sudo cp /opt/terrabyte-edge/deploy/terrabyte-status.service /etc/systemd/system/
+sudo systemctl enable --now terrabyte-status
+```
+
+모니터가 붙어 있으면 데스크톱 로그인 뒤 브라우저를 키오스크로 띄웁니다.
 
 ```bash
 sudo cp /opt/terrabyte-edge/deploy/terrabyte-dashboard.desktop /etc/xdg/autostart/
