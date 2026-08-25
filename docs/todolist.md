@@ -63,7 +63,7 @@
 |---|---|
 | 백엔드 | Spring Boot 3.5.16 / Java 17. 인증(JWT), **다중 공간·다중 기기·다중 화분**, 작물 선택, HTTP 텔레메트리 수집, InfluxDB 저장·조회, 환경 적합도 점수, **토양 배지 추천(NORMAL 프로필)** |
 | 엣지 (Orange Pi) | serial JSONL 수신·검증, SQLite durable outbox, 순서 보존 재전송, systemd 서비스 |
-| 엣지 (Arduino) | DHT22(대기 온습도), BH1750(조도) 기본 활성 |
+| 엣지 (Arduino) | DHT22(대기 온습도), TSL2591(조도) 기본 활성 |
 | 프론트엔드 | Expo SDK 57 + RN Web. 7개 화면, 사이드바 내비게이션, 3초 폴링 provider. 인증·기기등록·작물선택·점수·토양추천은 실제 API |
 | 검증 | 백엔드 테스트 **52건 통과**, 프론트 `tsc --noEmit` 통과 |
 
@@ -209,7 +209,7 @@ Orange Pi와 Spring이 서로 다른 계약을 구현하고 있어, 현재 코�
 ### P1-5. Arduino 기본 설정 정상화
 브랜치: `fix/arduino-default-sensors`
 
-- [ ] PPFD 보정(`TB_GY30_PPFD_CALIBRATION_ENABLED`) 활성화 및 lux→PPFD 계수 확정
+- [ ] PPFD 보정(`TB_PPFD_CALIBRATION_ENABLED`) 활성화 및 lux→PPFD 계수 확정
       — **미결정: 실측 vs 문헌 계수 (§8-1)**
 - [ ] DS18B20 토양온도(`TB_SOIL_TEMPERATURE_ENABLED`) 기본 활성화
 - [ ] 정전용량 토양수분(`TB_SOIL_MOISTURE_ENABLED`) 기본 활성화 + dry/wet ADC 보정값 측정·기록
@@ -554,7 +554,7 @@ RF는 **결정론적 게이트와 AND로 결합해 관수를 억제만 할 수 �
 
 | 구조도 | 실제 | 처리 |
 |---|---|---|
-| 센서 3종 | 광 센서(BH1750) 필요 | **4종으로 확정** (D4) — 적합도 공식이 PPFD를 요구 |
+| 센서 3종 | 광 센서(TSL2591) 필요 | **4종으로 확정** (D4) — 적합도 공식이 PPFD를 요구 |
 | `edge/fusion_smartfarm_model.py`가 ML처럼 보임 | Autodesk Fusion 360 CAD 스크립트 | ML과 무관. 혼동 방지를 위해 파일명/위치 정리 검토 |
 | Rule Engine이 Spring과 분리된 박스 | 별도 서비스 아님 | Spring 내부 컴포넌트로 구현 (P2-5) |
 
@@ -593,7 +593,7 @@ cd edge/pi && python -m pytest
 
 **이미 확정된 것은 [§0 Decision Log](#0-확정된-결정-decision-log)에 있다. 여기에는 아직 답이 없는 것만 남긴다.**
 
-1. **PPFD 보정 계수** — BH1750 lux → PPFD 변환을 실측 보정으로 할지, 광원 종류별 문헌 계수를 쓸지.
+1. **PPFD 보정 계수** — TSL2591 lux → PPFD 변환을 실측 보정으로 할지, 광원 종류별 문헌 계수를 쓸지.
    `backend/db/schema.sql`에 `lux_ppfd_validation` 관련 테이블이 이미 설계되어 있어 실측 경로가 전제된 것으로 보인다. (P1-5)
 2. **관수 회귀 학습 데이터** — 실측 수집 / 공개 데이터셋 / 물리 모델 기반 합성 중 무엇인가.
    4주 안에 실측 데이터를 충분히 모으기는 어려울 수 있다. (P3-2)

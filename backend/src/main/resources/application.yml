@@ -57,6 +57,33 @@ app:
   telemetry:
     http-ingest:
       enabled: ${TELEMETRY_HTTP_INGEST_ENABLED:false}
+  notification:
+    sensor-reminder-interval: ${NOTIFICATION_SENSOR_REMINDER_INTERVAL:PT1H}
+    offline-reminder-interval: ${NOTIFICATION_OFFLINE_REMINDER_INTERVAL:PT6H}
+    delivery:
+      poll-delay-ms: ${NOTIFICATION_DELIVERY_POLL_DELAY_MS:5000}
+      batch-size: ${NOTIFICATION_DELIVERY_BATCH_SIZE:50}
+      max-attempts: ${NOTIFICATION_DELIVERY_MAX_ATTEMPTS:5}
+      retry-interval: ${NOTIFICATION_DELIVERY_RETRY_INTERVAL:PT30S}
+      claim-timeout: ${NOTIFICATION_DELIVERY_CLAIM_TIMEOUT:PT5M}
+    firebase:
+      enabled: ${FIREBASE_ENABLED:false}
+      project-id: ${FIREBASE_PROJECT_ID:}
+      credentials-path: ${FIREBASE_CREDENTIALS_PATH:}
+  ai:
+    enabled: ${AI_ENABLED:false}
+    base-url: ${AI_BASE_URL:http://localhost:8000}
+    api-key: ${AI_API_KEY:}
+    timeout: ${AI_TIMEOUT:PT0.8S}
+    expected-schema-version: ${AI_EXPECTED_SCHEMA_VERSION:1}
+    hard-ceiling-ml: ${AI_HARD_CEILING_ML:500}
+    min-confidence: ${AI_MIN_CONFIDENCE:0.5}
+    gemini:
+      enabled: ${GEMINI_ENABLED:false}
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
+      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
+      cache-ttl: ${GEMINI_CACHE_TTL:PT30M}
   payment:
     toss:
       enabled: ${TOSS_PAYMENTS_ENABLED:false}
@@ -65,10 +92,3 @@ app:
       secret-key: ${TOSS_PAYMENTS_SECRET_KEY:}
       success-url: ${TOSS_PAYMENTS_SUCCESS_URL:http://localhost:8081/payment/success}
       fail-url: ${TOSS_PAYMENTS_FAIL_URL:http://localhost:8081/payment/fail}
-  ai:
-    gemini:
-      enabled: ${GEMINI_ENABLED:false}
-      api-key: ${GEMINI_API_KEY:}
-      model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
-      base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
-      cache-ttl: ${GEMINI_CACHE_TTL:PT30M}

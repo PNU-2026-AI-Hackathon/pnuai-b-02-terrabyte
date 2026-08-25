@@ -1,15 +1,18 @@
 # TerraByte
 
-### 1. 프로젝트 소개
+## 1. 프로젝트 소개
 
-#### 1.1. 개발배경 및 필요성
+### 1.1. 개발배경 및 필요성
 
-기후 위기와 식량 안보 문제로 스마트팜이 주목받고 있으며, 옥상·지하 공간·공실과 같은 도심 유휴 공간을 농업 생산 공간으로 활용하려는 시도가 늘고 있습니다. 그러나 기존 스마트팜 솔루션은 구축 이후의 환경 제어와 모니터링에 집중하는 경우가 많아, 설비 투자 전에 후보 공간이 작물 재배에 적합한지 판단하기 어렵습니다.
+기후 위기와 식량 안보 문제로 스마트팜에 대한 관심이 높아지면서, 옥상·지하 공간·공실 등 도심 유휴 공간을 농업 생산 공간으로 활용하려는 시도도 늘고 있습니다. 그러나 기존 스마트팜 솔루션은 구축 이후의 환경 제어와 모니터링에 주로 초점을 맞추고 있어, 설비 투자 이전에 후보 공간이 작물 재배에 적합한지 판단하기 어렵습니다.
 
-공간 특성을 충분히 고려하지 않은 설비 투자는 초기 비용과 에너지 사용량을 증가시킬 수 있습니다. TerraByte는 스마트팜 설치 전 환경 데이터를 수집하고 작물별 기준과 비교하여 공간의 적합성을 진단하며, 설치 후에도 같은 플랫폼에서 재배 환경을 지속적으로 확인할 수 있도록 개발한 서비스입니다.
+공간 특성을 충분히 고려하지 않은 설비 투자는 불필요한 초기 비용과 에너지 사용량 증가로 이어질 수 있습니다.
+
+**TerraByte는 설치 전 환경 데이터를 수집해 작물별 생육 기준과 비교함으로써 후보 공간의 적합성을 진단하고, 설치 후에도 동일한 플랫폼에서 재배 환경을 지속적으로 모니터링할 수 있도록 개발한 서비스입니다.**
+<br/>
 <br/>
 
-#### 1.2. 개발목표 및 주요내용
+### 1.2. 개발목표 및 주요내용
 
 TerraByte의 목표는 도심 유휴 공간의 스마트팜 전환 가능성을 데이터로 진단하고, 구축 이후의 환경 모니터링까지 연결하는 것입니다.
 
@@ -22,7 +25,16 @@ TerraByte의 목표는 도심 유휴 공간의 스마트팜 전환 가능성을 
 - 복잡한 환경 데이터를 점수, 그래프, 색상과 관리 지침으로 변환하여 비전문가의 재배 위험 감소
 <br/>
 
-#### 1.3. 세부내용
+### 1.3. 세부내용
+
+#### 사용자 요구사항
+
+- 스마트팜 설치 전 후보 공간이 작물 재배에 적합한지 쉽게 판단할 수 있어야 합니다.
+- 재배 중인 공간의 환경 상태와 변화 추이를 한 화면에서 확인할 수 있어야 합니다.
+- 작물별 적합도와 토양 추천 정보를 바탕으로 재배 관리 결정을 내릴 수 있어야 합니다.
+- 재배 공간, 장치, 화분 정보를 연계하여 통합 관리할 수 있어야 합니다.
+
+#### 기능 요구사항
 
 - 회원가입·로그인 및 JWT 기반 사용자 인증
 - 재배 공간, 장치, 화분 등록 및 조회
@@ -32,9 +44,11 @@ TerraByte의 목표는 도심 유휴 공간의 스마트팜 전환 가능성을 
 - 토양 추천 정보 및 적합도 계산 기준 제공
 - Expo Web 기반 사용자 화면과 Storybook 기반 UI 컴포넌트 관리
 - Swagger UI를 통한 API 명세 확인
+- 상품 카탈로그 조회와 장바구니 관리, 주문 생성 및 취소 기능 제공
+- 토스페이먼츠 테스트 결제를 통한 주문 결제와 결제 취소 처리 제공
 <br/>
 
-#### 1.4. 기존 서비스(상품) 대비 차별성
+### 1.4. 기존 서비스(상품) 대비 차별성
 
 - 스마트팜 구축 이후뿐 아니라 설치 이전의 후보 공간 진단을 지원합니다.
 - 단순 센서 수치 나열이 아니라 작물별 권장 범위와의 차이를 점수로 제공합니다.
@@ -42,7 +56,7 @@ TerraByte의 목표는 도심 유휴 공간의 스마트팜 전환 가능성을 
 - PostgreSQL, SQLite, InfluxDB를 데이터 특성에 따라 분리하여 업무 데이터, 점수 기준, 센서 시계열 데이터를 관리합니다.
 <br/>
 
-#### 1.5. 사회적가치 도입 계획
+### 1.5. 사회적가치 도입 계획
 
 - 도심 유휴 공간의 농업적 활용 가능성을 데이터로 확인하여 도시 공간의 부가가치 창출을 지원합니다.
 - 비전문가도 환경 상태와 개선 우선순위를 이해할 수 있도록 진입 장벽을 낮춥니다.
@@ -50,13 +64,14 @@ TerraByte의 목표는 도심 유휴 공간의 스마트팜 전환 가능성을 
 - 도심 농업 참여를 확대하여 지역 단위 로컬푸드 생태계 형성에 기여하는 것을 목표로 합니다.
 <br/>
 
-### 2. 상세설계
+## 2. 상세설계
 
-#### 2.1. 시스템 구성도
+### 2.1. 시스템 구성도
 
 ```mermaid
 flowchart LR
-    Sensor[센서 장치] -->|HTTP Telemetry| Backend[Spring Boot Backend]
+    Sensor[센서 장치] -->|MQTT Telemetry| Broker[Mosquitto MQTT Broker]
+    Broker -->|Subscribe| Backend[Spring Boot Backend]
     Frontend[Expo / React Native Web] -->|REST API + JWT| Backend
     Backend --> PostgreSQL[(PostgreSQL)]
     Backend --> SQLite[(SQLite)]
@@ -68,37 +83,57 @@ flowchart LR
 | 센서 장치 | 온도, 습도, 광량, 토양 수분 등의 환경 데이터 측정 및 전송 |
 | Expo Web | 사용자 인증, 장치·화분 관리, 측정값과 적합도 시각화 |
 | Spring Boot | REST API, 인증, 데이터 처리, 환경 점수 계산 |
+| Mosquitto | Orange Pi 게이트웨이와 백엔드 간 MQTT 텔레메트리 전송 및 ACL 기반 접근 제어 |
 | PostgreSQL | 사용자, 공간, 장치 등 업무 데이터 저장 |
 | SQLite | 작물별 점수 프로필과 계산 기준 데이터 저장 |
 | InfluxDB | 센서 시계열 데이터 저장 및 조회 |
 <br/>
 
-#### 2.3. 사용기술
+### 2.3. 사용기술
 
-| 분야 | 기술 스택 | 버전 | 활용 목적 및 상세 |
-|:---:|:---|:---:|:---|
-| **Frontend** | ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white) ![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)<br/>![React Native](https://img.shields.io/badge/React_Native-61DAFB?style=for-the-badge&logo=react&logoColor=black) ![Expo](https://img.shields.io/badge/Expo-000020?style=for-the-badge&logo=expo&logoColor=white) | v6.0<br/>v19.2<br/>v0.86<br/>SDK 57 | 웹·모바일 공용 대시보드 화면 구현<br/>Storybook 기반 UI 컴포넌트 관리 |
-| **Backend** | ![Java](https://img.shields.io/badge/Java-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white) ![Spring Boot](https://img.shields.io/badge/Spring_Boot-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)<br/>![Gradle](https://img.shields.io/badge/Gradle-02303A?style=for-the-badge&logo=gradle&logoColor=white) | 소스 17<br/>(컨테이너 JDK 21)<br/>v3.5.16<br/>v8.14.3 | REST API, JWT 인증, 텔레메트리 수집<br/>작물별 환경 적합도 점수 계산<br/>토양 배지 추천 로직 |
-| **Hardware<br/>& IoT** | ![C](https://img.shields.io/badge/C-00599C?style=for-the-badge&logo=c&logoColor=white) ![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=cplusplus&logoColor=white)<br/>![Arduino](https://img.shields.io/badge/Arduino-00878F?style=for-the-badge&logo=arduino&logoColor=white) ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white) | - | 센서 펌웨어 — 대기 온습도·PPFD·토양 온도·토양 수분 4종<br/>Orange Pi 엣지 서비스, 재전송 큐 |
-| **Database** | ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white) ![InfluxDB](https://img.shields.io/badge/InfluxDB-22ADF6?style=for-the-badge&logo=influxdb&logoColor=white)<br/>![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white) | v17<br/>v2.7<br/>- | 사용자·공간·장치·화분 등 업무 데이터<br/>센서 시계열 데이터 저장 및 조회<br/>작물별 점수 프로필과 계산 기준 |
-| **Infra** | ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![Nginx](https://img.shields.io/badge/Nginx-009639?style=for-the-badge&logo=nginx&logoColor=white)<br/>![Node.js](https://img.shields.io/badge/Node.js-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=white) | Compose v2<br/>v1.27<br/>v24 | 개발·배포 스택 일괄 실행<br/>정적 번들 서빙 및 API 프록시 |
-| **AI<br/>Coding Tools** | ![GitHub Copilot](https://img.shields.io/badge/GitHub_Copilot-181717?style=for-the-badge&logo=githubcopilot&logoColor=white) ![ChatGPT](https://img.shields.io/badge/ChatGPT-412991?style=for-the-badge&logo=openai&logoColor=white)<br/>![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=anthropic&logoColor=white) ![Gemini](https://img.shields.io/badge/Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=white) ![v0.dev](https://img.shields.io/badge/v0.dev-000000?style=for-the-badge&logo=vercel&logoColor=white) | - | 코드 리뷰, 예외 처리 및 보안 점검<br/>설계 문서·API 명세 작성 보조<br/>API 구현, DB 스키마 및 인프라 설정 생성<br/>UI 컴포넌트 프로토타이핑 |
-| **IDE &<br/>협업** | ![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white) ![IntelliJ IDEA](https://img.shields.io/badge/IntelliJ_IDEA-000000?style=for-the-badge&logo=intellijidea&logoColor=white) ![CLion](https://img.shields.io/badge/CLion-000000?style=for-the-badge&logo=clion&logoColor=white) | - | 버전 관리 및 팀 협업<br/>개발 환경 (백엔드, 프론트엔드, 펌웨어) |
+| 분야 | 기술 및 버전 | 활용 목적 및 상세 |
+|:---:|:---|:---|
+| **Frontend** | TypeScript v6.0 · React v19.2<br/>React Native v0.86 · Expo SDK 57 | 웹·모바일 공용 대시보드 화면 구현<br/>Storybook 기반 UI 컴포넌트 관리 |
+| **Backend** | Java 17 · Docker JDK 21<br/>Spring Boot v3.5.16 · Gradle v8.14.3 | REST API, JWT 인증, 텔레메트리 수집<br/>작물별 환경 적합도 점수 계산<br/>토양 배지 추천 로직 |
+| **Hardware<br/>& IoT** | C/C++ · Arduino · Python | 센서 펌웨어 — 대기 온습도·PPFD·토양 온도·토양 수분 4종<br/>Orange Pi 엣지 서비스, 재전송 큐 |
+| **Database** | PostgreSQL v17 · InfluxDB v2.7 · SQLite | 사용자·공간·장치·화분 등 업무 데이터<br/>센서 시계열 데이터 저장 및 조회<br/>작물별 점수 프로필과 계산 기준 |
+| **Infra** | Docker Compose v2 · Nginx v1.27 · Node.js v24 | 개발·배포 스택 일괄 실행<br/>정적 번들 서빙 및 API 프록시 |
+| **AI<br/>Coding Tools** | GitHub Copilot · ChatGPT Codex<br/>Claude · Gemini · v0.dev | 코드 리뷰, 예외 처리 및 보안 점검<br/>설계 문서·API 명세 작성 보조<br/>API 구현, DB 스키마 및 인프라 설정 생성<br/>UI 컴포넌트 프로토타이핑 |
+| **IDE &<br/>협업** | GitHub · IntelliJ IDEA · CLion · VS Code | 버전 관리 및 팀 협업<br/>개발 환경 (백엔드, 프론트엔드, 펌웨어) |
+<br/>
 <br/>
 
-### 3. 개발결과
+## 3. 개발결과
 
-#### 3.1. 전체시스템 흐름도
+### 3.1. 전체시스템 흐름도
+- 사용자 플로우 차트
+
+```mermaid
+flowchart TD
+    Start[서비스 접속] --> Login[회원가입 또는 로그인]
+    Login --> Onboarding[공간 등록 → 장치 연결 → 화분·작물 설정]
+    Onboarding --> Dashboard[대시보드]
+    Dashboard --> Live[실시간 환경 모니터링]
+    Dashboard --> Analysis[공간 진단 및 적합도 분석]
+    Dashboard --> Guide[관리 가이드 및 토양 추천]
+    Dashboard --> Shop[상품 조회 및 구매]
+    Shop --> Cart[장바구니 관리]
+    Cart --> Payment[주문 및 테스트 결제]
+```
+
+- 시스템 플로우 차트
 
 ```mermaid
 sequenceDiagram
     participant Device as 센서 장치
+    participant Broker as Mosquitto MQTT Broker
     participant API as Spring Boot API
     participant Influx as InfluxDB
     participant Web as Expo Web
     participant User as 사용자
 
-    Device->>API: 환경 측정 데이터 전송
+    Device->>Broker: 환경 측정 데이터 발행 (MQTT)
+    Broker->>API: 텔레메트리 구독 전달
     API->>Influx: 시계열 데이터 저장
     User->>Web: 대시보드 접속
     Web->>API: 최신 측정값·이력 요청
@@ -109,42 +144,48 @@ sequenceDiagram
 ```
 <br/>
 
-#### 3.2. 기능설명
+### 3.2. 기능설명
 
-##### `회원가입 및 로그인`
+#### `회원가입 및 로그인`
 
 - 이메일, 비밀번호, 닉네임을 입력해 계정을 생성합니다.
 - 이메일 형식과 비밀번호 조건을 검증합니다.
 - 로그인 성공 시 발급받은 JWT를 이후 API 요청에 사용합니다.
 <br/>
 
-##### `초기 설정 및 장치 등록`
+#### `초기 설정 및 장치 등록`
 
 - 로그인한 사용자가 재배 공간과 장치를 등록합니다.
 - 장치 코드와 공간 정보를 사용자 계정에 연결합니다.
 - 등록한 장치와 화분 정보를 조회할 수 있습니다.
 <br/>
 
-##### `실시간 환경 대시보드`
+#### `실시간 환경 대시보드`
 
 - 온도, 습도, 광량(PPFD), 토양 수분의 최신 측정값을 표시합니다.
 - 측정 이력을 조회하여 환경 변화를 확인합니다.
 - 센서 데이터가 없는 항목은 임의의 0이 아니라 값이 없는 상태로 처리합니다.
 <br/>
 
-##### `공간 적합도 분석`
+#### `공간 적합도 분석`
 
 - 측정값과 작물별 권장 환경 범위를 비교합니다.
 - 항목별 점수와 종합 적합도를 제공합니다.
 - 적합도 계산 기준을 화면에서 확인할 수 있습니다.
 <br/>
 
-##### `토양 추천`
+#### `토양 추천`
 
 - 장치 또는 화분에 연결된 환경 정보를 기준으로 토양 추천 정보를 조회합니다.
 <br/>
 
-#### 3.3. 기능명세서
+#### `상품 구매 및 결제`
+
+- 상품 카탈로그를 조회하고 장바구니에 상품을 담아 수량을 관리합니다.
+- 주문을 생성·취소하고, 토스페이먼츠 테스트 결제를 통해 결제 및 결제 취소를 처리합니다.
+<br/>
+
+### 3.3. 기능명세서
 
 | 구분 | 기능 | 상세 |
 |:---:|:---|:---|
@@ -160,12 +201,14 @@ sequenceDiagram
 | S10 | 환경 적합도 | 작물별 기준을 적용한 항목별·종합 점수 조회 |
 | S11 | 토양 추천 | 장치 또는 화분 기준 토양 추천 정보 조회 |
 | S12 | API 문서 | Swagger UI와 OpenAPI 문서 제공 |
+| S13 | 상품 및 장바구니 | 상품 카탈로그 조회와 장바구니 상품 추가·수정·삭제 |
+| S14 | 주문 및 결제 | 주문 생성·조회·취소와 토스페이먼츠 테스트 결제·취소 |
+| S15 | 상거래 관리자 API | 상품·재고 관리와 주문 상태 변경 |
 <br/>
 
-#### 3.4. 디렉토리 구조
+### 3.4. 디렉토리 구조
 
 ```text
-.
 ├── backend/                  # Spring Boot API, DB 마이그레이션, 자동 테스트
 │   ├── db/                   # SQLite 스키마와 마이그레이션
 │   ├── gradle/               # Gradle Wrapper
@@ -176,6 +219,8 @@ sequenceDiagram
 │   ├── arduino/              # 센서 보드 펌웨어
 │   ├── fusion_scripts/       # 센서 데이터 처리 스크립트
 │   └── pi/                   # Orange Pi 수집·전송 코드
+├── infra/
+│   └── mosquitto/            # 개발용 MQTT 브로커 설정과 ACL
 ├── docs/                     # 설계, 개발 환경, 프로젝트 문서
 ├── docker-compose.yml        # 개발용 Docker Compose 스택
 ├── docker-compose.prod.yml   # 프로덕션 유사 Docker Compose 스택
@@ -184,29 +229,30 @@ sequenceDiagram
 ```
 <br/>
 
-#### 3.5. AI 도구 활용
+### 3.5. AI 도구 활용
 
 - GitHub Copilot을 실시간 코드 작성 보조, 반복 코드 생성, 예외 처리 검토에 활용했습니다.
+- OpenAI Codex를 저장소 분석, 구현 작업, 문서 검토 보조에 활용했습니다.
 - ChatGPT와 Claude를 기술 문서 및 API 명세 작성, 설계 대안 검토, 코드 리뷰에 활용했습니다.
 - Gemini를 구현 아이디어와 데이터 처리 방식 검토에 활용했습니다.
 - v0.dev를 대시보드 화면과 UI 컴포넌트 프로토타이핑에 활용했습니다.
 - 생성된 결과를 그대로 반영하지 않고 기존 코드 구조, API 계약, 테스트 결과를 기준으로 검토했습니다.
 <br/>
 
-### 4. 설치 및 사용 방법
+## 4. 설치 및 사용 방법
 
 Docker를 사용하면 Java, Gradle, Node.js, PostgreSQL, InfluxDB를 호스트에 별도로 설치하지 않아도 됩니다. Docker Compose v2와 Buildx가 필요합니다.
 
-#### 4.1. Docker 설치
+### 4.1. Docker 설치
 
-##### Windows 10/11
+#### Windows 10/11
 
 1. [Docker Desktop for Windows 공식 설치 안내](https://docs.docker.com/desktop/setup/install/windows-install/)에서 설치 파일을 내려받아 실행합니다.
 2. WSL이 설치되어 있지 않다면 관리자 PowerShell에서 `wsl --install`을 실행한 뒤 재부팅합니다.
 3. Docker Desktop에서 WSL 2 기반 엔진과 사용할 WSL 배포판 연동을 활성화합니다.
 4. Linux 컨테이너 모드인지 확인합니다.
 
-##### macOS
+#### macOS
 
 1. [Docker Desktop for Mac 공식 설치 안내](https://docs.docker.com/desktop/setup/install/mac-install/)에서 Mac 칩에 맞는 설치 파일을 내려받습니다.
 2. Docker를 Applications로 옮겨 실행하고 초기 설정을 완료합니다.
@@ -217,7 +263,7 @@ Homebrew를 사용하는 경우:
 brew install --cask docker
 ```
 
-##### Ubuntu Linux
+#### Ubuntu Linux
 
 [Docker Engine 공식 Ubuntu 설치 안내](https://docs.docker.com/engine/install/ubuntu/)에 따라 Docker의 apt 저장소를 먼저 등록한 뒤 아래 패키지를 설치합니다.
 
@@ -242,23 +288,26 @@ docker compose version
 docker buildx version
 docker run --rm hello-world
 ```
+<br/>
 
-#### 4.2. 저장소 받기
+### 4.2. 저장소 받기
 
 ```bash
 git clone https://github.com/PNU-2026-AI-Hackathon/pnuai-b-02-terrabyte.git
 cd pnuai-b-02-terrabyte
 ```
+<br/>
 
-#### 4.3. Make를 사용해 한 번에 실행(권장)
+### 4.3. Make를 사용해 한 번에 실행(권장)
 
 macOS, Linux 또는 Make가 설치된 Windows 환경에서는 아래 한 줄을 실행합니다. `.env`가 없으면 자동으로 생성하고 전체 개발 스택을 백그라운드에서 빌드·실행합니다.
 
 ```bash
 make up-d
 ```
+<br/>
 
-#### 4.4. Docker Compose로 직접 한 번에 실행
+### 4.4. Docker Compose로 직접 한 번에 실행
 
 Make가 없는 환경에서는 사용하는 셸에 맞는 명령을 실행합니다.
 
@@ -275,8 +324,10 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }; docker compose up -d --b
 ```
 
 `.env.example`의 계정과 비밀키는 로컬 개발 전용입니다. 외부에 공개되는 환경에서는 반드시 안전한 값으로 교체해야 합니다.
+<br/>
+<br/>
 
-#### 4.5. 실행 확인
+### 4.5. 실행 확인
 
 | 서비스 | 주소 |
 | --- | --- |
@@ -284,6 +335,7 @@ if (!(Test-Path .env)) { Copy-Item .env.example .env }; docker compose up -d --b
 | 백엔드 상태 확인 | http://localhost:8080/actuator/health |
 | Swagger UI | http://localhost:8080/swagger-ui.html |
 | InfluxDB UI | http://localhost:8086 |
+| Mosquitto MQTT | `localhost:1883` |
 | PostgreSQL | `localhost:5432` |
 | 백엔드 원격 디버그 | `localhost:5005` |
 
@@ -302,8 +354,9 @@ docker compose logs -f
 curl --fail http://localhost:8080/actuator/health
 curl --fail http://localhost:8086/health
 ```
+<br/>
 
-#### 4.6. 테스트
+### 4.6. 테스트
 
 백엔드 전체 자동 테스트:
 
@@ -337,8 +390,9 @@ curl -i -X POST http://localhost:8080/api/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"docker-test@terrabyte.local","password":"password1"}'
 ```
+<br/>
 
-#### 4.7. 자주 사용하는 명령
+### 4.7. 자주 사용하는 명령
 
 | 작업 | Make 사용 | Docker Compose 직접 사용 |
 | --- | --- | --- |
@@ -354,11 +408,13 @@ curl -i -X POST http://localhost:8080/api/auth/login \
 | 중지 | `make down` | `docker compose down` |
 | 중지 및 DB 초기화 | `make down-v` | `docker compose down -v` |
 
-`docker compose down -v`와 `make down-v`는 PostgreSQL과 InfluxDB 데이터를 삭제하므로 초기화가 필요할 때만 사용합니다.
+`docker compose down -v`와 `make down-v`는 PostgreSQL·InfluxDB 데이터와 Mosquitto의 retained 메시지·로그 볼륨을 삭제하므로 초기화가 필요할 때만 사용합니다.
+<br/>
+<br/>
 
-#### 4.8. 프로덕션 유사 스택
+### 4.8. 프로덕션 유사 스택
 
-`.env`의 `POSTGRES_PASSWORD`, `INFLUX_PASSWORD`, `INFLUX_TOKEN`, `TELEMETRY_DEVICE_KEY`, `JWT_SECRET`을 안전한 값으로 변경한 뒤 실행합니다.
+`.env`의 `POSTGRES_PASSWORD`, `INFLUX_PASSWORD`, `INFLUX_TOKEN`, `TELEMETRY_DEVICE_KEY`, `JWT_SECRET`을 안전한 값으로 변경한 뒤 실행합니다. 결제 기능을 활성화할 경우 `TOSS_PAYMENTS_ENABLED=true`와 토스페이먼츠 클라이언트 키·시크릿 키, 성공·실패 반환 URL도 운영 환경에 맞게 설정합니다.
 
 ```bash
 make prod-up
@@ -499,30 +555,38 @@ systemctl start terrabyte-edge
 
 읽는 값이 전부 `\x00`이면 그 보드레이트가 틀린 것입니다. 사람이 읽을 수 있는 문자가 나오는 보드레이트가 보드의 실제 설정이며, 그 출력이 JSON Lines가 아니라면 텔레메트리 펌웨어가 아닌 다른 스케치가 올라가 있는 것입니다. 계약상 보드레이트는 115200이고 한 줄에 JSON 객체 하나입니다(`edge/arduino/include/TelemetryConfig.h`의 `TB_SERIAL_BAUD`).
 <br/>
+<br/>
 
-### 5. 소개 및 시연영상
+## 5. 소개 및 시연영상
+> 추후 작성 예정
 
 <br/>
 
-### 6. 팀 소개
+## 6. 팀 소개
 
 | LEADER | MEMBER1 | MEMBER2 | MEMBER3 | MEMBER4 |
 |:---:|:---:|:---:|:---:|:---:|
-| [김동현](https://github.com/cnvxlns) | [김민서](https://github.com/oesmln) | [김효빈](https://github.com/iris11132-max) | [문성현](https://github.com/7hyunii) | [박태훈](https://github.com/Reighnex) |
+| [<img src="https://github.com/cnvxlns.png?size=160" width="120" alt="김동현 프로필 사진" />](https://github.com/cnvxlns) | [<img src="https://github.com/oesmln.png?size=160" width="120" alt="김민서 프로필 사진" />](https://github.com/oesmln) | [<img src="https://github.com/iris11132-max.png?size=160" width="120" alt="김효빈 프로필 사진" />](https://github.com/iris11132-max) | [<img src="https://github.com/7hyunii.png?size=160" width="120" alt="문성현 프로필 사진" />](https://github.com/7hyunii) | [<img src="https://github.com/Reighnex.png?size=160" width="120" alt="박태훈 프로필 사진" />](https://github.com/Reighnex) |
+| 김동현 | 김민서 | 김효빈 | 문성현 | 박태훈 |
 | okmac03@pusan.ac.kr | kmmlns@gmail.com | irisrla@naver.com | 7sonicx@gmail.com | pth4241@pusan.ac.kr |
-| HW 설계 | 백엔드 및 DevOps | 기획·도메인 분석 | 풀스택 개발 | 공간 진단 알고리즘 설계 |
+| 하드웨어 연동,<br/>백엔드 개발 | 풀스택 개발 | - | 풀스택 개발,<br/>개발 협업 프로세스 구축·관리 | - |
 <br/>
 
-### 7. 해커톤 참여 후기
+## 7. 해커톤 참여 후기
 
-#### 김동현
+- 김동현
+> 추후 작성 예정
 
-#### 김민서
+- 김민서
+> 추후 작성 예정
 
-#### 김효빈
+- 김효빈
+> 추후 작성 예정
 
-#### 문성현
+- 문성현
+> 추후 작성 예정
 
-#### 박태훈
+- 박태훈
+> 추후 작성 예정
 
 <br/>

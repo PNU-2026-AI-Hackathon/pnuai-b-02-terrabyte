@@ -52,8 +52,7 @@ export GEMINI_MODEL='gemini-3.5-flash-lite'
 ```
 
 SQLite 점수 스키마와 마이그레이션은 애플리케이션이 시작될 때 자동으로 적용됩니다.
-DB 파일이 비어 있으면 전체 스키마를 생성하고, 이미 존재하면 마이그레이션만 실행합니다.
-수동으로 `sqlite3` 명령을 실행할 필요가 없습니다.
+DB 파일이 비어 있으면 전체 스키마를 생성하고, 과거 bootstrap DB(기본 3개 테이블만 존재)는 데이터를 유지한 채 전체 스키마로 보완합니다. 지원되는 기존 스키마에는 마이그레이션을 실행하며, 그 밖의 불완전한 파일은 데이터 손실을 막기 위해 기동을 중단합니다.
 
 애플리케이션을 실행합니다.
 
@@ -398,6 +397,47 @@ SQLite의 `crop_score_model_config`는 프로필별 집계 모델을 불변 버�
 `equal_geometric_v1`, 지수 `1/1/1`, `trapezoid_v1`이며 정규화 후 기존 `1/3·1/3·1/3`과 같습니다.
 `crop_environment_score` 뷰와 Java API는 이 설정을 읽어 같은 가중 기하평균과 `GOOD/NORMAL/BAD` 등급을
 계산합니다. 기존 `crop_score_profile`의 `40/25/35` 열은 legacy 조화평균 데이터이므로 새 지수로 사용하지 않습니다.
+
+## 휴대폰 푸시 알림
+
+인증 사용자는 `/api/push-tokens`로 Android FCM 토큰을 등록·교체·해제하고 `/api/notifications`에서 저장된 알림을 조회·읽음 처리할 수 있습니다. `/api/notifications/unread-count`는 목록 페이지 크기와 무관한 정확한 미확인 개수를 반환합니다. 센서 quality 장애와 MQTT 기기 오프라인 이벤트는 같은 상태가 지속되는 동안 중복 억제됩니다. 알림과 발송 작업은 원본 이벤트와 같은 트랜잭션에 저장되며, 실제 FCM 호출은 영속 delivery outbox 작업자가 제한된 배치로 처리합니다. Firebase가 비활성화되어도 알림 이력은 저장됩니다.
+
+실제 FCM 전송에는 다음 환경 변수가 필요합니다.
+
+```text
+FIREBASE_ENABLED=true
+FIREBASE_PROJECT_ID=<firebase-project-id>
+FIREBASE_CREDENTIALS_PATH=<service-account-json-path>
+```
+
+서비스 계정 JSON은 Git에 커밋하지 않습니다. 실제 전송을 켤 때는 런타임 secret/file mount로 서비스 계정 파일을 주입해야 합니다.
+
+Docker Compose에서는 서비스 계정 JSON의 절대 경로를 `.env`에 지정하고 Firebase 전용 override를 함께 사용합니다.
+
+```text
+FIREBASE_PROJECT_ID=<firebase-project-id>
+FIREBASE_CREDENTIALS_HOST_PATH=C:\absolute\path\firebase-service-account.json
+```
+
+개발 스택:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose.firebase.yml up --build
+```
+
+프로덕션 유사 스택:
+
+```powershell
+docker compose -f docker-compose.prod.yml -f docker-compose.firebase.yml up -d --build
+```
+
+override는 파일을 컨테이너의 `/run/secrets/firebase-service-account.json`에 읽기 전용으로 마운트하고
+`FIREBASE_ENABLED=true`와 컨테이너 내부 경로를 설정합니다. 백엔드용 서비스 계정 JSON은 Android 앱의
+`google-services.json`과 다른 파일이며, 두 파일 모두 저장소에는 추가하지 않습니다.
+
+발송 실패는 기본 30초부터 지수 간격으로 최대 5회 재시도합니다. `NOTIFICATION_DELIVERY_*` 환경변수로
+배치 크기, 재시도 간격·횟수와 작업 claim 제한 시간을 조정할 수 있습니다. 만료된 FCM 토큰은 자동으로
+비활성화되며, 로그아웃 시 해당 사용자의 활성 토큰을 해제합니다.
 
 ## 테스트
 

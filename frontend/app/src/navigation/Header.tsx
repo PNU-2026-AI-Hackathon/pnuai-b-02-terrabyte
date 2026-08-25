@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { font } from '../appTheme/glass';
 import { palette } from '../appTheme/palette';
@@ -7,36 +7,24 @@ import { scaleTypography } from '../appTheme/scaleTypography';
 import { typeScale } from '../appTheme/typography';
 import { Surface } from '../components/Surface';
 import type { PotResponse } from '../device/deviceApi';
+import { useNotificationInbox } from '../notification/NotificationInboxContext';
+import type { NotificationRecord } from '../notification/notificationApi';
 import { PotMenu } from './PotMenu';
 import type { Page } from './types';
 
-type EnvironmentAlert = {
-  body: string;
-  id: string;
-  read: boolean;
-  severity: string;
-  time: string;
-  title: string;
-};
+function relativeTime(createdAt: string) {
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - Date.parse(createdAt)) / 1_000));
+  if (elapsedSeconds < 60) return '방금 전';
+  const minutes = Math.floor(elapsedSeconds / 60);
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  return `${Math.floor(hours / 24)}일 전`;
+}
 
-const initialAlerts: EnvironmentAlert[] = [
-  {
-    body: '현재 8,000lux로 권장 하한 15,000lux보다 낮습니다. 생장등 상태와 설치 거리를 확인하세요.',
-    id: 'light-low',
-    read: false,
-    severity: '주의',
-    time: '10분 전',
-    title: '조도가 권장 범위보다 낮습니다',
-  },
-  {
-    body: '현재 습도는 45%이며 최근 30분 동안 5% 감소했습니다. 관수 후 환기 시간을 조정하세요.',
-    id: 'humidity-drop',
-    read: false,
-    severity: '확인 필요',
-    time: '24분 전',
-    title: '습도 하락이 지속되고 있습니다',
-  },
-];
+function severityLabel(alert: NotificationRecord) {
+  return alert.type === 'IRRIGATION_COMPLETED' ? '완료' : '확인 필요';
+}
 
 const pageCopy: Record<Page, { title: string; description: string }> = {
   dashboard: { title: '공간 개요', description: '스마트팜 전환 적합도와 운영 중인 재배 환경을 확인하세요.' },
@@ -60,12 +48,18 @@ type HeaderProps = {
 export function Header({ compact, onCreatePot, onSelectPot, onUpdatePot, page, pots, selectedPotId }: HeaderProps) {
   const copy = pageCopy[page];
   const [alertsOpen, setAlertsOpen] = useState(false);
-  const [alerts, setAlerts] = useState<EnvironmentAlert[]>(initialAlerts);
-  const unreadAlertCount = alerts.filter((alert) => !alert.read).length;
+  const {
+    alerts,
+    error: alertsError,
+    loading: alertsLoading,
+    load: loadAlerts,
+    markAllRead: markAllAlertsRead,
+    unreadCount: unreadAlertCount,
+  } = useNotificationInbox();
 
-  const markAllAlertsRead = () => {
-    setAlerts((current) => current.map((alert) => ({ ...alert, read: true })));
-  };
+  useEffect(() => {
+    if (alertsOpen) void loadAlerts();
+  }, [alertsOpen, loadAlerts]);
 
   return (
     <>
@@ -115,19 +109,20 @@ export function Header({ compact, onCreatePot, onSelectPot, onUpdatePot, page, p
                 <Text style={styles.modalCloseIconText}>×</Text>
               </Pressable>
             </View>
-            <View style={styles.alertList}>
+            <ScrollView contentContainerStyle={styles.alertListContent} style={styles.alertList}>
               {alerts.length ? alerts.map((alert, index) => (
-                <View key={alert.id} style={[styles.alertItem, index < alerts.length - 1 && styles.alertItemDivider, alert.read && styles.alertItemRead]}>
+                <View key={alert.id} style={[styles.alertItem, index < alerts.length - 1 && styles.alertItemDivider, alert.readAt && styles.alertItemRead]}>
                   <View style={styles.alertItemHeader}>
-                    <Text style={[styles.alertSeverity, alert.severity === '주의' ? styles.alertSeverityWarning : styles.alertSeverityCheck]}>{alert.severity}</Text>
-                    <Text style={styles.alertTime}>{alert.time}</Text>
+                    <Text style={[styles.alertSeverity, alert.type === 'IRRIGATION_COMPLETED' ? styles.alertSeverityCheck : styles.alertSeverityWarning]}>{severityLabel(alert)}</Text>
+                    <Text style={styles.alertTime}>{relativeTime(alert.createdAt)}</Text>
                   </View>
                   <Text style={styles.alertTitle}>{alert.title}</Text>
                   <Text style={styles.alertBody}>{alert.body}</Text>
                 </View>
-              )) : <Text style={styles.emptyAlerts}>새 알림이 없습니다.</Text>}
-            </View>
-            {alerts.length ? <Text style={styles.alertPolicy}>알림 기준: 권장 범위 이탈이 10분 이상 지속되면 사용자에게 안내합니다.</Text> : null}
+              )) : <Text style={styles.emptyAlerts}>{alertsLoading ? '알림을 불러오는 중입니다.' : alertsError ?? '새 알림이 없습니다.'}</Text>}
+            </ScrollView>
+            {alertsError && alerts.length ? <Text style={styles.alertError}>{alertsError}</Text> : null}
+            {alerts.length ? <Text style={styles.alertPolicy}>센서 이상과 장치 오프라인 상태는 복구되거나 재알림 시간이 지날 때까지 중복 전송하지 않습니다.</Text> : null}
             <View style={styles.modalFooter}>
               <Pressable disabled={!unreadAlertCount} onPress={markAllAlertsRead} style={[styles.modalAction, !unreadAlertCount && styles.modalActionDisabled]}>
                 <Text style={styles.modalActionText}>모두 읽음</Text>
@@ -167,6 +162,7 @@ const styles = StyleSheet.create(scaleTypography({
   modalCloseIcon: { alignItems: 'center', height: 36, justifyContent: 'center', marginRight: -10, width: 36 },
   modalCloseIconText: { color: palette.secondary, fontFamily: font, fontSize: 34, fontWeight: '500', lineHeight: 36 },
   alertList: { backgroundColor: palette.panelMuted, borderColor: palette.lineStrong, borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  alertListContent: { flexGrow: 1 },
   alertItem: { gap: 8, padding: 20 },
   alertItemDivider: { borderBottomColor: palette.lineStrong, borderBottomWidth: 1 },
   alertItemRead: { opacity: 0.62 },
@@ -178,5 +174,6 @@ const styles = StyleSheet.create(scaleTypography({
   alertTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '800' },
   alertBody: { ...typeScale.body, color: palette.secondary, fontFamily: font },
   emptyAlerts: { ...typeScale.body, color: palette.muted, paddingVertical: 30, textAlign: 'center' },
+  alertError: { ...typeScale.caption, color: palette.red, fontFamily: font },
   alertPolicy: { ...typeScale.caption, color: palette.muted, fontFamily: font },
 }));

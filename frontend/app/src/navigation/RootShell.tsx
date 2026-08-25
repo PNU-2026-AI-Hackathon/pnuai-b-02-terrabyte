@@ -16,6 +16,12 @@ import { Login } from '../onboarding/Login';
 import { SetupFlow } from '../onboarding/SetupFlow';
 import { getPot, getPots } from '../pot/potApi';
 import { clearPaymentReturnUrl, readPaymentReturn } from '../payment/paymentReturn';
+import {
+  activatePushNotifications,
+  deactivatePushNotifications,
+  subscribeToNotificationResponses,
+  subscribeToPushTokenChanges,
+} from '../notification/pushNotifications';
 import { PaymentReturnScreen } from '../screens/payment/PaymentReturnScreen';
 import { AppTabNavigator } from './AppTabNavigator';
 import { GlassBackdrop } from './GlassBackdrop';
@@ -34,6 +40,7 @@ export default function RootShell() {
   const [paymentReturnDismissed, setPaymentReturnDismissed] = useState(false);
   const { width } = useWindowDimensions();
   const compact = width < 900;
+  const authenticated = flow !== 'auth';
   const selectedCrop = Math.max(0, crops.findIndex((crop) => crop.code === selectedCropCode));
 
   useEffect(() => {
@@ -213,9 +220,48 @@ export default function RootShell() {
   }, [selectedPotId]);
 
   useEffect(() => {
+    if (!authenticated) return undefined;
+
+    void activatePushNotifications().catch((error) => {
+      // Expo Go and builds without Firebase native configuration cannot obtain an FCM token.
+      console.warn('푸시 알림을 등록하지 못했습니다.', error);
+    });
+    const tokenSubscription = subscribeToPushTokenChanges();
+    const responseSubscription = subscribeToNotificationResponses((data) => {
+      const nextDeviceId = typeof data.deviceId === 'string' ? Number(data.deviceId) : data.deviceId;
+      const potId = typeof data.potId === 'string' ? Number(data.potId) : data.potId;
+      if (typeof nextDeviceId === 'number' && Number.isFinite(nextDeviceId)) {
+        setDevice(null);
+        setDeviceId(nextDeviceId);
+      }
+      if (typeof potId === 'number' && Number.isFinite(potId)) setSelectedPotId(potId);
+    });
+
+    return () => {
+      tokenSubscription.remove();
+      responseSubscription.remove();
+    };
+  }, [authenticated]);
+
+  useEffect(() => {
     const selectedPot = (device?.pots ?? []).find((pot) => pot.id === selectedPotId);
     setSelectedCropCode(selectedPot?.cropCode ?? crops[0].code);
   }, [device, selectedPotId]);
+
+  const logout = async () => {
+    try {
+      await deactivatePushNotifications();
+    } catch (error) {
+      console.warn('로그아웃 중 푸시 토큰 해제에 실패했습니다.', error);
+    } finally {
+      await clearAccessToken();
+      setDeviceId(undefined);
+      setDevice(null);
+      setSelectedPotId(undefined);
+      setSelectedCropCode(crops[0].code);
+      setFlow('auth');
+    }
+  };
 
   if (restoringSession) {
     return (
@@ -294,14 +340,7 @@ export default function RootShell() {
         onCreatePot={addPot}
         onSelectPot={setSelectedPotId}
         onUpdatePot={updatePot}
-        onLogout={() => {
-          void clearAccessToken();
-          setDeviceId(undefined);
-          setDevice(null);
-          setSelectedPotId(undefined);
-          setSelectedCropCode(crops[0].code);
-          setFlow('auth');
-        }}
+        onLogout={() => void logout()}
         onSelectCrop={changeSelectedCrop}
         pots={device?.pots ?? []}
         selectedCrop={selectedCrop}
@@ -313,7 +352,7 @@ export default function RootShell() {
 }
 
 const styles = StyleSheet.create(scaleTypography({
-  root: { backgroundColor: palette.background, flex: 1, minHeight: '100vh', overflow: 'hidden', position: 'relative' } as any,
+  root: { backgroundColor: palette.background, flex: 1, overflow: 'hidden', position: 'relative' },
   sessionLoading: { alignItems: 'center', gap: 18, justifyContent: 'center' },
   sessionLoadingText: { ...typeScale.bodyStrong, color: palette.secondary, fontFamily: font },
 }));

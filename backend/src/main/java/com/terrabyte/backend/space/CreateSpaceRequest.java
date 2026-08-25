@@ -11,5 +11,7 @@ import jakarta.validation.constraints.Size;
 public record CreateSpaceRequest(
         @NotBlank @Size(max = 100) String name,
         @NotBlank @Size(max = 50) String spaceType,
-        @NotNull @DecimalMin("0.01") @Digits(integer = 8, fraction = 2) BigDecimal areaSquareMeters) {
+        @NotNull @DecimalMin("0.01") @Digits(integer = 8, fraction = 2)
+        BigDecimal areaSquareMeters,
+        LightSource lightSource) {
 }

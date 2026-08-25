@@ -19,7 +19,7 @@ public class PotRepository {
 
     private static final String SELECT_COLUMNS = """
             SELECT p.id, p.device_id, p.node_id, p.label, p.crop_code, p.crop_selected_at,
-                   p.status, p.last_seen_at, p.created_at
+                   p.status, p.last_seen_at, p.created_at, p.substrate_volume_ml
             FROM pot p
             """;
 
@@ -125,6 +125,12 @@ public class PotRepository {
         return jdbcTemplate.query(SELECT_COLUMNS + suffix, this::mapPot, arguments).stream().findFirst();
     }
 
+    private static Integer readNullableInt(ResultSet resultSet, String column)
+            throws SQLException {
+        int value = resultSet.getInt(column);
+        return resultSet.wasNull() ? null : value;
+    }
+
     private Pot mapPot(ResultSet resultSet, int rowNumber) throws SQLException {
         Timestamp cropSelectedAt = resultSet.getTimestamp("crop_selected_at");
         Timestamp lastSeenAt = resultSet.getTimestamp("last_seen_at");
@@ -137,6 +143,7 @@ public class PotRepository {
                 cropSelectedAt == null ? null : cropSelectedAt.toInstant(),
                 DeviceStatus.valueOf(resultSet.getString("status")),
                 lastSeenAt == null ? null : lastSeenAt.toInstant(),
-                resultSet.getTimestamp("created_at").toInstant());
+                resultSet.getTimestamp("created_at").toInstant(),
+                readNullableInt(resultSet, "substrate_volume_ml"));
     }
 }

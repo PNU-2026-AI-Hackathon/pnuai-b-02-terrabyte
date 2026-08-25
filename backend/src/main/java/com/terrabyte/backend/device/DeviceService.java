@@ -92,7 +92,9 @@ public class DeviceService {
                 userId,
                 request.spaceName().trim(),
                 request.spaceType().trim(),
-                request.areaSquareMeters());
+                request.areaSquareMeters(),
+                // 기기 등록 흐름에는 광원 입력이 없다. NULL 은 "모름"으로 취급된다.
+                null);
     }
 
     private DeviceResponse response(long userId, Device device) {

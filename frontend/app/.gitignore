@@ -13,6 +13,7 @@ expo-env.d.ts
 storybook-static/
 
 # Native
+/google-services.json
 .kotlin/
 *.orig.*
 *.jks

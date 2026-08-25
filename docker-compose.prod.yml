@@ -54,6 +54,9 @@ services:
         condition: service_healthy
       influxdb:
         condition: service_started
+      ai-server:
+        # AI 장애가 백엔드 장애가 되면 안 된다. service_healthy 금지.
+        condition: service_started
     environment:
       TZ: ${TZ:-Asia/Seoul}
       SERVER_PORT: "8080"
@@ -71,6 +74,19 @@ services:
       JWT_ACCESS_TOKEN_TTL: ${JWT_ACCESS_TOKEN_TTL:-PT1H}
       ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:8088}
+      FIREBASE_ENABLED: ${FIREBASE_ENABLED:-false}
+      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-}
+      FIREBASE_CREDENTIALS_PATH: ${FIREBASE_CREDENTIALS_PATH:-}
+      NOTIFICATION_SENSOR_REMINDER_INTERVAL: ${NOTIFICATION_SENSOR_REMINDER_INTERVAL:-PT1H}
+      NOTIFICATION_OFFLINE_REMINDER_INTERVAL: ${NOTIFICATION_OFFLINE_REMINDER_INTERVAL:-PT6H}
+      NOTIFICATION_DELIVERY_POLL_DELAY_MS: ${NOTIFICATION_DELIVERY_POLL_DELAY_MS:-5000}
+      NOTIFICATION_DELIVERY_BATCH_SIZE: ${NOTIFICATION_DELIVERY_BATCH_SIZE:-50}
+      NOTIFICATION_DELIVERY_MAX_ATTEMPTS: ${NOTIFICATION_DELIVERY_MAX_ATTEMPTS:-5}
+      NOTIFICATION_DELIVERY_RETRY_INTERVAL: ${NOTIFICATION_DELIVERY_RETRY_INTERVAL:-PT30S}
+      NOTIFICATION_DELIVERY_CLAIM_TIMEOUT: ${NOTIFICATION_DELIVERY_CLAIM_TIMEOUT:-PT5M}
+      AI_ENABLED: ${AI_ENABLED:-true}
+      AI_BASE_URL: ${AI_BASE_URL:-http://ai-server:8000}
+      AI_API_KEY: ${AI_API_KEY:-}
       TOSS_PAYMENTS_ENABLED: ${TOSS_PAYMENTS_ENABLED:-false}
       TOSS_PAYMENTS_CLIENT_KEY: ${TOSS_PAYMENTS_CLIENT_KEY:-}
       TOSS_PAYMENTS_SECRET_KEY: ${TOSS_PAYMENTS_SECRET_KEY:-}
@@ -83,6 +99,21 @@ services:
       GEMINI_CACHE_TTL: ${GEMINI_CACHE_TTL:-PT30M}
     volumes:
       - backend-data:/app/data
+    restart: unless-stopped
+
+  ai-server:
+    build:
+      context: ./ai-server
+      dockerfile: Dockerfile
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.12-slim-bookworm}
+    image: terrabyte/ai-server:${IMAGE_TAG:-local}
+    environment:
+      TZ: ${TZ:-Asia/Seoul}
+      AI_MODEL_PATH: ${AI_MODEL_PATH:-/app/models/irrigation_reg_v1.joblib}
+      # 설정하면 X-Api-Key 검증이 켜진다. 호스트 포트를 열지 않으므로 기본은 무인증.
+      AI_API_KEY: ${AI_API_KEY:-}
+    # 호스트 포트를 공개하지 않는다. 백엔드만 내부 네트워크로 접근한다.
     restart: unless-stopped
 
   web:

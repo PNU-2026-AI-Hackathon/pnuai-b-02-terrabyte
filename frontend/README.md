@@ -78,6 +78,55 @@ cd frontend/app
 npm run ios
 ```
 
+## Android 푸시 알림과 APK 빌드
+
+Android 푸시는 Expo Go가 아니라 Firebase 설정이 포함된 네이티브 빌드에서 동작합니다. Firebase Console에서
+Android 앱을 만들 때 패키지 이름은 `com.terrabyte.app`을 사용합니다.
+
+### Firebase 클라이언트 설정
+
+Firebase Console에서 Android 앱의 `google-services.json`을 내려받아 로컬에서는
+`frontend/app/google-services.json`에 둡니다. 이 파일은 `.gitignore`에 포함되어 있으므로 커밋하지 않습니다.
+EAS Build에서는 preview 환경에 이름이 `GOOGLE_SERVICES_JSON`인 **File** 환경변수를 만들고 같은 파일을
+업로드합니다. `app.config.ts`가 EAS의 임시 파일 경로 또는 로컬 파일을 자동으로 `android.googleServicesFile`에
+연결합니다.
+
+실제 휴대폰에서 개발 서버를 사용할 때 `localhost`는 휴대폰 자신을 가리킵니다. 휴대폰과 개발 PC를 같은
+네트워크에 연결하고 `frontend/app/.env.local`에 개발 PC의 내부 IP를 지정합니다.
+
+```text
+EXPO_PUBLIC_API_BASE_URL=http://192.168.0.10:8080
+```
+
+### 설치 가능한 preview APK
+
+`eas.json`의 `preview` 프로필은 Android `apk`를 생성하도록 설정되어 있습니다.
+
+```powershell
+cd frontend/app
+npx eas-cli build --platform android --profile preview
+```
+
+빌드가 끝나면 EAS가 제공하는 URL로 APK를 내려받아 Android 기기 또는 Google Play services가 포함된
+에뮬레이터에 설치합니다. 실제 기기는 APK 파일을 직접 열어 설치하거나 다음 명령을 사용할 수 있습니다.
+
+```powershell
+adb install path\to\terrabyte.apk
+```
+
+### 푸시 End-to-End 확인
+
+1. 백엔드에 Firebase 서비스 계정을 주입하고 `FIREBASE_ENABLED=true`로 실행합니다.
+2. 설치한 앱에서 로그인하고 Android 알림 권한을 허용합니다.
+3. 백엔드의 `push_registration`에 해당 사용자의 Android 토큰이 활성 상태로 저장됐는지 확인합니다.
+4. 센서 quality 오류 또는 MQTT gateway offline 이벤트를 발생시킵니다.
+5. 앱의 포그라운드, 백그라운드, 종료 상태에서 알림 수신을 각각 확인합니다.
+6. 알림을 눌렀을 때 관련 기기와 화분이 선택되고, 헤더 알림함의 읽지 않은 개수가 일치하는지 확인합니다.
+7. 로그아웃 후 같은 기기로 푸시가 더 이상 전송되지 않는지 확인합니다.
+
+저장소에서 실행 가능한 TypeScript·Expo 설정·웹 번들 검사는 자동화할 수 있지만, 위 End-to-End 확인은
+Firebase/EAS 자격 증명과 Android 실행 환경을 준비한 뒤 수행합니다.
+
 ## 목데이터 현황
 
 아래는 **일반 앱 화면에 실제로 표시되는 정적 데이터**와 미사용 데이터를 구분한 현황입니다. `API 실패 시 표시되는 기본값`도 목데이터로 분류했습니다.
@@ -92,7 +141,7 @@ npm run ios
 | 관리 가이드 | Gemini가 미설정이거나 호출에 실패했을 때만 오늘 작업(`managementTasks`), 재배 단계 기준(`cultivationCriteria`), 추천 상품(`shopProducts`)과 환경 요인→상품 ID 매핑(`factorProductMap`)을 기본값으로 표시 | `app/src/data.ts`, `app/src/care/carePlanApi.ts`, `app/src/shared/factorPresentation.ts` | Gemini 관리 계획 API가 오늘 할 일·재배 기준·실제 판매 상품 기반 추천을 생성. 토양 배합 추천과 환경 점수는 API이며, 작업 완료 체크는 화면 메모리 상태 |
 | 상품 구매 | 장바구니 품목별 수량, 열림 상태, 선택 상품, 페이지·필터 상태 | `app/src/screens/shop/ShopScreen.tsx` | 상품 목록·가격·카테고리·추천 배지는 `GET /api/products` 사용. 일반 앱에서 `shopProducts`를 상품 목록으로 사용하지 않음 |
 | 기기 등록·화분 관리·사이드바 | 작물 코드표(`crops`)를 작물명·이모지·기본 선택값·작물 선택지로 사용. 공간 유형·면적 단위 선택지는 화면 내부 고정 설정 | `app/src/data.ts`, `app/src/onboarding/SetupFlow.tsx`, `app/src/navigation/PotMenu.tsx`, `app/src/navigation/PotManager.tsx` | 공간·기기·화분·개별 센서 상태는 API. 작물 목록은 온보딩 검색에서 API를 호출하지만, 헤더/화분 관리의 선택지는 아직 정적 `crops` 사용 |
-| 공통 헤더 알림 | 알림 2건의 제목·본문·시각·심각도(`initialAlerts`), 화면별 제목·설명(`pageCopy`) | `app/src/navigation/Header.tsx` | 알림 조회·읽음 처리 API가 없어, ‘모두 읽음’ 상태도 화면 메모리에서만 변경 |
+| 공통 헤더 알림 | 화면별 제목·설명(`pageCopy`) | `app/src/navigation/Header.tsx` | 알림 목록·읽지 않은 개수·모두 읽음은 백엔드 API 사용. Android 설치 앱은 FCM 푸시 토큰도 등록 |
 | 진단 이력 | 없음 | - | 이력 점수·요약·이슈는 `GET /api/pots/:potId/diagnostic-history` 사용 |
 
 ### 현재 화면에서 사용되지 않는 잔존 목데이터
@@ -127,6 +176,7 @@ npm run ios
 | `app/src/order/orderApi.ts` | 주문 생성, 주문 내역·상세 조회, 결제 전 주문 취소 | `POST /api/orders`, `GET /api/orders`, `GET /api/orders/:orderId`, `POST /api/orders/:orderId/cancel` |
 | `app/src/payment/paymentApi.ts` | 토스 결제 준비·승인·실패 처리 및 결제 반환 화면 | `POST /api/payments/ready`, `POST /api/payments/confirm`, `POST /api/payments/fail`, `GET /api/orders/:orderId/payment`, `POST /api/payments/:paymentId/cancel` |
 | `app/src/care/carePlanApi.ts` | Gemini 기반 관리 우선순위·지표별 상세 진단·오늘 할 일·재배 기준·개선 방안·7일 일정·예상 변화·상품 추천 | `GET /api/pots/:potId/care-plan` |
+| `app/src/notification/notificationApi.ts` | 공통 헤더 알림함과 Android 푸시 등록 | `POST/DELETE /api/push-tokens`, `DELETE /api/push-tokens/all`, `GET/PATCH /api/notifications`, `GET /api/notifications/unread-count` |
 
 ### 화면별 연동 상태
 
@@ -146,6 +196,6 @@ npm run ios
 
 | 대상 | 필요한 작업 | 현재 백엔드 상태 |
 | --- | --- | --- |
-| 공통 헤더 알림 | 알림 조회·읽음 처리 API와 영속 상태 연결 | 대응 API 없음 |
+| 공통 헤더 알림 | 완료 | 알림 조회·정확한 미확인 개수·읽음 처리 API와 Android FCM 토큰 등록이 구현됨. 실제 푸시 E2E 검증은 위 절차 참고 |
 | 작물 선택지 통합 | 화분 관리·헤더의 정적 `crops` 선택지를 `GET /api/crops` 응답으로 통합 | 작물 조회·화분 작물 변경 API 구현됨 |
 | 결제 완료 주문 취소 | `GET /api/orders/:orderId/payment`, `POST /api/payments/:paymentId/cancel`을 주문 내역 UI에 연결 | 백엔드와 프론트 API 클라이언트 구현됨, 화면 미연결 |

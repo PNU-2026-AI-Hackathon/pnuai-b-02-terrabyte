@@ -8,6 +8,7 @@ import { palette } from '../appTheme/palette';
 import { scaleTypography } from '../appTheme/scaleTypography';
 import { typeScale } from '../appTheme/typography';
 import type { DeviceResponse, PotResponse } from '../device/deviceApi';
+import { NotificationInboxProvider } from '../notification/NotificationInboxContext';
 import { AnalysisScreen } from '../screens/analysis/AnalysisScreen';
 import { DashboardScreen } from '../screens/dashboard/DashboardScreen';
 import { HistoryScreen } from '../screens/history/HistoryScreen';
@@ -98,7 +99,8 @@ export function AppTabNavigator({ compact, cropName, device, initialPage = 'dash
 
   return (
     <DeviceEnvironmentProvider potId={selectedPotId}>
-      <View style={[styles.appShell, compact && styles.appShellCompact, appShellFill]}>
+      <NotificationInboxProvider>
+        <View style={[styles.appShell, compact && styles.appShellCompact, appShellFill]}>
         {!compact && sidebarHidden ? (
           <Pressable accessibilityLabel="사이드바 펼치기" accessibilityRole="button" onPress={() => setSidebarHidden(false)} style={styles.showSidebarButton}>
             <Text style={styles.showSidebarButtonText}>☰</Text>
@@ -160,7 +162,8 @@ export function AppTabNavigator({ compact, cropName, device, initialPage = 'dash
             </Tab.Screen>
           </Tab.Navigator>
         </NavigationContainer>
-      </View>
+        </View>
+      </NotificationInboxProvider>
     </DeviceEnvironmentProvider>
   );
 }

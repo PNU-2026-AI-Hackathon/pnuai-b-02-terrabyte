@@ -27,9 +27,12 @@ dependencies {
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'com.influxdb:influxdb-client-java:8.0.0'
+	implementation('com.google.firebase:firebase-admin:9.10.0') {
+		exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-xml'
+	}
 	implementation 'org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.5'
 	runtimeOnly 'org.postgresql:postgresql'
-	runtimeOnly 'org.xerial:sqlite-jdbc'
+	implementation 'org.xerial:sqlite-jdbc'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'com.h2database:h2'
