@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+from typing import Callable, Protocol, runtime_checkable
 
-from .protocol import Event
+from .protocol import CommandAck, Event
 
 
 class Delivery(str, Enum):
@@ -33,3 +33,17 @@ class Publisher(Protocol):
     def send(self, event: Event) -> DeliveryResult: ...
 
     def close(self) -> None: ...
+
+
+# ``retained`` must survive the transport seam: retained commands are stale
+# fossils that would otherwise execute again after every reconnect.
+CommandHandler = Callable[[bytes, bool], None]
+
+
+@runtime_checkable
+class CommandTransport(Protocol):
+    """MQTT's command downlink and ack uplink capabilities."""
+
+    def subscribe_commands(self, handler: CommandHandler) -> None: ...
+
+    def send_ack(self, ack: CommandAck) -> DeliveryResult: ...
