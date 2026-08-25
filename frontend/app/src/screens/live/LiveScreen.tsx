@@ -11,6 +11,7 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { Surface } from '../../components/Surface';
 import { liveMetricDefinitions } from '../../data';
 import { requestIrrigation } from '../../irrigation/irrigationApi';
+import { requestLight } from '../../light/lightApi';
 import {
   useDeviceEnvironment,
   useMeasurementSeries,
@@ -23,10 +24,17 @@ type IrrigationResult = {
   status: 'success' | 'refused' | 'error';
 };
 
+type LightResult = {
+  message: string;
+  status: 'success' | 'refused' | 'error';
+};
+
 export function LiveScreen({ compact }: { compact: boolean }) {
   const { measurements: measurement, potId, refetch } = useDeviceEnvironment();
   const [irrigationLoading, setIrrigationLoading] = useState(false);
   const [irrigationResult, setIrrigationResult] = useState<IrrigationResult | null>(null);
+  const [pendingLightState, setPendingLightState] = useState<boolean | null>(null);
+  const [lightResult, setLightResult] = useState<LightResult | null>(null);
   const airTemperatureSeries = useMeasurementSeries('air_temperature_c', '1h');
   const airHumiditySeries = useMeasurementSeries('air_humidity_pct', '1h');
   const plantLightSeries = useMeasurementSeries('plant_light_ppfd_umol_m2_s', '1h');
@@ -96,6 +104,36 @@ export function LiveScreen({ compact }: { compact: boolean }) {
     }
   };
 
+  const setLight = async (on: boolean) => {
+    if (potId === undefined || pendingLightState !== null) return;
+
+    setPendingLightState(on);
+    setLightResult(null);
+    try {
+      const outcome = await requestLight(potId, { on });
+
+      if (!outcome.issued) {
+        setLightResult({
+          message: outcome.detail ?? '안전 조건에 따라 조명 요청이 거부되었습니다.',
+          status: 'refused',
+        });
+        return;
+      }
+
+      setLightResult({
+        message: `조명을 ${outcome.on ? '켰습니다' : '껐습니다'}`,
+        status: 'success',
+      });
+    } catch (caught) {
+      setLightResult({
+        message: caught instanceof Error ? caught.message : '조명 요청을 처리하지 못했습니다.',
+        status: caught instanceof ApiRequestError && caught.status === 409 ? 'refused' : 'error',
+      });
+    } finally {
+      setPendingLightState(null);
+    }
+  };
+
   return (
     <View style={styles.pageBody}>
       <Text style={styles.liveRefresh}>3초마다 자동 갱신{measurement ? ` · 업데이트 #${measurement.sequence}` : ''}</Text>
@@ -133,30 +171,65 @@ export function LiveScreen({ compact }: { compact: boolean }) {
         </Surface>
         ))}
       </View>
-      <Surface flat style={[styles.irrigationCard, compact && styles.irrigationCardCompact]}>
-        <View style={styles.irrigationCopy}>
-          <Text style={styles.irrigationTitle}>수동 관수</Text>
-          <Text style={styles.liveCaption}>현재 화분에 {DEFAULT_IRRIGATION_VOLUME_ML} mL를 관수합니다.</Text>
-          {irrigationResult ? (
-            <Text
-              style={[
-                styles.irrigationResult,
-                irrigationResult.status === 'success' && styles.irrigationSuccess,
-                irrigationResult.status === 'refused' && styles.irrigationRefused,
-                irrigationResult.status === 'error' && styles.irrigationError,
-              ]}
-            >
-              {irrigationResult.message}
-            </Text>
-          ) : null}
-        </View>
-        <PrimaryButton
-          disabled={potId === undefined || irrigationLoading}
-          label={irrigationLoading ? '관수 요청 중…' : `${DEFAULT_IRRIGATION_VOLUME_ML} mL 관수하기`}
-          onPress={() => { void irrigate(); }}
-          style={styles.irrigationButton}
-        />
-      </Surface>
+      <View style={[styles.actionGrid, compact && styles.stack]}>
+        <Surface flat style={[styles.actionCard, compact && styles.actionCardCompact]}>
+          <View style={styles.actionCopy}>
+            <Text style={styles.actionTitle}>수동 관수</Text>
+            <Text style={styles.liveCaption}>현재 화분에 {DEFAULT_IRRIGATION_VOLUME_ML} mL를 관수합니다.</Text>
+            {irrigationResult ? (
+              <Text
+                style={[
+                  styles.actionResult,
+                  irrigationResult.status === 'success' && styles.actionSuccess,
+                  irrigationResult.status === 'refused' && styles.actionRefused,
+                  irrigationResult.status === 'error' && styles.actionError,
+                ]}
+              >
+                {irrigationResult.message}
+              </Text>
+            ) : null}
+          </View>
+          <PrimaryButton
+            disabled={potId === undefined || irrigationLoading}
+            label={irrigationLoading ? '관수 요청 중…' : `${DEFAULT_IRRIGATION_VOLUME_ML} mL 관수하기`}
+            onPress={() => { void irrigate(); }}
+            style={styles.actionButton}
+          />
+        </Surface>
+        <Surface flat style={[styles.actionCard, compact && styles.actionCardCompact]}>
+          <View style={styles.actionCopy}>
+            <Text style={styles.actionTitle}>조명</Text>
+            <Text style={styles.liveCaption}>조명을 켜거나 끕니다.</Text>
+            {lightResult ? (
+              <Text
+                style={[
+                  styles.actionResult,
+                  lightResult.status === 'success' && styles.actionSuccess,
+                  lightResult.status === 'refused' && styles.actionRefused,
+                  lightResult.status === 'error' && styles.actionError,
+                ]}
+              >
+                {lightResult.message}
+              </Text>
+            ) : null}
+          </View>
+          {/* The backend does not expose current state, so explicit commands avoid a misleading toggle. */}
+          <View style={styles.lightButtons}>
+            <PrimaryButton
+              disabled={potId === undefined || pendingLightState !== null}
+              label={pendingLightState === true ? '조명 켜는 중…' : '조명 켜기'}
+              onPress={() => { void setLight(true); }}
+              style={styles.actionButton}
+            />
+            <PrimaryButton
+              disabled={potId === undefined || pendingLightState !== null}
+              label={pendingLightState === false ? '조명 끄는 중…' : '조명 끄기'}
+              onPress={() => { void setLight(false); }}
+              style={styles.actionButton}
+            />
+          </View>
+        </Surface>
+      </View>
     </View>
   );
 }
@@ -174,13 +247,15 @@ const styles = StyleSheet.create(scaleTypography({
   liveCaption: { ...typeScale.body, color: palette.muted, fontFamily: font },
   liveFooter: { borderTopColor: palette.line, borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 },
   liveFooterText: { ...typeScale.caption, color: palette.muted, fontFamily: font },
-  irrigationCard: { alignItems: 'center', flexDirection: 'row', gap: 24, justifyContent: 'space-between', padding: 34 },
-  irrigationCardCompact: { alignItems: 'stretch', flexDirection: 'column' },
-  irrigationCopy: { flex: 1, gap: 8 },
-  irrigationTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '700' },
-  irrigationResult: { ...typeScale.body, fontFamily: font },
-  irrigationSuccess: { color: palette.green },
-  irrigationRefused: { color: palette.amber },
-  irrigationError: { color: palette.red },
-  irrigationButton: { minWidth: 180 },
+  actionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 24 },
+  actionCard: { alignItems: 'center', flexBasis: '47%', flexDirection: 'row', flexGrow: 1, gap: 24, justifyContent: 'space-between', minWidth: 280, padding: 34 },
+  actionCardCompact: { alignItems: 'stretch', flexDirection: 'column' },
+  actionCopy: { flex: 1, gap: 8 },
+  actionTitle: { ...typeScale.cardTitle, color: palette.text, fontFamily: font, fontWeight: '700' },
+  actionResult: { ...typeScale.body, fontFamily: font },
+  actionSuccess: { color: palette.green },
+  actionRefused: { color: palette.amber },
+  actionError: { color: palette.red },
+  actionButton: { minWidth: 180 },
+  lightButtons: { gap: 12 },
 }));
