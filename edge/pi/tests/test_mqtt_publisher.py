@@ -54,10 +54,13 @@ class FakeMqttClient:
         self.connected_to = None
         self.on_disconnect = None
         self.on_publish = None
+        self.on_message = None
         self.connected = True
         self.loop_started = False
         self.loop_stopped = False
         self.disconnected = False
+        self.reconnect_delays = None
+        self.subscriptions: list[tuple[str, int]] = []
         self.published: list[tuple[str, bytes, int, bool]] = []
         self.next_publish_result = FakeMessageInfo()
 
@@ -72,7 +75,7 @@ class FakeMqttClient:
         self.tls_enabled = True
 
     def reconnect_delay_set(self, min_delay=1, max_delay=120):
-        pass
+        self.reconnect_delays = (min_delay, max_delay)
 
     def connect_async(self, host, port, keepalive=60):
         # The publisher must never use the blocking connect(): an unreachable
@@ -95,6 +98,9 @@ class FakeMqttClient:
         self.published.append((topic, payload, qos, retain))
         return self.next_publish_result
 
+    def subscribe(self, topic, qos=0):
+        self.subscriptions.append((topic, qos))
+
     def simulate_connect(self):
         # The real client invokes on_connect from its network thread once
         # CONNACK arrives; tests trigger it explicitly instead.
@@ -104,6 +110,21 @@ class FakeMqttClient:
         """Deliver the v5 PUBACK reason code the broker returned for ``mid``."""
 
         self.on_publish(self, None, mid, reason_code)
+
+    def simulate_message(self, payload: bytes, *, retain: bool = False):
+        message = type("Message", (), {"payload": payload, "retain": retain})()
+        self.on_message(self, None, message)
+
+
+class FakeClientFactory:
+    def __init__(self, *clients: FakeMqttClient) -> None:
+        self._clients = iter(clients)
+        self.created: list[FakeMqttClient] = []
+
+    def __call__(self) -> FakeMqttClient:
+        client = next(self._clients)
+        self.created.append(client)
+        return client
 
 
 def make_publisher(client: FakeMqttClient, **overrides) -> MqttPublisher:
@@ -222,10 +243,6 @@ class SendTests(unittest.TestCase):
         self.assertIs(result.outcome, Delivery.DEAD)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class BrokerRejectionTests(unittest.TestCase):
     """Regressions for failures only a real broker exposed.
 
@@ -303,3 +320,152 @@ class BrokerRejectionTests(unittest.TestCase):
 
         result = publisher.send(event())
         self.assertIs(result.outcome, Delivery.DELIVERED)
+
+
+class SelfRecoveryTests(unittest.TestCase):
+    def test_consecutive_link_failures_trigger_exactly_one_rebuild(self) -> None:
+        first = FakeMqttClient()
+        first.connected = False
+        second = FakeMqttClient()
+        second.connected = False
+        factory = FakeClientFactory(first, second)
+        publisher = make_publisher(
+            first,
+            client_factory=factory,
+            max_consecutive_link_failures=3,
+            max_seconds_since_success=1_000.0,
+            min_rebuild_interval_seconds=0.0,
+        )
+
+        self.assertEqual(publisher.send(event()).reason, "not_connected")
+        first.connected = True
+        first.next_publish_result = FakeMessageInfo(published=False)
+        self.assertEqual(publisher.send(event()).reason, "puback_timeout")
+        first.connected = False
+        with self.assertLogs("terrabyte_edge.mqtt_publisher", level="WARNING") as logs:
+            self.assertEqual(publisher.send(event()).reason, "not_connected")
+
+        publisher.send(event())
+        publisher.send(event())
+        self.assertEqual(factory.created, [first, second])
+        self.assertTrue(first.loop_stopped)
+        self.assertTrue(first.disconnected)
+        self.assertTrue(second.loop_started)
+        self.assertFalse(second.loop_stopped)
+        self.assertIn("consecutive_link_failures(3>=3)", " ".join(logs.output))
+
+    def test_command_handler_survives_rebuild_and_is_resubscribed(self) -> None:
+        first = FakeMqttClient()
+        first.connected = False
+        second = FakeMqttClient()
+        factory = FakeClientFactory(first, second)
+        publisher = make_publisher(
+            first,
+            client_factory=factory,
+            max_consecutive_link_failures=1,
+            username="gw-1",
+            password="secret",
+            tls=True,
+        )
+        received = []
+        publisher.subscribe_commands(
+            lambda payload, retain: received.append((payload, retain))
+        )
+
+        publisher.send(event())
+        second.simulate_connect()
+        second.simulate_message(b'{"command_id":"cmd-1"}')
+
+        self.assertEqual(
+            second.subscriptions,
+            [("tb/v2/orangepi-pro-01/dn/command", 1)],
+        )
+        self.assertEqual(received, [(b'{"command_id":"cmd-1"}', False)])
+        self.assertEqual((second.username, second.password), ("gw-1", "secret"))
+        self.assertTrue(second.tls_enabled)
+        self.assertEqual(second.reconnect_delays, (1, 30))
+        self.assertIsNotNone(second.on_connect)
+        self.assertIsNotNone(second.on_disconnect)
+        self.assertIsNotNone(second.on_publish)
+        self.assertIsNotNone(second.on_message)
+
+    def test_rebuild_is_rate_limited_while_broker_stays_down(self) -> None:
+        now = [100.0]
+        first = FakeMqttClient()
+        first.connected = False
+        second = FakeMqttClient()
+        second.connected = False
+        third = FakeMqttClient()
+        third.connected = False
+        factory = FakeClientFactory(first, second, third)
+        publisher = make_publisher(
+            first,
+            client_factory=factory,
+            max_consecutive_link_failures=1,
+            max_seconds_since_success=1_000.0,
+            min_rebuild_interval_seconds=30.0,
+            clock=lambda: now[0],
+        )
+
+        publisher.send(event())
+        publisher.send(event())
+        now[0] += 29.0
+        publisher.send(event())
+
+        self.assertEqual(factory.created, [first, second])
+        self.assertFalse(second.loop_stopped)
+
+        now[0] += 1.0
+        publisher.send(event())
+        self.assertEqual(factory.created, [first, second, third])
+
+    def test_successful_publish_resets_consecutive_failure_count(self) -> None:
+        first = FakeMqttClient()
+        first.connected = False
+        second = FakeMqttClient()
+        factory = FakeClientFactory(first, second)
+        publisher = make_publisher(
+            first,
+            client_factory=factory,
+            max_consecutive_link_failures=3,
+            max_seconds_since_success=1_000.0,
+        )
+
+        publisher.send(event())
+        publisher.send(event())
+        first.connected = True
+        self.assertIs(publisher.send(event()).outcome, Delivery.DELIVERED)
+        first.connected = False
+        publisher.send(event())
+        publisher.send(event())
+        self.assertEqual(factory.created, [first])
+
+        publisher.send(event())
+        self.assertEqual(factory.created, [first, second])
+
+    def test_time_without_success_triggers_rebuild_when_traffic_arrives(self) -> None:
+        now = [500.0]
+        first = FakeMqttClient()
+        first.connected = False
+        second = FakeMqttClient()
+        factory = FakeClientFactory(first, second)
+        publisher = make_publisher(
+            first,
+            client_factory=factory,
+            max_consecutive_link_failures=99,
+            max_seconds_since_success=90.0,
+            clock=lambda: now[0],
+        )
+
+        now[0] += 91.0
+        with self.assertLogs("terrabyte_edge.mqtt_publisher", level="WARNING") as logs:
+            publisher.send(event())
+
+        self.assertEqual(factory.created, [first, second])
+        warning = " ".join(logs.output)
+        self.assertIn("seconds_since_success(91.0>=90.0)", warning)
+        self.assertIn("link_dead_seconds=91.0", warning)
+
+
+if __name__ == "__main__":
+    unittest.main()
