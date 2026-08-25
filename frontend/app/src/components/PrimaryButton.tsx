@@ -50,8 +50,12 @@ export function PrimaryButton({
 }
 
 const styles = StyleSheet.create({
+  // 크기와 여백은 그라데이션이 전부 가진다. 이전에는 pressable 이
+  // controlTokens.primary 의 backgroundColor 와 padding 을 함께 써서,
+  // 그 패딩만큼 그라데이션이 안으로 밀리고 여백에 단색 초록이 드러났다.
+  // 단색 테두리가 그라데이션을 감싸는 것처럼 보이던 원인이다.
   pressable: {
-    ...controlTokens.primary,
+    borderRadius: controlTokens.primary.borderRadius,
     overflow: 'hidden',
     shadowColor: '#2b8f6e',
     shadowOffset: { width: 0, height: 5 },
@@ -62,9 +66,9 @@ const styles = StyleSheet.create({
   gradient: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 46,
-    paddingHorizontal: 18,
-    paddingVertical: 13,
+    minHeight: controlTokens.primary.minHeight,
+    paddingHorizontal: controlTokens.primary.paddingHorizontal,
+    paddingVertical: controlTokens.primary.paddingVertical,
   },
   text: {
     ...typeScale.button,
