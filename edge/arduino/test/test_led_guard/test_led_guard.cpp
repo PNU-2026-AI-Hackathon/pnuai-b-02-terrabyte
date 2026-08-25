@@ -6,7 +6,8 @@
 //
 //   pio test -e native
 //   g++ -std=gnu++17 -Wall -Wextra -o /tmp/led \
-//       ../../src/LedGuard.cpp test_led_guard.cpp && /tmp/led
+//       ../../src/ActuatorGuard.cpp ../../src/LedGuard.cpp \
+//       test_led_guard.cpp && /tmp/led
 
 #include "../../include/ActuatorGuard.h"
 #include "../../include/LedGuard.h"

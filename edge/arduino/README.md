@@ -321,7 +321,13 @@ PlatformIO:
 ```powershell
 g++ -std=gnu++17 -Wall -Wextra -o guard src/ActuatorGuard.cpp test/test_actuator_guard/test_actuator_guard.cpp
 g++ -std=gnu++17 -Wall -Wextra -o parser src/ActuatorGuard.cpp src/CommandParser.cpp test/test_command_parser/test_command_parser.cpp
+g++ -std=gnu++17 -Wall -Wextra -o led src/ActuatorGuard.cpp src/LedGuard.cpp test/test_led_guard/test_led_guard.cpp
 ```
+
+The light suite links `ActuatorGuard.cpp` even though `LedGuard` does not
+depend on it: the suite reads `configuredGuardLimits()` to assert that the
+light's dead-man is configured apart from the pump's. Leaving it out fails at
+link time rather than at compile time.
 
 ## Wire protocol
 
