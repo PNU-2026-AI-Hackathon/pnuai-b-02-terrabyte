@@ -227,6 +227,11 @@ volume_ml    = clip(volume_ml, 0, 500)
 발표·보고서에서는 **"파이프라인 검증 완료, 실측 데이터 확보는 진행 중"**으로 표현한다.
 이 경고 문구는 학습 스크립트 stdout 배너에도 동일하게 출력한다.
 
+D29의 dose 캠페인은 이 순환을 한 번 더 끊는다. `feature/dose-campaign-tooling` 브랜치의
+**미병합** 드라이버는 모델이나 물수지식의 출력이 아니라 **고정 목록에서 무작위로** dose를 고른다.
+따라서 홀드아웃 dose는 우리 공식이 선택한 처방을 다시 정답으로 삼지 않는다. 다만 한 화분·무식물
+소표본이므로 이 검증의 의미는 물리 상수 보정과 파이프라인 검증까지이며, 식물 대상 모델 성능은 아니다.
+
 ### 4.3. 저장 정책
 
 **CSV를 저장소에 커밋하지 않는다.** 생성기 코드와 시드만 커밋하고 데이터셋은 재현으로 얻는다.
@@ -278,7 +283,7 @@ volume_ml    = clip(volume_ml, 0, 500)
 | G2 | **`pot` 테이블에 용적 컬럼이 없다.** 그전까지 호출자가 `substrate_volume_ml`을 직접 넣어야 하며, 폴백 표도 적용할 수 없다 | 백엔드 연동 PR |
 | G3 | `crop_score_profile`에 **목표 토양수분이 없다** (온도·습도·PPFD만 있음). AI 서버가 자체 작물별 목표 수분표를 들고 있다 — 언젠가 한쪽으로 합쳐야 한다 | 미정 |
 | G4 | 배지 보수력 0.45, 관수 효율 0.85, 목표 수분 35 %는 문헌 기반 가정이다. 펌프 정격 유량과 실제 배지가 확정되면 재보정 → **라벨 공식이 바뀌므로 재학습 필요** | 하드웨어 확정 시 |
-| G5 | 유량계가 없어 실제 관수량은 `flow_ml_per_s × runtime_ms` 추정치다. 실측 라벨의 정확도 상한이 여기서 정해진다 | 유량계 도입 시 |
+| G5 | 유량계가 없어 실제 관수량은 `flow_ml_per_s × runtime_ms / 1000` 추정치다. 실측 라벨의 정확도 상한이 여기서 정해진다 | 유량계 도입 시 |
 
 ---
 
@@ -288,7 +293,17 @@ volume_ml    = clip(volume_ml, 0, 500)
 - 전처리는 sklearn `Pipeline`에 **동봉**한다 (train/serve skew 차단)
 - 학습·추론이 **같은 `terrabyte_ai.features` 모듈**을 import한다
 - 아티팩트에 함께 저장: `model_version`, `input_schema_version`, `feature_names`,
-  `train_feature_ranges`(분포 밖 판정용), `trained_at`, `dataset_seed`, `metrics`
+  `train_feature_ranges`(분포 밖 판정용), `trained_at`, `label_source`, `metrics`.
+  `dataset_seed`는 합성 경로에만 저장한다
+- `label_source` 허용값과 의미:
+  - `synthetic-water-balance` — 물수지식이 만든 합성 라벨. 현재 배포 아티팩트가 이 값이며 아직
+    보정 상수로 재학습하지 않았다
+  - `dose-campaign-flow-estimated-delivery` — 캠페인 캡처 라벨. 저울·유량계 실측량이 아니라
+    펌프 구동시간과 보정 유량으로 **추정한** 전달량이다. 이 경로는
+    `feature/calibrated-water-balance` 브랜치에 있고 **미병합**이다
+- 소비자는 `label_source`로 수식 생성 라벨과 캡처 추정 라벨을 사후 구분해야 한다. 보정된 물리식으로
+  다시 만든 합성 라벨도 `synthetic-water-balance`이므로, 보정 전 아티팩트와는 `model_version`도
+  반드시 달라야 한다. 둘을 구분할 수 없는 덮어쓰기는 금지한다
 - `/health`가 로드된 버전을 노출한다
 - **롤백 = `AI_MODEL_PATH` 환경변수 변경 + 컨테이너 재시작.** 코드 변경 없음
 - 모든 `irrigation_decision` 행에 `ai_model_version`을 기록해 사후 귀책을 추적한다

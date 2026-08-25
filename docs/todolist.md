@@ -1,7 +1,7 @@
 # TerraByte 개발 TODO
 
-최종 갱신: 2026-08-04 (Asia/Seoul)
-데모일: **2026-08-31** — 남은 기간 약 4주
+최종 갱신: 2026-08-25 (Asia/Seoul)
+데모일: **2026-08-31** — 남은 기간 6일
 기준: `ff4d306` + `feature/device-hierarchy` 미커밋 작업분
 
 ## 0. 확정된 결정 (Decision Log)
@@ -52,6 +52,61 @@
 | D20 | 명령 retain | **금지.** `up/status`만 retain | retain하면 재접속 시 오래된 관수 명령이 즉시 재실행 |
 | D21 | 서버 생존 신호 | **`dn/heartbeat` 30초 주기.** 브로커 연결과 Spring 생존을 구분 | 브로커만 살아있으면 아무도 관수를 판단하지 않는 상태가 됨 |
 | D22 | `event_id`의 Influx 위치 | **태그가 아니라 필드** | 샘플마다 고유한 값을 태그로 넣으면 시리즈 카디널리티 폭발 |
+
+### 0.4 관수 회귀 학습 데이터 (2026-08-25 확정)
+
+> **번호 정합성:** §0 표가 설계 문서보다 뒤처져 D22에서 멈췄지만
+> [`design/irrigation_volume.md`](design/irrigation_volume.md)에서 D25·D27·D28을 이미 쓰고,
+> D23·D24·D26도 `de111fa`에서 사용했다. D29가 한 번도 쓰이지 않은 첫 번호다.
+
+| # | 쟁점 | 결정 | 근거 |
+|---|---|---|---|
+| D29 | 관수 회귀 학습 데이터 | **HYBRID.** 리그에서 물리 상수를 측정하고, 보정된 물리식으로 합성 데이터를 다시 생성해 학습한 뒤, 고정 목록에서 무작위로 뽑아 수행한 실측 dose의 홀드아웃으로 검증한다. 실측 dose 자체를 운영 모델 학습 데이터로 채택하지 않는다 | 한 화분의 소표본으로 모델을 학습하면 일반화 근거가 없다. 정직한 산출물은 **"물리 상수 보정 + 파이프라인 검증"**이다 |
+
+**측정 범위와 한계**
+
+- 리그는 **2 L 미만 화분 1개, 흙만 사용, 식물 없음, 1~2주**다.
+  [`design/irrigation_volume.md`](design/irrigation_volume.md) §4.2의 실측 전환 기준인
+  **화분 5개 × 3주 × 관수 200건**에 훨씬 못 미친다.
+- 펌프 유량은 설치 상태에서 정상상태 연속 구동 **1회**, `500 mL / 8분 30초(510초) = 0.98 mL/s`로
+  측정됐다. 저장소 전체의 기존 `8.0 mL/s` 가정은 **8.2배** 컸다. 1회 측정이라 표준편차는
+  없으며, §5의 **10초 × 5회와 30초 반복 단기 보정은 아직 하지 않았다.** 이 측정과 수식·G1
+  경고 문서화는 `feature/calibrated-water-balance` 브랜치에 있고 **미병합**이다.
+- 저울과 유량계는 없고 계량컵만 있다. 따라서 관수 효율은
+  `(전달량 - 유출량) / 전달량`, 보수력 비율은 마른 흙에서 지속 유출까지의 누적 흡수량을
+  배지 용적으로 나눠 체적법으로 구한다. 개별 dose 전달량은 유량계·저울 실측이 아니라
+  `0.98 mL/s × 실제 구동시간(ms) / 1000` **추정값**이다.
+- 저울이 없어지면서 수분 감소율을 프로브와 독립적으로 확인하는 경로도 사라졌다. 증발산 적합은
+  아직 DRY/WET 끝점이 임시인 정전용량 수분 프로브에 전적으로 의존한다.
+
+| 보정 상태 | 항목 | 판정 |
+|---|---|---|
+| **CALIBRATED** | 관수 효율, 보수력 비율 | 계량컵 체적법으로 보정 |
+| **CONDITIONAL** | 증발산 상수 `3.5`, `availability` | 수분 프로브 보정이 맞는 범위에서만 유효 |
+| **UNCALIBRATED** | `roots`, `wetted_fraction`, `CROP_TARGET_MOISTURE_PCT` | 이 캠페인으로 보정할 근거 없음 |
+
+**데이터 독립성과 구현 상태**
+
+- dose는 모델이나 물수지식이 정하지 않는다. 고정된 목록에서 무작위로 뽑는다. 캠페인 드라이버
+  `edge/pi/tools/dose_campaign.py`와 dose별 레코드·상수 적합기
+  `edge/pi/tools/dose_response_loader.py`는 `feature/dose-campaign-tooling` 브랜치에 있고 **미병합**이다.
+- `--capture` 입력을 받는 학습기는 `feature/calibrated-water-balance` 브랜치에 있고 **미병합**이다.
+  캡처 아티팩트의 `label_source`는 `dose-campaign-flow-estimated-delivery`다. 이름 그대로 전달량은
+  실측이 아니라 유량 추정이다. 단일 화분 캡처는 세션 그룹이 아니라 **시간순 70/15/15**로 나누고,
+  6 L 외삽 홀드아웃은 빈 집합을 채점하지 않고 명시적으로 건너뛴다. 이 경로가 기술적으로 캡처
+  행에 모델을 적합할 수 있어도, 한 화분 아티팩트는 파이프라인 검증용이며 운영 모델 교체 근거가 아니다.
+- 합성 경로의 `label_source`는 계속 `synthetic-water-balance`다. 현재 배포된 아티팩트도 이 값이며
+  보정 상수로 **재학습하지 않았다.**
+- 펌프 ack에 요청된 `ml`을 싣고, G1을 `210,000 ms`로 바꾸고, DS18B20 진단이 펌프 핀을 더는
+  탐색하지 않도록 한 수정은
+  `feature/arduino-actuators` 브랜치에 있고 **미병합**이다.
+- 2026-08-25 실물 회로에서 읽은 핀은 **D2 DHT22, D3 토양온도, D4 펌프, D5 조명,
+  A0 토양수분**이다. 기존 캠페인 계획이 D2/D3을 반대로 적었고, 센서 펌웨어 기본 핀은 맞았다.
+  machine-local 설정은 이 배선으로 맞췄지만 Git에 포함되는 설정은 아니다.
+
+오늘(2026-08-25) 시작해도 1~2주 캠페인의 가장 이른 종료는 2026-09-01이다. **D5 데모
+2026-08-31 전에 결과를 낼 수 없다.** 데모 시점의 표현은 계속 "파이프라인 검증 완료, 실측 데이터
+확보는 진행 중"이다.
 
 ---
 
@@ -209,12 +264,20 @@ Orange Pi와 Spring이 서로 다른 계약을 구현하고 있어, 현재 코�
 ### P1-5. Arduino 기본 설정 정상화
 브랜치: `fix/arduino-default-sensors`
 
+- [x] 2026-08-25 실물 회로 핀맵 확인 — D2 DHT22, D3 토양온도, D4 펌프, D5 조명, A0 토양수분
+      — machine-local 설정 반영 완료. 기존 캠페인 계획의 D2/D3 표기가 틀렸고 센서 펌웨어 기본 핀이 맞았음
 - [ ] PPFD 보정(`TB_PPFD_CALIBRATION_ENABLED`) 활성화 및 lux→PPFD 계수 확정
-      — **미결정: 실측 vs 문헌 계수 (§8-1)**
-- [ ] DS18B20 토양온도(`TB_SOIL_TEMPERATURE_ENABLED`) 기본 활성화
-- [ ] 정전용량 토양수분(`TB_SOIL_MOISTURE_ENABLED`) 기본 활성화 + dry/wet ADC 보정값 측정·기록
-- [ ] `soil_moisture_raw_adc` 필드 emit 추가
+      — **미결정: 실측 vs 문헌 계수 (§8-1).** `feature/dose-campaign-tooling` 브랜치의 미병합
+      캠페인이 illuminance를 함께 기록해 측정 경로만 열며, 계수는 아직 정하지 않았음
+- [ ] DS18B20 토양온도(`TB_SOIL_TEMPERATURE_ENABLED`) 저장소 기본 활성화
+      — machine-local 설정에서만 활성화됐고 저장소 기본값은 아직 비활성
+- [ ] 정전용량 토양수분(`TB_SOIL_MOISTURE_ENABLED`) 저장소 기본 활성화 + dry/wet ADC 보정값 측정·기록
+      — machine-local 설정은 활성화됐지만 DRY/WET 끝점은 임시값
+- [x] `soil_moisture_raw_adc` 필드 emit 추가
 - [ ] 4종 센서 전부 활성 상태에서 `telemetry`가 정상 emit되는지 실기 확인
+
+관련 펌웨어의 펌프 ack 요청 `ml`, G1 `210,000 ms`, DS18B20 진단 핀 수정은
+`feature/arduino-actuators` 브랜치에 있고 **미병합**이다. 이 작업은 위 센서 보정 완료를 뜻하지 않는다.
 
 ### P1-6. 토양온도 metric 백엔드 반영
 브랜치: `feature/soil-temperature-metric`
@@ -400,12 +463,16 @@ P1-8의 예산 계산에 **실행 결과**를 공급한다. 이게 없으면 Gov
 - [ ] 백엔드가 피처를 조달하는 방식 확정 (InfluxDB 조회 범위·집계)
 
 ### P3-2. 학습 데이터 확보
-브랜치: `feature/ml-dataset`
+관련 브랜치: `feature/dose-campaign-tooling`, `feature/calibrated-water-balance` — 둘 다 **미병합**.
+데이터 전략은 D29.
 
-- [ ] 데이터 출처 확정 — **미결정 (§8-2)**
+- [x] 데이터 출처 확정 — **HYBRID**: 물리 상수 보정 + 보정 물리 기반 합성 학습 + 무작위 실측 dose 홀드아웃 검증 (D29)
 - [ ] 수집·라벨링 절차 문서화
+      — 도구는 `feature/dose-campaign-tooling`, 캡처 입력 학습기는
+      `feature/calibrated-water-balance` 브랜치에 각각 있고 둘 다 **미병합**
 - [ ] 학습/검증 분할 및 평가 지표(MAE 등) 정의
-- [ ] 데이터셋을 저장소에 커밋할지 외부 보관할지 결정
+      — 단일 화분 캡처의 시간순 분할은 `feature/calibrated-water-balance` 브랜치에 있고 **미병합**
+- [x] 데이터셋 저장 정책 — CSV는 커밋하지 않고 생성기와 시드만 커밋 (D25)
 
 ### P3-3. AI 서버 구축
 브랜치: `feature/ai-server`
@@ -595,8 +662,8 @@ cd edge/pi && python -m pytest
 
 1. **PPFD 보정 계수** — TSL2591 lux → PPFD 변환을 실측 보정으로 할지, 광원 종류별 문헌 계수를 쓸지.
    `backend/db/schema.sql`에 `lux_ppfd_validation` 관련 테이블이 이미 설계되어 있어 실측 경로가 전제된 것으로 보인다. (P1-5)
-2. **관수 회귀 학습 데이터** — 실측 수집 / 공개 데이터셋 / 물리 모델 기반 합성 중 무엇인가.
-   4주 안에 실측 데이터를 충분히 모으기는 어려울 수 있다. (P3-2)
+   `feature/dose-campaign-tooling` 브랜치의 미병합 캠페인은 illuminance를 함께 기록해 계수 측정 경로만 연다.
+   계수 선택과 확정은 여전히 남아 있다.
 3. **룰 정의 저장 방식** — 코드 하드코딩(빠름) vs DB 설정 테이블(사용자 조정 가능). (P2-5)
 4. **AI 서버 배포 위치** — 백엔드와 같은 인스턴스 vs 별도 인스턴스. (P3-3)
 5. **Orange Pi 하드웨어 사양** — RF 추론 런타임(scikit-learn 등)을 올릴 여유가 있는지. (P3-5)
@@ -604,3 +671,4 @@ cd edge/pi && python -m pytest
 
 > 결정이 나면 이 절에서 지우고 §0 Decision Log에 D번호를 붙여 추가한다.
 > 2026-08-04까지 D6·D8·D9·D10·D11·D13이 이 방식으로 해소됐다.
+> 관수 회귀 학습 데이터는 2026-08-25에 D29로 해소됐다.

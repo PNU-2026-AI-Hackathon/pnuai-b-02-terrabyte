@@ -6,7 +6,7 @@ COMPOSE_PROD ?= docker compose -f docker-compose.prod.yml
 
 .DEFAULT_GOAL := help
 .PHONY: help init up up-d down down-v restart logs logs-backend logs-frontend ps \
-        build rebuild versions test backend-sh frontend-sh psql influx-sh \
+        build rebuild versions test ai-test ai-train backend-sh frontend-sh psql influx-sh \
         storybook prod-up prod-down clean
 
 help: ## 사용 가능한 명령 목록
@@ -65,6 +65,13 @@ test: ## 백엔드 테스트 실행 (외부 DB 불필요, H2 + in-memory SQLite)
 	# 테스트할 수 있다. 두 경로 모두 backend-gradle-home 볼륨 안이라 캐시는 유지된다.
 	$(COMPOSE) run --rm --no-deps -e GRADLE_USER_HOME=/home/dev/.gradle/one-shot backend \
 		--project-cache-dir /home/dev/.gradle/one-shot-project test
+
+ai-test: ## AI 서버 테스트 실행 (개발 컨테이너)
+	$(COMPOSE) run --rm --no-deps ai-server python -m pytest tests -q
+
+ai-train: ## AI 관수 회귀 모델 재학습 (합성 데이터 40,000건)
+	$(COMPOSE) run --rm --no-deps ai-server \
+		python tools/train_irrigation_regressor.py --samples 40000 --seed 42
 
 backend-sh: ## 백엔드 컨테이너 셸
 	$(COMPOSE) exec backend bash
