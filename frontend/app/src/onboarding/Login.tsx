@@ -84,7 +84,7 @@ export function Login({ onAuthenticated }: { onAuthenticated: (me: MeResponse) =
           {!compact ? (
             <View style={styles.loginFacts}>
               <View style={styles.loginFact}>
-                <Text style={styles.loginFactValue}>8개</Text>
+                <Text style={styles.loginFactValue}>5개</Text>
                 <Text style={styles.loginFactLabel}>공간·토양 측정 지표</Text>
               </View>
               <View style={styles.loginFactDivider} />
