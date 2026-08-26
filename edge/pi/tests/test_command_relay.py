@@ -21,6 +21,7 @@ from terrabyte_edge.command_relay import (
     CommandError,
     CommandJournal,
     CommandRelay,
+    STOP_PI_LINK_HELD,
     mqtt_reason,
     parse_command,
     serial_command_frame,
@@ -1030,3 +1031,36 @@ class LightKeepaliveTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class LinkGateTests(unittest.TestCase):
+    """A gateway that owes the server records must not act on its commands."""
+
+    def setUp(self) -> None:
+        self.fixture = RelayFixture(self)
+
+    def test_a_command_reaches_the_node_while_the_link_accepts_them(self) -> None:
+        self.fixture.relay._process(command())
+
+        (frame,) = self.fixture.reader.commands()
+        self.assertEqual(frame["id"], "01J8F3QK2M7X9ZB4CDEFGH")
+        # The firmware answers for itself; the relay does not pre-empt it.
+        self.assertEqual(self.fixture.outbox.acks, [])
+
+    def test_a_command_is_rejected_while_the_link_refuses_them(self) -> None:
+        self.fixture.relay.set_link_gate(lambda: False)
+
+        self.fixture.relay._process(command())
+
+        # Rejected rather than dropped: the backend holds the command in ISSUED
+        # and charges its granted volume to the daily budget until something
+        # terminal arrives, so silence here costs the pot water it never got.
+        self.assertEqual(self.fixture.outbox.phases(), ["rejected"])
+        self.assertEqual(self.fixture.outbox.acks[-1].stop_cause, STOP_PI_LINK_HELD)
+
+    def test_the_gate_does_not_touch_the_serial_port(self) -> None:
+        self.fixture.relay.set_link_gate(lambda: False)
+
+        self.fixture.relay._process(command())
+
+        self.assertEqual(self.fixture.reader.written, [])

@@ -169,6 +169,11 @@ STOP_PI_BAD_PARAMS = "pi_bad_params"
 STOP_PI_UNKNOWN_NODE = "pi_unknown_node"
 STOP_PI_AMBIGUOUS_NODE = "pi_ambiguous_node"
 STOP_PI_LINK_DOWN = "pi_link_down"
+# Not a fault of the command or of the hardware. This gateway is holding
+# irrigation records the server has not seen (RESYNC), or nothing may run at
+# all (SAFE_HOLD) — see cloud_link. Distinct from pi_link_down, which is a
+# dead serial cable.
+STOP_PI_LINK_HELD = "pi_link_held"
 STOP_PI_FRAME_TOO_LONG = "pi_frame_too_long"
 
 
@@ -604,6 +609,10 @@ class CommandRelay:
         self.relayed = 0
         self.rejected = 0
         self.dropped = 0
+        # None means "no state machine wired", which is how the relay behaves
+        # on its own: every content-valid command runs. set_link_gate installs
+        # the real answer once the service has a CloudLink.
+        self._link_gate: Callable[[], bool] | None = None
 
     # -- wiring ----------------------------------------------------------
 
@@ -620,6 +629,16 @@ class CommandRelay:
             ("command-deadman", self.run_deadman),
             ("light-keepalive", self.run_light_keepalive),
         ]
+
+    def set_link_gate(self, gate: Callable[[], bool]) -> None:
+        """Register the predicate that says whether cloud commands may run.
+
+        Injected rather than imported so the relay keeps knowing nothing about
+        the state machine: it asks one boolean question and the answer arrives
+        from :class:`terrabyte_edge.cloud_link.CloudLink`.
+        """
+
+        self._link_gate = gate
 
     def offer(self, payload: bytes, retained: bool = False) -> None:
         """Accept one raw command. **Runs on paho's network thread.**
@@ -730,6 +749,21 @@ class CommandRelay:
                 request.message_type,
             )
             self._reject(request, REASON_NODE_OFFLINE, STOP_PI_BAD_SCHEMA)
+            return
+
+        # --- the link gate ---
+        #
+        # A property of us, not of the command, so it is asked as soon as the
+        # envelope is known to be readable. Rejected rather than dropped: the
+        # backend holds a command in ISSUED and charges its granted volume to
+        # the daily budget until something terminal arrives, so staying quiet
+        # here costs the pot water it never received.
+        if self._link_gate is not None and not self._link_gate():
+            LOGGER.warning(
+                "refusing command, link is holding command_id=%s",
+                request.command_id,
+            )
+            self._reject(request, REASON_NODE_OFFLINE, STOP_PI_LINK_HELD)
             return
 
         # --- TTL, the whole reason this layer exists (D19) ---
