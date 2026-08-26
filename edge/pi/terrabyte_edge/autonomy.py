@@ -26,11 +26,12 @@ deterministic envelope first and only then asks the model, so a model that says
 so a missing or schema-mismatched artifact removes a veto rather than becoming
 an unexplained refusal — see :mod:`terrabyte_edge.irrigation.decision`.
 
-**Delivery is recorded, intent is not.** A dose is written to
-``irrigation_history`` only after the pump call reports success. The temptation
-runs the other way, since an over-counted budget only ever withholds water, but
-``hours_since_last_irrigation`` is read back on the next tick: a fabricated entry
-withholds from a pot that never got anything.
+**Delivery is recorded, intent is not.** ``dispense`` returns the millilitres
+the pump actually reported, and that is what lands in ``irrigation_history`` —
+not the dose that was asked for. The temptation runs the other way, since an
+over-counted budget only ever withholds water, but ``hours_since_last_irrigation``
+is read back on the next tick: a fabricated entry withholds from a pot that never
+got anything, and an inflated one does it for twelve hours.
 """
 
 from __future__ import annotations
@@ -95,7 +96,7 @@ class EdgeAutonomy:
         link,
         decider: IrrigationDecider,
         history: IrrigationHistory,
-        dispense: Callable[[str, float], bool],
+        dispense: Callable[[str, float], float],
         clock: Callable[[], float] = time.time,
         volume_ml: float = AUTONOMOUS_VOLUME_ML,
     ) -> None:
@@ -194,28 +195,39 @@ class EdgeAutonomy:
                 inference_seconds=inference_seconds,
             )
 
-        delivered = bool(self._dispense(node_id, self._volume_ml))
-        if delivered:
-            self._history.record(
-                node_id=node_id,
-                volume_ml=self._volume_ml,
-                source=SOURCE_EDGE_AUTONOMOUS,
-                at_epoch=now,
-            )
-            LOGGER.warning(
-                "autonomous irrigation node_id=%s volume_ml=%.1f decided in %.3fs",
-                node_id, self._volume_ml, inference_seconds,
-            )
-        else:
+        # What the pump reports back, not what was asked for. G1 stops a run at
+        # the firmware's absolute limit, so a 60 mL request can end after 24 mL,
+        # and recording the request would charge the budget for water that never
+        # left the reservoir and push the next dose out by twelve hours.
+        delivered_ml = float(self._dispense(node_id, self._volume_ml) or 0.0)
+        if delivered_ml <= 0.0:
             LOGGER.error(
-                "autonomous irrigation failed to dispense node_id=%s volume_ml=%.1f",
+                "autonomous irrigation delivered nothing node_id=%s requested_ml=%.1f",
                 node_id, self._volume_ml,
             )
+            return AutonomyOutcome(
+                node_id=node_id,
+                verdict=decision.verdict,
+                dispensed=False,
+                volume_ml=0.0,
+                inference_seconds=inference_seconds,
+            )
 
+        self._history.record(
+            node_id=node_id,
+            volume_ml=delivered_ml,
+            source=SOURCE_EDGE_AUTONOMOUS,
+            at_epoch=now,
+        )
+        LOGGER.warning(
+            "autonomous irrigation node_id=%s requested_ml=%.1f delivered_ml=%.1f "
+            "decided in %.3fs",
+            node_id, self._volume_ml, delivered_ml, inference_seconds,
+        )
         return AutonomyOutcome(
             node_id=node_id,
             verdict=decision.verdict,
-            dispensed=delivered,
-            volume_ml=self._volume_ml if delivered else 0.0,
+            dispensed=True,
+            volume_ml=delivered_ml,
             inference_seconds=inference_seconds,
         )

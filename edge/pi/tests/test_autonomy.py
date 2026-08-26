@@ -36,15 +36,19 @@ class StubLink:
 
 
 class RecordingPump:
-    """Captures dispense calls and reports whatever outcome the test wants."""
+    """Captures dispense calls and reports the millilitres the test wants.
+
+    Mirrors the real contract: what comes back is what the firmware said it
+    delivered, which is not always what was asked for.
+    """
 
     def __init__(self, succeed: bool = True) -> None:
         self.succeed = succeed
         self.calls: list[tuple[str, float]] = []
 
-    def __call__(self, node_id: str, volume_ml: float) -> bool:
+    def __call__(self, node_id: str, volume_ml: float) -> float:
         self.calls.append((node_id, volume_ml))
-        return self.succeed
+        return volume_ml if self.succeed else 0.0
 
 
 class AutonomyTests(unittest.TestCase):
@@ -219,3 +223,30 @@ class AutonomyTests(unittest.TestCase):
         self.assertIsNone(autonomy.tick())
         self.assertEqual(link.evaluate(), CloudLinkState.SAFE_HOLD)
         self.assertEqual(self.pump.calls, [])
+
+
+class PartialDeliveryTests(AutonomyTests):
+    """A dose the firmware cut short is still water, but not the whole dose."""
+
+    def test_a_clamped_dose_is_recorded_at_what_actually_ran(self) -> None:
+        # G1 stops a run at the firmware's absolute limit, so a 60 mL request
+        # can end after 24 mL. Recording 60 would charge the daily budget for
+        # water that never left the reservoir and delay the next dose.
+        autonomy = self.build(dispense=lambda node_id, volume_ml: 24.0)
+        self.observe(autonomy)
+
+        outcome = autonomy.tick()
+
+        self.assertTrue(outcome.dispensed)
+        self.assertEqual(outcome.volume_ml, 24.0)
+        recent = self.history.recent(NODE, since_epoch=0.0, limit=5)
+        self.assertEqual(recent[0].volume_ml, 24.0)
+
+    def test_a_dose_that_delivered_nothing_writes_no_history(self) -> None:
+        autonomy = self.build(dispense=lambda node_id, volume_ml: 0.0)
+        self.observe(autonomy)
+
+        outcome = autonomy.tick()
+
+        self.assertFalse(outcome.dispensed)
+        self.assertEqual(self.history.recent(NODE, since_epoch=0.0, limit=5), [])
